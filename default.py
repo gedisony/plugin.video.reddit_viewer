@@ -60,7 +60,7 @@ reddit_redirect_uri  ='http://localhost:8090/'   #specified when registering for
 reddit_refresh_token =addon.getSetting("reddit_refresh_token")
 reddit_access_token  =addon.getSetting("reddit_access_token") #1hour token
 
-
+#test1 line
 
 opener.addheaders = [('User-Agent', userAgent)]
 #API requests with a bearer token should be made to https://oauth.reddit.com, NOT www.reddit.com.
