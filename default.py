@@ -1338,7 +1338,7 @@ def index(url,name,type):
     xbmcplugin.setContent(pluginhandle, "mixed")
 
     #sys.argv[0] is plugin://plugin.video.reddit_viewer/
-    addDir("login", sys.argv[0], "reddit_login", "" )
+    #addDir("testing", sys.argv[0], "reddit_login", "" )  #<--- for testing
     
     next_mode='listVideos'
     for subreddit_entry in entries:
