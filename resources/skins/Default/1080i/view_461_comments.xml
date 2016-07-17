@@ -319,7 +319,7 @@
 					<animation effect="fade" start="100" end="0" time="200">WindowClose</animation>
 					<animation effect="slide" end="0,12" time="200" reversible="true" condition="String.IsEmpty(Container.SortMethod)">Conditional</animation>
 					<control type="label">
-						<label>xxx $LOCALIZE[30005]</label>
+						<label>x $LOCALIZE[30005]</label>
 						<include>BreadcrumbsLabel</include>
 					</control>
 					<control type="label">
