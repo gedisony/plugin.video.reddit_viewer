@@ -420,7 +420,7 @@ msgid "Reddit Oauth"
 msgstr ""
 
 msgctxt "#30401"
-msgid "[B]Instructions:[/B] https://github.com/gedisony/plugin.video.reddit_viewer"
+msgid "[B]Instructions:[/B] https://github.com/gedisony/plugin.video.reddit_viewer/wiki"
 msgstr ""
 
 msgctxt "#30402"
