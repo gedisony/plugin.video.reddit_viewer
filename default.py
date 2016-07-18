@@ -182,8 +182,8 @@ site17 = [show_gyazo        , "done in code"       ,'Gyazo'        ,'gyazo.com' 
 site18 = [show_flickr       , "playFlickr"         ,'Flickr'       ,'flickr.com'                     ,"(not used)##vidID##"                                                   , "site:flickr.com"        ]
 site28 = [show_videoLink    , "direct"             ,'video link'   ,"\.(mp4|webm|gifv)(?:\?|$)"      ,"(not used) ##vidID##"                                                   , ""        ]
 site29 = [show_imageLink    , "playSlideshow"      ,'image link'   ,"\.(jpg|jpeg|png|gif)(?:\?|$)"   ,"(not used) ##vidID##"                                                   , ""        ]
-site30 = [show_ytdl_misc    , "playYTDLVideo"      ,'misc'         ,"(devour.com)|(funnyclips.me)|(engagemedia.org)|(videosift.com)|(break.com)|(veoh.com)|(viddler.com)|(schooltube.com)|(videos.sapo.pt)|(funnyordie.com)","(not used) ##vidID##", ""        ]
-site31 = [show_pornsites    , "playYTDLVideo"      ,'porn'         ,"(3movs.com)|(anysex.com)|(burningcamel.com)|(cliphunter.com)|(crocotube.com)|(cutegirlsgifs.info)|(daporn.com)|(deviantclip.com)|(drtuber.com)|(efukt.com)|(empflix.com)|(eroshare.com)|(eroxia.com)|(extremetube.com)|(faapy.com)|(fapality.com)|(fapdu.com)|(faptube.xyz)|(femdom-tube.com)|(fuckuh.com)|(hclips.com)|(hdporn.net)|(hotgoo.com)|(keezmovies.com)|(japan-whores.com)|(madthumbs.com)|(mofosex.com)|(my18tube.com)|(mylust.com)|(onlypron.com)|(panapin.com)|(porndoe.com)|(porneq.com)|(pornfun.com)|(pornhd.com)|(pornhost.com)|(pornhub.com)|(pornoxo.com)|(pornrabbit.com)|(porntrex.com)|(pussy.com)|(redclip.xyz)|(redtube.com)|(secret.sex)|(sendvid.com)|(sex24open.com)|(sex3.com)|(sexfactor.com)|(shameless.com)|(slutload.com)|(smotri.com)|(spankbang.com)|(spankingtube.com)|(spankwire.com)|(stickyxxx.com)|(stileproject.com)|(submityourflicks.com)|(teenfucktory.com)|(thisav.com)|(thisvid.com)|(tnaflix.com)|(tube8.com)|(txxx.com)|(videolovesyou.com)|(vporn.com)|(worldsex.com)|(xbabe.com)|(xbabe.com)|(xcafe.com)|(xcum.com)|(xhamster.com)|(xnxx.com)|(xogogo.com)|(xtube.com)|(xvideos.com)|(xvids.us)|(xxxaporn.com)|(xxxymovies.com)|(xxxyours.com)|(youjizz.com)|(youporn.com)|(zedporn.com)","(not used) ##vidID##", ""        ]
+site30 = [show_ytdl_misc    , "playYTDLVideo"      ,'misc'         ,"(cc.com)|(comediansincarsgettingcoffee.com)|(trailers.apple.com)|(devour.com)|(funnyclips.me)|(engagemedia.org)|(videosift.com)|(break.com)|(veoh.com)|(viddler.com)|(schooltube.com)|(videos.sapo.pt)|(funnyordie.com)","(not used) ##vidID##", ""        ]
+site31 = [show_pornsites    , "playYTDLVideo"      ,'porn'         ,"(3movs.com)|(4tube.com)|(91porn.com)|(anysex.com)|(burningcamel.com)|(cliphunter.com)|(crocotube.com)|(cutegirlsgifs.info)|(daporn.com)|(deviantclip.com)|(drtuber.com)|(efukt.com)|(empflix.com)|(eroshare.com)|(eroxia.com)|(extremetube.com)|(faapy.com)|(fapality.com)|(fapdu.com)|(faptube.xyz)|(femdom-tube.com)|(fuckuh.com)|(hclips.com)|(hdporn.net)|(hotgoo.com)|(keezmovies.com)|(japan-whores.com)|(madthumbs.com)|(mofosex.com)|(my18tube.com)|(mylust.com)|(onlypron.com)|(panapin.com)|(porndoe.com)|(porneq.com)|(pornfun.com)|(pornhd.com)|(pornhost.com)|(pornhub.com)|(pornoxo.com)|(pornrabbit.com)|(porntrex.com)|(pussy.com)|(redclip.xyz)|(redtube.com)|(secret.sex)|(sendvid.com)|(sex24open.com)|(sex3.com)|(sexfactor.com)|(shameless.com)|(slutload.com)|(smotri.com)|(spankbang.com)|(spankingtube.com)|(spankwire.com)|(stickyxxx.com)|(stileproject.com)|(submityourflicks.com)|(teenfucktory.com)|(thisav.com)|(thisvid.com)|(tnaflix.com)|(tube8.com)|(txxx.com)|(videolovesyou.com)|(vporn.com)|(worldsex.com)|(xbabe.com)|(xbabe.com)|(xcafe.com)|(xcum.com)|(xhamster.com)|(xnxx.com)|(xogogo.com)|(xtube.com)|(xvideos.com)|(xvids.us)|(xxxaporn.com)|(xxxymovies.com)|(xxxyours.com)|(youjizz.com)|(youporn.com)|(zedporn.com)","(not used) ##vidID##", ""        ]
 site99 = [0,''              , "video" ,''          ,''             ,""                                                                      , ""                      ]
 #to add: vidmero.com/gifs.com  playlink.xyz  facebook.com  vrchive.com   
 supported_sites = [site00,site01,site02,site03,site04,site05,site06,site07,site08,site09,site10,site11,site12,site13,site14,site15,site16,site17,site18,site28,site29,site30,site31]
@@ -2207,11 +2207,11 @@ def playYTDLVideo(url, name, type):
     #url='http://burningcamel.com/video/waster-blonde-amateur-gets-fucked'
     #url='http://www.3sat.de/mediathek/?mode=play&obj=51264'
     #url='http://www.4tube.com/videos/209271/hurry-fuck-i-bored'
-    #url='http://sex3.com/23951/'
+    #url='http://www.dailymotion.com/playlist/x3ztfc_crunchyroll_sword-art-online'
     choices = []
 
 #these checks done in around May 2016
-#does not work:  yourlust 4tube porntube xpornvid.com porndig.com  thumbzilla.com eporner.com beeg.com yuvutu.com porn.com pornerbros.com fux.com flyflv.com xstigma.com sexu.com 5min.com alphaporno.com
+#does not work:  yourlust  porntube xpornvid.com porndig.com  thumbzilla.com eporner.com beeg.com yuvutu.com porn.com pornerbros.com fux.com flyflv.com xstigma.com sexu.com 5min.com alphaporno.com
 # stickyxtube.com xxxbunker.com bdsmstreak.com  jizzxman.com pornwebms.com pornurl.pw porness.tv openload.online pornworms.com fapgod.com porness.tv hvdporn.com pornmax.xyz xfig.net yobt.com
 # eroshare.com kalporn.com hdvideos.porn dailygirlscute.com desianalporn.com indianxxxhd.com onlypron.com sherloxxx.com hdvideos.porn x1xporn.com pornhvd.com lxxlx.com xrhub.com shooshtime.com
 # pornvil.com lxxlx.com redclip.xyz younow.com aniboom.com  gotporn.com  virtualtaboo.com 18porn.xyz vidshort.net fapxl.com vidmega.net freudbox.com bigtits.com xfapzap.com orgasm.com
@@ -2222,24 +2222,19 @@ def playYTDLVideo(url, name, type):
 # also does not work (non porn)
 # rutube.ru  mail.ru  afreeca.com nicovideo.jp  videos.sapo.pt(many but not all) sciencestage.com vidoosh.tv metacafe.com vzaar.com videojug.com trilulilu.ro tudou.com video.yahoo.com blinkx.com blip.tv
 # blogtv.com  brainpop.com crackle.com engagemedia.org expotv.com flickr.com fotki.com godtube.com hulu.com lafango.com  mefeedia.com motionpictur.com izlesene.com sevenload.com patas.in myvideo.de
-# vbox7.com
+# vbox7.com 1tv.ru 1up.com 220.ro 24video.xxx 3sat.de 56.com adultswim.com
+
+# these sites have mixed media. can handle the video in these sites: 
+# 20min.ch 5min.com archive.org
+
+#ytdl plays this fine but no video?
+#coub.com
 
 # 
 # ytdl also supports these sites: 
-# - funnyordie.com
-# - videos.sapo.pt
-# - schooltube.com
-# 
-# - viddler.com
-# - veoh.com
-# - break.com
-# - videosift.com
-# - engagemedia.org
 # myvideo.co.za  ?
-# - funnyclips.me 
 #bluegartr.com  (gif)
     
-
 #     extractors=[]
 #     from youtube_dl.extractor import gen_extractors
 #     for ie in gen_extractors():  
@@ -3092,100 +3087,9 @@ def callwebviewer(url, name, type):
 
     log( " done callwebviewer")
 
-def reddit_login(url, name, type):
-    log( "  to reddit login")
+def test_menu(url, name, type):
+    log( "  test_menu")
 
-    #1st: have the user authorize our addon to access their account by going to www.reddit.com/api/v1/authorize
-    #  userAgent = "XBMC:"+addonID+":v"+addon.getAddonInfo('version')+" (by /u/gsonide)"
-    #  reddit_clientID="hXEx62LGqxLj8w"
-    #Scope Values: identity, edit, flair, history, modconfig, modflair, modlog, modposts, modwiki, mysubreddits, privatemessages, read, report, save, submit, subscribe, vote, wikiedit, wikiread
-    scope='read,identity,mysubreddits'    #All bearer tokens are limited in what functions they may perform. You must explicitly request access to areas of the api, such as private messaging or moderator actions. See our automatically generated API docs. 
-                    
-    request_url='https://www.reddit.com/api/v1/authorize?client_id=%s&response_type=token&state=%s&redirect_uri=%s&scope=%s' %(reddit_clientID, 'RS', redirect_uri, scope)
-    log( request_url )
-
-    #2nd: reddit sends this: "http:\\localhost:8090\#access_token=K7TCEerfx2Dx8eXyCKdBrwAfZdo&token_type=bearer&state=RANDOM_STRING&expires_in=3600&scope=read"
-    #  then were supposed to parse the access token 
-    #  and put it in the header
-    #  request_header={ "Authorization": "K7TCEerfx2Dx8eXyCKdBrwAfZdo" }
-    #    API requests with a bearer token should be made to https://oauth.reddit.com, NOT www.reddit.com.
-    
-
-    #log( "Reddit Access Token=[" + r_AccessToken +"]" )
-
-    
-    
-    
-    #opener.addheaders = [('User-Agent', userAgent)]
-    #opener.addheaders = [('Authorization', 'bearer ' + r_AccessToken)]
-    
-    
-    #u='https://oauth.reddit.com/new.json'
-    u='https://oauth.reddit.com//api/v1/me.json'
-    
-    log(u)
-    try:
-        
-        #user enters this on their webbrowser
-#         request_url='https://www.reddit.com/api/v1/authorize?client_id=hXEx62LGqxLj8w&response_type=code&state=RS&redirect_uri=http://localhost:8090/&duration=permanent&scope=read,identity'
-#         request_url='https://www.reddit.com/api/v1/authorize?client_id='+reddit_clientID+'&response_type=code&state=RS&redirect_uri='+reddit_redirect_uri+'&duration=permanent&scope='+scope
-#         log( request_url )
-#         #click on "Allow"
-#         #copy the redirect url code
-#         #enters it on settings. 
-#  
-#         req = urllib2.Request('https://www.reddit.com/api/v1/access_token')
-#         
-#         #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
-#         data = urllib.urlencode({'grant_type'  : 'authorization_code'
-#                                 ,'code'        : 'woX9CDSuw7XBg1MiDUnTXXQd0e4'
-#                                 ,'redirect_uri': redirect_uri})    #http://localhost:8090/
-# 
-#         #http://stackoverflow.com/questions/2407126/python-urllib2-basic-auth-problem
-#         import base64
-#         base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')  
-#         req.add_header('Authorization',"Basic %s" % base64string)
-#         req.add_header('User-Agent', userAgent)
-#         
-#         page = urllib2.urlopen(req, data=data)
-#         response=page.read();page.close()
-#         log( response )
-       
-        #{"access_token": "xmOMpbJc9RWqjPS46FPcgyD_CKc", "token_type": "bearer", "expires_in": 3600, "refresh_token": "56706164-ZZiEqtAhahg9BkpINvrBPQJhZL4", "scope": "identity read"}
-
-
-        
-        #h.request('POST', '/api/v1/access_token', data, headers)
-        
-
-        #https://www.reddit.com/api/v1/access_token
-        
-        
-        
-#    This is 2nd option. user needs to do this every hour
-#         #user enters this on their webbrowser
-#         request_url='https://www.reddit.com/api/v1/authorize?client_id=hXEx62LGqxLj8w&response_type=token&state=RS&redirect_uri=http://localhost:8090/&scope=read,identity'
-#         #click on "Allow"
-#         #copy the redirect url code
-#         #enters it on settings. e.g.: LVQu8vitbEXfMPcK1sGlVVQZEpM
-# 
-#         #u='https://oauth.reddit.com/new.json'
-#         u='https://oauth.reddit.com//api/v1/me.json'
-# 
-#         req = urllib2.Request(u)
-#         #req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.14) Gecko/20080404 Firefox/2.0.0.14')
-#         req.add_header('User-Agent', userAgent)
-#         #page = urllib2.urlopen(req);response=page.read();page.close()
-#         req.add_header('Authorization','bearer LVQu8vitbEXfMPcK1sGlVVQZEpM')
-#         page = read,identity.urlopen(req)
-#         response=page.read();page.close()
-#         log( response )
-        pass
-    except urllib2.HTTPError, err:
-        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, u)  )
-        log( err.reason )         
-    except urllib2.URLError, err:
-        log( err.reason ) 
     
     liz = xbmcgui.ListItem("open webviewer", label2="", iconImage="DefaultFolder.png", thumbnailImage="", path="")
     u=sys.argv[0]+"?mode=callwebviewer&type="
@@ -3261,8 +3165,6 @@ def reddit_request( url ):
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
         xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
         log( err.reason ) 
-
-    
     
         
 def reddit_get_refresh_token(url, name, type):
@@ -3313,7 +3215,22 @@ def reddit_get_refresh_token(url, name, type):
             r2="Requesting a reddit permanent token"
             xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( status, r2)  )     
             
-        
+
+#    This is a 2nd option reddit oauth. user needs to request access token every hour
+#         #user enters this on their webbrowser. note that there is no duration=permanent response_type=token instead of code 
+#         request_url='https://www.reddit.com/api/v1/authorize?client_id=hXEx62LGqxLj8w&response_type=token&state=RS&redirect_uri=http://localhost:8090/&scope=read,identity'
+#         #click on "Allow"
+#         #copy the redirect url code    #enters it on settings. e.g.: LVQu8vitbEXfMPcK1sGlVVQZEpM
+# 
+#         #u='https://oauth.reddit.com/new.json'
+#         u='https://oauth.reddit.com//api/v1/me.json'
+# 
+#         req = urllib2.Request(u)
+#         #req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.14) Gecko/20080404 Firefox/2.0.0.14')
+#         req.add_header('User-Agent', userAgent)
+#         req.add_header('Authorization','bearer LVQu8vitbEXfMPcK1sGlVVQZEpM')
+#         page = read,identity.urlopen(req)
+#         response=page.read();page.close()
     
     except urllib2.HTTPError, err:
         xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, u)  )
@@ -3441,8 +3358,6 @@ def reddit_revoke_refresh_token(url, name, type):
     
 
 
-
-
     
 DATEFORMAT = xbmc.getRegion('dateshort')
 TIMEFORMAT = xbmc.getRegion('meridiem')
@@ -3537,7 +3452,7 @@ plugin_modes = {'index'                 : index
                 ,'playFlickr'           : playFlickr
                 ,'listFlickrAlbum'      : playFlickr 
                 ,'comments_gui'         : comments_gui    #for testing 
-                ,'reddit_login'         : reddit_login 
+                ,'test_menu'            : test_menu 
                 ,'callwebviewer'        : callwebviewer
                 ,'get_refresh_token'    : reddit_get_refresh_token
                 ,'get_access_token'     : reddit_get_access_token
@@ -3551,7 +3466,6 @@ plugin_modes[mode](url,name,typez)
 #         liz = xbmcgui.ListItem("Add Subreddit",label2="aaa", iconImage="DefaultFolder.png", thumbnailImage="")
 #         liz.setInfo(type="Video", infoLabels={"Title": "aaaaaaa", "Plot": "description", "Aired": "daate", "mpaa": "aa"})
 #         xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=True)
-
 
 
 #the above dictionary(plugin_modes) replaces the if statements below
