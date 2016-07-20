@@ -2,7 +2,7 @@
 <addon
     id="script.reddit.viewer"
     name="Reddit Viewer"
-    version="2.7.6"
+    version="2.7.7"
     provider-name="gedisony">
     <requires>
         <import addon="xbmc.python"                     version="2.14.0"                />

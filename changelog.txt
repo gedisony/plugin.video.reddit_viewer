@@ -171,5 +171,8 @@
  - context menu for comments will show "No comments" instead of nothing
  2.7.6  (2016-07-15)
  - user can now authorize the add-on to Access posts and comments through their account. (visit private subs they are members to)
- -   
+ 2.7.7  (2016-07-20)
+ - add more sites supported by youtube-dl 
+ - reorganize classes and functions
+ 
  
