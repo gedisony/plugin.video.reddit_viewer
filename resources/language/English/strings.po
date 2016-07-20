@@ -195,6 +195,11 @@ msgctxt "#30191"
 msgid "Are you over eighteen and willing to see adult content?"
 msgstr ""
 
+#error message popup when youtube-dl can't get playable url 
+msgctxt "#30192"
+msgid "Failed to get playable url"
+msgstr ""
+
 
 
 #settings screen settings.xml
