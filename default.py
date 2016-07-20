@@ -988,7 +988,7 @@ def playYTDLVideo(url, name, type):
     #url='http://burningcamel.com/video/waster-blonde-amateur-gets-fucked'
     #url='http://www.3sat.de/mediathek/?mode=play&obj=51264'
     #url='http://www.4tube.com/videos/209271/hurry-fuck-i-bored'
-    url='http://features.aol.com/video/spider-rain-phenomenon-explained?icid=maing-grid7|main5|dl12|sec1_lnk2%26pLid%3D-448999246'
+    #url='http://features.aol.com/video/spider-rain-phenomenon-explained?icid=maing-grid7|main5|dl12|sec1_lnk2%26pLid%3D-448999246'
     choices = []
 
 #these checks done in around May 2016
