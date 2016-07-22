@@ -995,7 +995,7 @@ def playYTDLVideo(url, name, type):
     #url='http://burningcamel.com/video/waster-blonde-amateur-gets-fucked'
     #url='http://www.3sat.de/mediathek/?mode=play&obj=51264'
     #url='http://www.4tube.com/videos/209271/hurry-fuck-i-bored'
-    #url='http://features.aol.com/video/spider-rain-phenomenon-explained?icid=maing-grid7|main5|dl12|sec1_lnk2%26pLid%3D-448999246'
+    #url='http://myaidol.net/2016/05/19/141214-akb48-nemousu-tv-season-17-ep06/'
     choices = []
 
 #these checks done in around May 2016
@@ -1012,7 +1012,7 @@ def playYTDLVideo(url, name, type):
 # blogtv.com  brainpop.com crackle.com engagemedia.org expotv.com flickr.com fotki.com godtube.com hulu.com lafango.com  mefeedia.com motionpictur.com izlesene.com sevenload.com patas.in myvideo.de
 # vbox7.com 1tv.ru 1up.com 220.ro 24video.xxx 3sat.de 56.com adultswim.com atresplayer.com techchannel.att.com v.baidu.com azubu.tv www.bbc.co.uk/iplayer bet.com biobiochile.cl biqle.com
 # bloomberg.com/news/videos bpb.de bravotv.com byutv.org cbc.ca chirbit.com cloudtime.to(almost) cloudyvideos.com cracked.com crackle.com criterion.com ctv.ca culturebox.francetvinfo.fr
-# cultureunplugged.com cwtv.com daum.net dctp.tv democracynow.org douyutv.com dumpert.nl eitb.tv ex.fm fc-zenit.ru 
+# cultureunplugged.com cwtv.com daum.net dctp.tv democracynow.org douyutv.com dumpert.nl eitb.tv ex.fm fc-zenit.ru  ikudonsubs.com akb48ma.com
 
 # these sites have mixed media. can handle the video in these sites: 
 # 20min.ch 5min.com archive.org Allocine.fr(added) br.de bt.no  buzzfeed.com condenast.com 
