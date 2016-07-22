@@ -10,7 +10,7 @@ import requests
 
 #sys.setdefaultencoding("utf-8")
 
-from default import addon   #,addon_path,pluginhandle,addonID
+from default import addon, comments_viewMode   #,addon_path,pluginhandle,addonID
 from default import log
 
 
@@ -295,17 +295,15 @@ class ClassImgur:
                 try: description=entry['description'].encode('utf-8')
                 except: description=""
                 #log("----description is "+description)
-                filename,ext=parse_filename_and_ext_from_url(media_url)
                 
-                if description=='' or description==None:
-                    #log("description is blank")
-                    description=filename+"."+ext
+                #filename,ext=parse_filename_and_ext_from_url(media_url)
+                #if description=='' or description==None: description=filename+"."+ext
                 
                 media_thumb_url=self.ret_thumb_url(media_url,thumbnail_size_code)
                 #log("media_url----"+media_url) 
                 #log("media_thumb_url----"+media_thumb_url)
                 #log(str(idx)+type+" [" + str(description)+']'+media_url+" "  ) 
-                list_item_name= entry['title'] if entry['title'] else str(idx).zfill(2)
+                list_item_name = entry['title'] #if entry['title'] else str(idx).zfill(2)
                 
                 infoLabels={ "Title": list_item_name, "plot": description, "PictureDesc": description, "exif:exifcomment": description }
                 e=[ description             #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
@@ -1077,6 +1075,7 @@ def make_addon_url_from(media_url, assume_is_video=True ):
                         if prepped_media_url=='album':
                             pluginUrl=media_url
                             modecommand='listImgurAlbum'
+                            setProperty_IsPlayable='false'
                             isFolder=True
                         else:
                             poster_url=c.ret_thumb_url( prepped_media_url,'l' )
@@ -1099,6 +1098,7 @@ def make_addon_url_from(media_url, assume_is_video=True ):
                         modecommand='listTumblrAlbum'
                         poster_url=t.ret_thumb_url() #if poster+url =="" is taken care of by calling function
                         pluginUrl=media_url  #we don't use the ret_url here. ret_url is a dictlist of images
+                        setProperty_IsPlayable='false'
                         isFolder=True
                     elif media_type=='photo':
                         modecommand='playSlideshow'
@@ -1194,6 +1194,7 @@ def make_addon_url_from(media_url, assume_is_video=True ):
     
                     if '/sets/' in media_url:   #indicates that this is an album
                         modecommand='listFlickrAlbum'
+                        setProperty_IsPlayable='false'
                         isFolder=True
                     else:
                         setInfo_type='pictures'

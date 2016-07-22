@@ -688,6 +688,7 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
     
     videoID=""
     post_title=title
+    il_description=""
     n=""  #will hold red nsfw asterisk string
     h=""  #will hold bold hoster:  string
     t_Album = translation(30073) if translation(30073) else "Album"
@@ -710,18 +711,18 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
             mpaa="R"
             n = "[COLOR red]*[/COLOR] "
             #description = "[B]" + hoster + "[/B]:[COLOR red][NSFW][/COLOR] "+title+"\n" + description
-            description = "[COLOR red][NSFW][/COLOR] "+ h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
+            il_description = "[COLOR red][NSFW][/COLOR] "+ h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
         else:
             mpaa=""
-            description = h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
+            il_description = h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
 
         if TitleAddtlInfo:     #put the additional info on the description if setting set to single line titles
             post_title=title+"[CR]"+title_line2
         else:
             post_title=title
-            description=title_line2+"[CR]"+description
+            il_description=title_line2+"[CR]"+il_description
             
-        il={"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
+        il={"title": post_title, "plot": il_description, "plotoutline": il_description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
 
         if setting_hide_images==True and mode_type in ['listImgurAlbum','playSlideshow','listLinksInComment' ]:
             log('setting: hide non-video links') #and text links(reddit.com)
@@ -733,7 +734,9 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
                 #media_url=urlparse.parse_qs(parsed.query)['url'][0]  #<-- this will error in openelec/linux    
                 #log("   parsed media_url:" +  media_url  )
                 #log("   parsed plugi_url:" +  videoID  )
-                WINDOW.setProperty(videoID, description )
+                #WINDOW.setProperty(videoID, description )
+                WINDOW.setProperty(videoID, title )
+
         
         if mode_type in ['listImgurAlbum','listTumblrAlbum', 'listFlickrAlbum']:post_title='[%s] %s' %(t_Album, post_title)
         #if mode_type=='playSlideshow': post_title='[IMG] '+post_title   
@@ -749,23 +752,27 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
 
         #liz.setInfo(type=setInfo_type, infoLabels=il)
         liz.setInfo(type='video', infoLabels=il)
+
+        log('    album_viewMode='+album_viewMode+ '  IsPlayable='+IsPlayable)
+        if album_viewMode=='450': #450 is my trigger to use a custom gui for showing album.
+            isFolder=False
+            #IsPlayable="false" 
+
         
         liz.setProperty('IsPlayable', IsPlayable)
         
         entries = [] #entries for listbox for when you type 'c' or rt-click 
 
-#         if ShowOnlyCommentsWithlink:
-#             show_comment_txt=translation(30052)  #Show comment links
-#         else:
-#             show_comment_txt=translation(30050)  #Show comments
 
         if num_comments > 0:            
             #if we are using a custom gui to show comments, we need to use RunPlugin. there is a weird loading/pause if we use XBMC.Container.Update. i think xbmc expects us to use addDirectoryItem
             #  if we have xbmc manage the gui(addDirectoryItem), we need to use XBMC.Container.Update. otherwise we'll get the dreaded "Attempt to use invalid handle -1" error
 
             if comments_viewMode=='461':  #461 is my trigger to use a custom gui for showing comments. it is just an arbitrary number. i'm hoping there no skin will use the same viewid
-                entries.append( ( translation(30050) + " (RunPlugin)",  #Show comments
+                entries.append( ( translation(30050) + " (c)",  #Show comments
                               "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
+                entries.append( ( translation(30052) , #Show comment links 
+                              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
             else:  
                 entries.append( ( translation(30052) , #Show comment links 
                               "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
@@ -1081,6 +1088,11 @@ def listLinksInComment(url, name, type):
     #called by context menu
     log('listLinksInComment:%s:%s' %(type,url) )
 
+    #does not work for list comments coz key is the playable url (not reddit comments url)
+    #msg=WINDOW.getProperty(url)
+    #WINDOW.clearProperty( url )
+    #log( '   msg=' + msg )
+
 #     #for testing
 #     from resources.guis import cGUI
 #     #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
@@ -1125,6 +1137,9 @@ def listLinksInComment(url, name, type):
     del harvest[:]
     #harvest links in the post text (just 1) 
     r_linkHunter(content[0]['data']['children'])
+    
+    try:post_title=content[0]['data']['children'][0]['data']['title']
+    except:post_title=''
     #for i, h in enumerate(harvest):
     #    log("aaaaa first harvest "+h[2])
 
@@ -1227,8 +1242,9 @@ def listLinksInComment(url, name, type):
             li.append( di[1] )
             
         #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
-        ui = cGUI('view_461_comments.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
-        
+        ui = cGUI('view_461_comments.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=55)
+        ui.title_bar_text=post_title
+
         ui.doModal()
         del ui
 
@@ -1258,6 +1274,7 @@ def comments_gui(url, name, type):
 
 harvest=[]
 def r_linkHunter(json_node,d=0):
+    from resources.domains import url_is_supported
     #recursive function to harvest stuff from the reddit comments json reply
     prog = re.compile('<a href=[\'"]?([^\'" >]+)[\'"]>(.*?)</a>')   
 
@@ -1355,7 +1372,8 @@ def display_album_from(dictlist, album_name):
     #this function is called by listImgurAlbum and playTumblr
     #NOTE: the directoryItem calling this needs isFolder=True or you'll get handle -1  error
 
-#works on kodi 16.1 but doesn't load images on kodi 17. 
+#works on kodi 16.1 but doesn't load images on kodi 17.
+
 #     ui = ssGUI('tbp_main.xml' , addon_path)
 #     items=[]
 #     
@@ -1369,43 +1387,90 @@ def display_album_from(dictlist, album_name):
 #     del ui
 #  
 #     return
-
-    xbmcplugin.setContent(pluginhandle, "episodes")
+    directory_items=[]
+    label=""
     
-    for d in dictlist:
+    if album_viewMode=='450': #450 is my trigger to use a custom gui for showing album.
+        using_custom_gui=True
+    else:
+        using_custom_gui=False
+    
+    for idx, d in enumerate(dictlist):
         #log('li_label:'+d['li_label'] + "  pluginhandle:"+ str(pluginhandle))
         ti=d['li_thumbnailImage']
-        liz=xbmcgui.ListItem(label=d['li_label2'], 
+        
+        if using_custom_gui:
+            #There is only 1 textbox for Title and description in our custom gui. 
+            #  I don't know how to achieve this in the xml file so it is done here:
+            #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
+            
+            combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
+            combined += d['infoLabels'].get('plot')
+            d['infoLabels']['plot'] = combined
+            #d['infoLabels']['genre'] = "0,-2000"
+            #d['infoLabels']['year'] = 1998
+            #log( d['infoLabels'].get('plot') ) 
+        else:
+            #most of the time, the image does not have a title. it looks so lonely on the listitem, we just put a number on it.    
+            label = d['li_label2'] if d['li_label2'] else str(idx+1).zfill(2)
+            
+        
+        liz=xbmcgui.ListItem(label=label, 
                              label2=d['li_label2'],
                              iconImage=d['li_iconImage'],
                              thumbnailImage=ti)
-        
-        content_type='video'  #<-- this addon used to be run as video or pictures. now that we've found a workaround to showing images as a video addon, it is now set permanently to 'video' 
-        
 
         #classImgur puts the media_url into  d['DirectoryItem_url']  no modification.
         #we modify it here...
         #url_for_DirectoryItem = sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=playSlideshow"
         hoster, DirectoryItem_url, videoID, mode_type, thumb_url,poster_url, isFolder,setInfo_type, IsPlayable=make_addon_url_from(d['DirectoryItem_url'],False)
         if poster_url=="": poster_url=ti
-        if content_type=='video':
-            liz.setInfo( type='video', infoLabels= d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
-            liz.setArt({"thumb": ti, "poster":poster_url, "banner":ti, "fanart":poster_url, "landscape":poster_url   })             
-        else:
-            liz.setInfo( type=d['type'], infoLabels= d['infoLabels'] )
+        
+        
+        liz.setInfo( type='video', infoLabels= d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
+        liz.setArt({"thumb": ti, "poster":poster_url, "banner":poster_url, "fanart":poster_url, "landscape":d['DirectoryItem_url']   })             
 
 
-        xbmcplugin.addDirectoryItem(handle=pluginhandle
-                                    ,url=DirectoryItem_url
-                                    ,listitem=liz)
+        directory_items.append( (DirectoryItem_url, liz, isFolder,) )
 
-    log( 'album_viewMode ' + album_viewMode )
-    if album_viewMode=='0':
-        pass
+        #xbmcplugin.addDirectoryItem(handle=pluginhandle,url=DirectoryItem_url,listitem=liz)
+
+    if using_custom_gui:
+        from resources.guis import cGUI
+     
+        msg=WINDOW.getProperty(url)
+        #WINDOW.clearProperty( url )
+        log( '   msg=' + msg )
+    
+        #<label>$INFO[Window(10000).Property(foox)]</label>
+        #WINDOW.setProperty('view_450_slideshow_title',WINDOW.getProperty(url))
+         
+        li=[]
+        for di in directory_items:
+            #log( str(di[1] ) )
+            li.append( di[1] )
+             
+        #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
+        ui = cGUI('view_450_slideshow.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=53)
+        
+        ui.include_parent_directory_entry=False
+        ui.title_bar_text=WINDOW.getProperty(url)
+        
+        ui.doModal()
+        del ui
+        #WINDOW.clearProperty( 'view_450_slideshow_title' )
+        #log( '   WINDOW.getProperty=' + WINDOW.getProperty('foo') )
     else:
-        xbmc.executebuiltin('Container.SetViewMode('+album_viewMode+')')
+        xbmcplugin.setContent(pluginhandle, "episodes")
 
-    xbmcplugin.endOfDirectory(pluginhandle)
+        log( 'album_viewMode ' + album_viewMode )
+        if album_viewMode=='0':
+            pass
+        else:
+            xbmc.executebuiltin('Container.SetViewMode('+album_viewMode+')')
+    
+        xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
+        xbmcplugin.endOfDirectory(pluginhandle)
 
  
 def listTumblrAlbum(t_url, name, type):    
@@ -1446,7 +1511,6 @@ def playVidmeVideo(vidme_url, name, type):
         media_status=v.whats_wrong()
         xbmc.executebuiltin('XBMC.Notification("Vidme","%s")' % media_status  )
         
-
 def playStreamable(media_url, name, type):
     log('playStreamable '+ media_url)
     
@@ -1459,7 +1523,6 @@ def playStreamable(media_url, name, type):
         #media_status=s.whats_wrong()  #streamable does not tell us if access to video is denied beforehand
         xbmc.executebuiltin('XBMC.Notification("Streamable","%s")' % "Access Denied"  )
     
-
 def playInstagram(media_url, name, type):
     log('playInstagram '+ media_url)
     #instagram video handled by ytdl. links that reddit says is image are handled here.
@@ -1483,8 +1546,6 @@ def playFlickr(flickr_url, name, type):
         playSlideshow(media_url,"Flickr","")
         #log("  listTumblrAlbum can't process " + media_type)    
     
-    
-
 #MODE downloadLiveLeakVideo       - name, type not used
 def downloadLiveLeakVideo(id, name, type):
     downloader = SimpleDownloader.SimpleDownloader()
@@ -1699,34 +1760,48 @@ def pretty_datediff(dt1, dt2):
 def playSlideshow(url, name, type):
     #url='d:\\aa\\lego_fusion_beach1.jpg'
 
-    #xbmc.executebuiltin('ActivateWindow(busydialog)')  #wouldn't work
-    from resources.guis import qGUI
+    from resources.guis import cGUI
     
     msg=WINDOW.getProperty(url)
     WINDOW.clearProperty( url )
-    
     log( '   msg=' + msg )
 
-    ui = qGUI('view_image.xml' ,  addon_path, defaultSkin='Default', defaultRes='1080i')   
-    #no need to download the image. kodi does it automatically!!!
-    ui.image_path=url
+    li=[]
+    liz=xbmcgui.ListItem(label=msg, label2="", iconImage="", thumbnailImage=url)
+    #liz.setInfo( type='video', infoLabels='' ) 
+    liz.setArt({"thumb": url, "poster":url, "banner":url, "fanart":url, "landscape":url  })             
+
+    li.append(liz)
+    ui = cGUI('view_450_slideshow.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=53)   
+    ui.include_parent_directory_entry=False
+    
     ui.doModal()
     del ui
     return
-
-
-    #this is a workaround to not being able to show images on video addon
-    log('playSlideshow:'+url +'  ' + name )
-
-    ui = ssGUI('tbp_main.xml' , addon_path)
-    items=[]
     
-    items.append({'pic': url ,'description': "", 'title' : name })
     
-    ui.items=items
-    ui.album_name=""
-    ui.doModal()
-    del ui
+#     from resources.guis import qGUI
+#     
+#     ui = qGUI('view_image.xml' ,  addon_path, defaultSkin='Default', defaultRes='1080i')   
+#     #no need to download the image. kodi does it automatically!!!
+#     ui.image_path=url
+#     ui.doModal()
+#     del ui
+#     return
+# 
+# 
+#     #this is a workaround to not being able to show images on video addon
+#     log('playSlideshow:'+url +'  ' + name )
+# 
+#     ui = ssGUI('tbp_main.xml' , addon_path)
+#     items=[]
+#     
+#     items.append({'pic': url ,'description': "", 'title' : name })
+#     
+#     ui.items=items
+#     ui.album_name=""
+#     ui.doModal()
+#     del ui
 
     #this will also work:
     #download the image, then view it with view_image.xml.

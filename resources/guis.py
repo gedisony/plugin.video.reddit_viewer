@@ -38,24 +38,32 @@ def dump(obj):
 
 class cGUI(xbmcgui.WindowXML):
     # view_461_comments.xml   
+    include_parent_directory_entry=True
+    title_bar_text=""
     
     def __init__(self, *args, **kwargs):
         xbmcgui.WindowXML.__init__(self, *args, **kwargs)
         #xbmcgui.WindowXMLDialog.__init__(self, *args, **kwargs)   #<--- what's the difference?
         self.listing = kwargs.get("listing")
+        self.main_control_id = kwargs.get("id")
         
         #log( str(args) )
         #log(sys.argv[1])
         
     def onInit(self):
         
-        self.gui_listbox = self.getControl(55)
+        self.gui_listbox = self.getControl(self.main_control_id)
+        if self.title_bar_text:
+            self.ctl_title_bar = self.getControl(1)
+            self.ctl_title_bar.setLabel(self.title_bar_text)
+            
         #url="plugin://plugin.video.reddit_viewer/?url=plugin%3A%2F%2Fplugin.video.youtube%2Fplay%2F%3Fvideo_id%3D73lsIXzBar0&mode=playVideo"
         #url="http://i.imgur.com/ARdeL4F.mp4"
-        listitem = xbmcgui.ListItem(label='..', label2="<", iconImage='DefaultAddon.png')
-        #listitem.setInfo( type="Video", infoLabels={ "Title": 'h[1]', "plot": "self.rez", "studio": 'hoster', "votes": "0" } )
-        #listitem.setPath(url)
-        self.gui_listbox.addItem(listitem)
+        if self.include_parent_directory_entry:
+            listitem = xbmcgui.ListItem(label='..', label2="<", iconImage='DefaultAddon.png')
+            #listitem.setInfo( type="Video", infoLabels={ "Title": 'h[1]', "plot": "self.rez", "studio": 'hoster', "votes": "0" } )
+            #listitem.setPath(url)
+            self.gui_listbox.addItem(listitem)
         
         self.gui_listbox.addItems(self.listing)
         self.setFocus(self.gui_listbox)
@@ -63,17 +71,20 @@ class cGUI(xbmcgui.WindowXML):
 
     def onClick(self, controlID):
     
-        if controlID == 55:
+        if controlID == self.main_control_id:
             num = self.gui_listbox.getSelectedPosition()
             item = self.gui_listbox.getSelectedItem()
 
             if num == 0:
                 #log( "  %d clicked on %d" %(self.pluginhandle, num ) )
                 #xbmcplugin.setResolvedUrl(self.pluginhandle, True, item)   #<-- for testing the first item added in onInit() 
-                self.close()
+                if include_parent_directory_entry: 
+                    self.close()  #include_parent_directory_entry means that we've added a ".." as the first item on the list onInit
             else:
-                name = item.getLabel()
-                di_url =  item.getProperty('url')
+                #name = item.getLabel()
+                try:di_url=item.getProperty('url')
+                except:di_url=""
+                
                 log( "  clicked on %d  desc=%s url=%s " %( num, item.getProperty('id'), di_url )   )
                 if di_url:
                     modes={'listImgurAlbum','playSlideshow','listLinksInComment','playTumblr','playInstagram','playFlickr' }

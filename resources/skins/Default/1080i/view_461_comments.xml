@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-
 <window>
-
-
 	<defaultcontrol always="true">55</defaultcontrol>
 	<backgroundcolor>background</backgroundcolor>
 
@@ -293,12 +289,14 @@
 					<animation effect="fade" start="100" end="0" time="300" condition="Window.Next(screencalibration)">WindowClose</animation>
 				</control>
 				<control type="image"><description>little icon on Left of top bar </description>
-					<top>10</top>
-					<width>80</width>
-					<height>80</height>
+					<top>12</top>
+					<left>10</left>
+					<width>50</width>
+					<height>50</height>
 					<animation effect="fade" start="0" end="100" time="300">WindowOpen</animation>
 					<animation effect="fade" start="100" end="0" time="200">WindowClose</animation>
-					<texture colordiffuse="button_focus">icons/settings/addons.png</texture>
+					<texture colordiffuse="button_focus">changelog.png</texture>
+					<aspectratio align="center" aligny="center">stretch</aspectratio>
 				</control>
 				<!--control type="button">
 					<top>0</top>
@@ -311,22 +309,19 @@
 				</control-->
 				<control type="grouplist"><description>text Left side of top bar</description>
 					<left>85</left>
-					<width>900</width>
+					<width>1500</width>
 					<height>100</height>
 					<orientation>horizontal</orientation>
 					<usecontrolcoords>true</usecontrolcoords>
 					<animation effect="fade" start="0" end="100" time="300">WindowOpen</animation>
 					<animation effect="fade" start="100" end="0" time="200">WindowClose</animation>
 					<animation effect="slide" end="0,12" time="200" reversible="true" condition="String.IsEmpty(Container.SortMethod)">Conditional</animation>
-					<control type="label">
-						<label>x $LOCALIZE[30005]</label>
-						<include>BreadcrumbsLabel</include>
-					</control>
-					<control type="label">
-						<label>$INFO[Container.FolderName, / ]</label> <!-- this says Reddit Viewer -->
-						<include>BreadcrumbsLabel</include>
-						<visible>![Container.Content() + Window.IsActive(videos)]</visible>
-						<visible>![Window.IsActive(PVR) | Window.IsActive(MyPVRTimers.xml)]</visible>
+					<control type="label" id=1>
+						<width>1300</width>
+						<scroll>true</scroll>
+						<scrollspeed>50</scrollspeed>
+        				<scrollsuffix>           - </scrollsuffix>						
+        				<label></label>
 					</control>
 				</control>
 				<control type="label"><description>fine text under the bigger text on Left side of top bar</description>

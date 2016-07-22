@@ -9,6 +9,13 @@
             <texture>FullBackground.jpg</texture>
             <aspectratio>scale</aspectratio>
         </control>
+        <control type="image">
+        	<top>-100</top>
+            <description>The spinning animation in the background</description>
+            <aspectratio align="center" aligny="center" >center</aspectratio>
+            <texture>busy.gif</texture>
+            <animation effect="fade" time="200" delay="500" reversible="false">Visible</animation>
+        </control>
 
         <control type="image" id=3000>
             <description>image to view</description>
