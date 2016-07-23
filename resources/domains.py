@@ -6,11 +6,11 @@ import urllib2
 import sys
 import re
 import requests 
-
+import json
 
 #sys.setdefaultencoding("utf-8")
 
-from default import addon, comments_viewMode   #,addon_path,pluginhandle,addonID
+from default import addon, comments_viewMode, streamable_quality   #,addon_path,pluginhandle,addonID
 from default import log
 
 
@@ -1277,7 +1277,7 @@ def make_addon_url_from(media_url, assume_is_video=True ):
         log("    unsupported [%s]" %media_url)
         url_for_DirectoryItem = "" 
      
-    #log( "    " + hoster + "==" + videoID  )
+    #log( "    %s vid=%s playable=%s di_url=%s" %( hoster ,videoID, setProperty_IsPlayable, url_for_DirectoryItem)  )
     return hoster, url_for_DirectoryItem, pluginUrl, modecommand, thumb_url, poster_url, isFolder, setInfo_type,setProperty_IsPlayable
 
 

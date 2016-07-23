@@ -1481,6 +1481,7 @@ def display_album_from(dictlist, album_name):
 
  
 def listTumblrAlbum(t_url, name, type):    
+    from resources.domains import ClassTumblr
     log("listTumblrAlbum:"+t_url)
     t=ClassTumblr(t_url)
     
@@ -1494,6 +1495,7 @@ def listTumblrAlbum(t_url, name, type):
 
 
 def playVineVideo(vine_url, name, type):
+    from resources.domains import ClassVine
     #log('playVineVideo')
     
     v=ClassVine(vine_url)
@@ -1509,6 +1511,7 @@ def playVineVideo(vine_url, name, type):
     #xbmc.executebuiltin("PlayerControl('repeatOne')")  #how do i make this video play again? 
 
 def playVidmeVideo(vidme_url, name, type):
+    from resources.domains import ClassVidme
     log('playVidmeVideo')
     v=ClassVidme(vidme_url)
     vidme_stream_url=v.get_playable_url(vidme_url, True)
@@ -1519,6 +1522,7 @@ def playVidmeVideo(vidme_url, name, type):
         xbmc.executebuiltin('XBMC.Notification("Vidme","%s")' % media_status  )
         
 def playStreamable(media_url, name, type):
+    from resources.domains import ClassStreamable
     log('playStreamable '+ media_url)
     
     s=ClassStreamable(media_url)
@@ -1531,6 +1535,7 @@ def playStreamable(media_url, name, type):
         xbmc.executebuiltin('XBMC.Notification("Streamable","%s")' % "Access Denied"  )
     
 def playInstagram(media_url, name, type):
+    from resources.domains import ClassInstagram
     log('playInstagram '+ media_url)
     #instagram video handled by ytdl. links that reddit says is image are handled here.
     i=ClassInstagram( media_url )
@@ -1543,6 +1548,7 @@ def playLiveLeakVideo(id, name, type):
     playVideo(getLiveLeakStreamUrl(id), name, type)
 
 def playFlickr(flickr_url, name, type):
+    from resources.domains import ClassFlickr
     log('play flickr '+ flickr_url)
     f=ClassFlickr( flickr_url )
 
