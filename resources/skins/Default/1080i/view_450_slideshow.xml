@@ -12,13 +12,25 @@
 		<!--BEGIN include name="DefaultBackground"-->
 			<control type="group">
 
+				<!-- Show thumbnail image while original image still loading. but some thumbnail image stick out to the sides. 
+				could not figure out how to detect when original image still loading. 
+				  Attempt a different method by Hiding the thumbnail image after list changes focus. 
+				  it works but it is hard to guess proper the delay -how long the original image finishes loading. 
+				    -->
+				<!-- control type="image" id="200">
+					<visible>!Container(53).OnNext + !Container(53).OnPrevious</visible>
+					<aspectratio scalediffuse="true" aligny="top">keep</aspectratio>
+					<texture>$INFO[Container(53).ListItem.Art(thumb)]</texture>
+					<animation effect="fade" start="100" end="0" time="1000" delay="0" tween="back" easing="in">visible</animation>
+				</control -->
+
 		        <control type="image">
 		        	<top>-100</top>
 		            <description>The spinning animation in the background</description>
 		            <aspectratio align="center" aligny="center" >center</aspectratio>
 		            <texture>busy.gif</texture>
 		            <visible>!IntegerGreaterThan(Container(53).NumPages,0) | ![Container(53).OnNext | Container(53).OnPrevious]</visible>
-		            <animation effect="fade" time="200" delay="500" reversible="false">Visible</animation>
+		            <!-- animation effect="fade" time="200" delay="500" reversible="false">Visible</animation-->
 		        </control>
         
 				<control type="image" id="204">
@@ -58,67 +70,66 @@
 					<visible>![Control.IsVisible(202)|Control.IsVisible(203)|Control.IsVisible(204)|Control.IsVisible(205)]</visible>
 					<aspectratio scalediffuse="true" aligny="top">keep</aspectratio>
 					<texture>$INFO[Container(53).ListItem.Art(landscape)]</texture>
+					<!-- fadetime>200</fadetime-->
 				</control>
 			</control>
 		<!--END include name="DefaultBackground"-->
 
 
-		<control type="group">
-			<description>these hidden buttons control the different views for our images </description>
+		<control type="group"><description>these hidden buttons control the different views for our images </description>
 			<visible allowhiddenfocus="true">false</visible>
 			<control type="button" id="101">
-				<left>200</left>
+				<left>1900</left>
 				<top>500</top>
 				<label>button 101</label>
-				
-				<onright>53</onright>
-				<onleft>53</onleft>
 				<onup>103</onup>
 				<ondown>53</ondown>
+				<onright>Control.Message(53,moveup)</onright>
+				<onleft>Control.Message(53,movedown)</onleft>
 			</control>
 			<control type="button" id="103">
 				<description>controls middle visibility (once only)</description>
-				<left>200</left>
+				<left>1900</left>
 				<top>400</top>
 				<label>$INFO[Container(53).ListItem.year]</label>
 				
 				<onup>102</onup>
 				<ondown>104</ondown>
-				<onright>53</onright>
-				<onleft>53</onleft>
+				<onright>Control.Message(53,moveup)</onright>
+				<onleft>Control.Message(53,movedown)</onleft>
 			</control>
 			<control type="button" id="102">
 				<description>controls top visibility</description>
-				<left>200</left>
+				<left>1900</left>
 				<top>450</top>
 				<label>button 102</label>
 				
 				<onup>53</onup>
 				<ondown>105</ondown>
-				<onright>53</onright>
-				<onleft>53</onleft>
+				<onright>Control.Message(53,moveup)</onright>
+				<onleft>Control.Message(53,movedown)</onleft>
 			</control>
 			<control type="button" id="105">
 				<description>controls middle visibility</description>
-				<left>200</left>
+				<left>1900</left>
 				<top>350</top>
 				<label>button 104</label>
 
 				<onup>102</onup>
 				<ondown>104</ondown>
-				<onright>53</onright>
-				<onleft>53</onleft>
+				<onright>Control.Message(53,moveup)</onright>
+				<onleft>Control.Message(53,movedown)</onleft>
 			</control>
 			<control type="button" id="104">
 				<description>controls bottom visibility</description>
-				<left>200</left>
+				<left>1900</left>
 				<top>350</top>
 				<label>button 104</label>
 
 				<onup>105</onup>
 				<ondown>53</ondown>
-				<onright>53</onright>
-				<onleft>53</onleft>
+				<onright>Control.Message(53,moveup)</onright>
+				<onleft>Control.Message(53,movedown)</onleft>
 			</control>
 		</control>
 
@@ -211,7 +222,7 @@
 					<control type="group">
 						<control type="image">
 							<left>0</left>
-							<top>3</top>
+							<top>13</top>
 							<width>200</width>
 							<height>200</height>
 							<aspectratio aligny="bottom">keep</aspectratio>
@@ -239,16 +250,16 @@
 				<focusedlayout width="200">
 					<control type="image">
 						<left>10</left>
-						<top>43</top>
+						<top>33</top>
 						<width>180</width>
-						<height>150</height>
+						<height>180</height>
 						<visible>Control.HasFocus(53)</visible>
 						<animation effect="fade" time="200">VisibleChange</animation>
 						<texture colordiffuse="button_focus">colors/white.png</texture>
 					</control>						
 					<control type="image">
 						<left>0</left>
-						<top>3</top>
+						<top>13</top>
 						<width>200</width>
 						<height>200</height>
 						<aspectratio aligny="bottom">keep</aspectratio>
