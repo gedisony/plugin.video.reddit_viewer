@@ -76,14 +76,14 @@
 				<description>background image</description>
 				<left>-20</left>
 				<top>-20</top>
-				<width>854</width>
+				<width>498</width>
 				<height>870</height>
 				<texture border="22">dialog-bg.png</texture>
 			</control>
 			<control type="list" id="55">
 				<left>2</left>
 				<top>3</top>
-				<width>800</width>
+				<width>430</width>
 				<height>820</height>
 				<scrolltime tween="cubic" easing="out">500</scrolltime>
 				<orientation>vertical</orientation>
@@ -94,28 +94,28 @@
 				<ondown>55</ondown>
 				<viewtype label="$LOCALIZE[31107]">list</viewtype>
 				<visible>true</visible>
-				<focusedlayout height="53" condition="Container.Content(artists) | Container.Content(albums) | Container.Content(actors) | Container.Content(directors) | Container.Content(files) | Container.Content(mixed) | Container.Content(videos)">
+				<focusedlayout height="43" condition="Container.Content(artists) | Container.Content(albums) | Container.Content(actors) | Container.Content(directors) | Container.Content(files) | Container.Content(mixed) | Container.Content(videos)">
 					<control type="image">
 						<left>0</left>
 						<top>0</top>
 						<width>1096</width>
-						<height>63</height>
-						<texture border="90,3,90,3">separator.png</texture>
+						<height>37</height>
+						<texture>separator.png</texture>
 						<visible>!Control.HasFocus(55)</visible>
 					</control>
 					<control type="image">
 						<left>0</left>
 						<top>0</top>
 						<width>1396</width>
-						<height>63</height>
+						<height>43</height>
 						<texture colordiffuse="button_focus">focus.png</texture>
 						<visible>Control.HasFocus(55)</visible>
 					</control>
 					<control type="label"><!-- the little square(bullet) on the right of list gets replaced by 'year' -->
-						<left>18</left>
+						<left>10</left>
 						<top>2</top>
-						<height>63</height>
-						<width>70</width>
+						<height>43</height>
+						<width>60</width>
 						<aligny>center</aligny>
 						<align>right</align>
 						<font>font12</font>
@@ -123,20 +123,21 @@
 						<shadowcolor>text_shadow</shadowcolor>
 					</control>
 					<control type="label"><!-- ListItem.Label -->
-						<left>100</left>
+						<left>80</left>
 						<top>0</top>
-						<height>63</height>
-						<width>690</width>
+						<height>43</height>
+						<width>410</width>
 						<aligny>center</aligny>
 						<font>fontContextMenu</font>
 						<scroll>true</scroll>
+						<scrollspeed>50</scrollspeed>
 						<label>$INFO[ListItem.Label]</label>
 						<shadowcolor>text_shadow</shadowcolor>
 					</control>
 					<!-- control type="label">
 						<left>90</left>
 						<top>0</top>
-						<height>63</height>
+						<height>43</height>
 						<width>1090</width>
 						<align>right</align>
 						<aligny>center</aligny>
@@ -144,39 +145,20 @@
 						<label>$INFO[ListItem.Label2]</label>
 						<shadowcolor>text_shadow</shadowcolor>
 					</control-->
-					<control type="image">
-						<left>26</left>
-						<top>20</top>
-						<width>32</width>
-						<height>32</height>
-						<visible>String.IsEmpty(ListItem.votes)</visible>
-						<texture>$VAR[ListWatchedIconVar]</texture>
-						<animation effect="fade" start="30" end="100" time="300" reversible="false">Focus</animation>
-					</control>
-					<control type="image">
-						<left>26</left>
-						<top>20</top>
-						<width>32</width>
-						<visible>String.IsEmpty(ListItem.votes)</visible>
-						<height>32</height>
-						<texture colordiffuse="button_focus">$VAR[ListWatchedIconVar]</texture>
-						<animation effect="fade" start="0" end="100" time="300" reversible="false">Focus</animation>
-						<visible>!Control.HasFocus(55)</visible>
-					</control>
 				</focusedlayout>
-				<itemlayout height="53" condition="Container.Content(artists) | Container.Content(albums) | Container.Content(actors) | Container.Content(directors) | Container.Content(files) | Container.Content(mixed) | Container.Content(videos)">
+				<itemlayout height="43" condition="Container.Content(artists) | Container.Content(albums) | Container.Content(actors) | Container.Content(directors) | Container.Content(files) | Container.Content(mixed) | Container.Content(videos)">
 					<control type="image">
 						<left>0</left>
 						<top>0</top>
 						<width>1396</width>
-						<height>63</height>
-						<texture border="90,3,90,3">separator.png</texture>
+						<height>37</height>
+						<texture>separator.png</texture>
 					</control>
 					<control type="label"><!-- the little square(bullet) on the right of list gets replaced by 'year' -->
-						<left>18</left>
+						<left>10</left>
 						<top>2</top>
-						<height>63</height>
-						<width>70</width>
+						<height>43</height>
+						<width>60</width>
 						<aligny>center</aligny>
 						<align>right</align>
 						<font>font12</font>
@@ -185,10 +167,10 @@
 						<shadowcolor>text_shadow</shadowcolor>
 					</control>
 					<control type="label"><!-- ListItem.Label -->
-						<left>100</left>
+						<left>80</left>
 						<top>0</top>
-						<height>63</height>
-						<width>690</width>
+						<height>43</height>
+						<width>410</width>
 						<aligny>center</aligny>
 						<font>fontContextMenu</font>
 						<label>$INFO[ListItem.Label]</label>
@@ -197,7 +179,7 @@
 					<!-- control type="label">
 						<left>90</left>
 						<top>0</top>
-						<height>63</height>
+						<height>43</height>
 						<width>1090</width>
 						<align>right</align>
 						<aligny>center</aligny>
@@ -206,18 +188,10 @@
 						<textcolor>grey</textcolor>
 						<shadowcolor>text_shadow</shadowcolor>
 					</control-->
-					<control type="image">
-						<left>26</left>
-						<top>20</top>
-						<visible>String.IsEmpty(ListItem.votes) + String.IsEmpty(ListItem.AddonVersion)</visible>
-						<width>32</width>
-						<height>32</height>
-						<texture colordiffuse="grey">$VAR[ListWatchedIconVar]</texture>
-					</control>
 				</itemlayout>
 			</control>
 			<control type="scrollbar" id="55600">
-				<left>817</left>
+				<left>457</left>
 				<top>0</top>
 				<width>12</width>
 				<height>830</height>
@@ -230,6 +204,7 @@
 	<!--END include>View_55_WideList</include -->
 
 		<control type="group">
+			<description>Right side panel. this is where the comment and preview is shown</description>
 			<include>OpenClose_Left</include>
 			<include>Visible_Left</include>
 			<visible>Control.IsVisible(55)</visible>
@@ -239,16 +214,16 @@
 				<include>Visible_Right</include>
 				
 				<control type="image">
-					<left>930</left>
+					<left>580</left>
 					<top>102</top>
-					<width>920</width>
+					<width>1270</width>
 					<height>870</height>
 					<texture border="22">dialog-bg.png</texture>
 				</control>
 				<control type="textbox">
-					<left>962</left>
+					<left>612</left>
 					<top>128</top>
-					<width>860</width>
+					<width>1210</width>
 					<height>810</height>
 					<font>font11</font>
 					<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
@@ -256,20 +231,20 @@
 					<label>$INFO[Container(55).ListItem.Plot]</label>					<!-- label>$INFO[ListItem.Label]</label-->
 				</control>
 				<control type="image">
-					<left>952</left>
-					<top>444</top>
-					<width>876</width>
-					<height>506</height>
-					<aspectratio>keep</aspectratio>
+					<left>602</left>
+					<top>344</top>
+					<width>1226</width>
+					<height>606</height>
+					<aspectratio>scale</aspectratio>
 					<fadetime>300</fadetime>
 					<visible>!isEmpty(Container(55).ListItem.Art(thumb)</visible>
 					<texture background="true" fallback="colors/black.png">$INFO[Container(55).ListItem.Art(thumb)]</texture>
 				</control>
 				<control type="videowindow">
-					<left>952</left>
-					<top>444</top>
-					<width>876</width>
-					<height>506</height>
+					<left>602</left>
+					<top>344</top>
+					<width>1226</width>
+					<height>606</height>
 				</control>
 				
 		</control>
@@ -508,7 +483,7 @@
 						<aligny>center</aligny>
 						<align>right</align>
 						<shadowcolor>text_shadow</shadowcolor>
-						<label>$PARAM[PageLabel]</label>
+						<label>$INFO[Container.CurrentItem,, / ]$INFO[Container.NumItems]</label>
 					</control>
 					<control type="image">
 						<width>54</width>

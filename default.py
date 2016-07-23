@@ -753,11 +753,10 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
         #liz.setInfo(type=setInfo_type, infoLabels=il)
         liz.setInfo(type='video', infoLabels=il)
 
-        log('    album_viewMode='+album_viewMode+ '  IsPlayable='+IsPlayable)
+        #log('    album_viewMode='+album_viewMode+ '  IsPlayable='+IsPlayable)
         if album_viewMode=='450': #450 is my trigger to use a custom gui for showing album.
-            isFolder=False
-            #IsPlayable="false" 
-
+            isFolder=False        #with custom gui, you need to set isFolder to false even if you're listing a folder.  
+            #IsPlayable="false"   #  set isPlayable to "false" too
         
         liz.setProperty('IsPlayable', IsPlayable)
         
@@ -1107,11 +1106,12 @@ def listLinksInComment(url, name, type):
     ShowOnlyCommentsWithlink=False
     if type=='linksOnly':
         ShowOnlyCommentsWithlink=True
-
-    if comments_viewMode=='461':  #461 is just an arbitrary number. i'm hoping there no skin will use the same viewid
-        using_custom_gui=True
-    else: 
-        using_custom_gui=False
+        using_custom_gui=False #for now, our custom gui cannot handle links very well. we will let kodi handle it
+    else:
+        if comments_viewMode=='461':  #461 is just an arbitrary number. i'm hoping there no skin will use the same viewid
+            using_custom_gui=True
+        else: 
+            using_custom_gui=False
         
     #sometimes the url has a query string. we discard it coz we add .json at the end
     #url=url.split('?', 1)[0]+'.json'
@@ -1138,6 +1138,7 @@ def listLinksInComment(url, name, type):
     #harvest links in the post text (just 1) 
     r_linkHunter(content[0]['data']['children'])
     
+    #the post title is provided in json, we'll just use that instead of messages from addLink()
     try:post_title=content[0]['data']['children'][0]['data']['title']
     except:post_title=''
     #for i, h in enumerate(harvest):
@@ -1161,13 +1162,17 @@ def listLinksInComment(url, name, type):
         #mode_type #usually 'playVideo'
         kind=h[6] #reddit uses t1 for user comments and t3 for OP text of the post. like a poster describing the post.  
         d=h[5]   #depth of the comment
-        tab=" "*d
+        
+        tab=" "*d if d>0 else "-"
+        
+        author=h[7]
         
         if using_custom_gui: #custom gui uses infoLabel->votes to display the comment score, we don't need to prepend it on the title
             if kind=='t1':
                 list_title=r"%s" %( tab )
             elif kind=='t3':
                 list_title=r"[I]Title [/I] %s" %( tab )
+            author=tab + " " +author
         else:
             if kind=='t1':
                 list_title=r"[I]%2d pts.[/I] %s" %( h[0], tab )
@@ -1203,7 +1208,7 @@ def listLinksInComment(url, name, type):
                                  path=DirectoryItem_url)
 
             
-            liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": result, "studio": hoster, "votes": str(h[0]) } )
+            liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": result, "studio": hoster, "votes": str(h[0]), "director": author } )
             liz.setArt({"thumb": thumb_url, "poster":thumb_url, "banner":thumb_url, "fanart":thumb_url, "landscape":thumb_url   })
 
             liz.setProperty('IsPlayable', setProperty_IsPlayable)
@@ -1220,7 +1225,7 @@ def listLinksInComment(url, name, type):
                                      label2="",
                                      iconImage="", 
                                      thumbnailImage="")
-                liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": result, "studio": hoster, "votes": str(h[0]) } )
+                liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": result, "studio": hoster, "votes": str(h[0]), "director": author } )
                 liz.setProperty('IsPlayable', 'false')
                 
                 directory_items.append( ("", liz, False,) )
@@ -1244,6 +1249,7 @@ def listLinksInComment(url, name, type):
         #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
         ui = cGUI('view_461_comments.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=55)
         ui.title_bar_text=post_title
+        #ui.include_parent_directory_entry=True
 
         ui.doModal()
         del ui
@@ -1318,17 +1324,18 @@ def r_linkHunter(json_node,d=0):
                     if url_is_supported(link_http) or not harvested:   #store at least one instance of the post but not for every link
                         #store an entry for every supported link. if a post has a lot of links, it will repeat and look ugly
                         if not harvested:
-                            harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",)   )
+                            harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )
                         else:
-                            harvest.append((score, link_desc, link_http, link_desc, post_html, d, "t1",)   )    
+                            harvest.append((score, link_desc, link_http, link_desc, post_html, d, "t1",author,created_utc,)   )    
                         harvested=True
             else:
-                harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",)   )    
+                harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )    
     
             d+=1 #d tells us how deep is the comment in
-            r_linkHunter(replies,d)            
+            r_linkHunter(replies,d)   
+            d-=1         
 
-        if e['kind']=='t3':     #'t3' for post text(?)
+        if e['kind']=='t3':     #'t3' for post text (a description of the post)
             #log(str(e))
             #log("replyid:"+str(d)+" "+e['data']['id'])
             try: score=e['data']['score']
@@ -1347,13 +1354,13 @@ def r_linkHunter(json_node,d=0):
                     if url_is_supported(link_http) or not harvested:   #store at least one instance of the post but not for every link
                         #store an entry for every supported link. if a post has a lot of links, it will repeat and look ugly
                         if not harvested:
-                            harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3", )   )
+                            harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc, )   )
                         else:
-                            harvest.append((score, link_desc, link_http, link_desc, self_text_html, d, "t3", )   )
+                            harvest.append((score, link_desc, link_http, link_desc, self_text_html, d, "t3",author,created_utc, )   )
                         harvested=True
             else:
                 if len(self_text) > 0: #don't post an empty titles
-                    harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",)   )    
+                    harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc,)   )    
             
 
 

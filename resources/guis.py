@@ -60,8 +60,10 @@ class cGUI(xbmcgui.WindowXML):
         #url="plugin://plugin.video.reddit_viewer/?url=plugin%3A%2F%2Fplugin.video.youtube%2Fplay%2F%3Fvideo_id%3D73lsIXzBar0&mode=playVideo"
         #url="http://i.imgur.com/ARdeL4F.mp4"
         if self.include_parent_directory_entry:
-            listitem = xbmcgui.ListItem(label='..', label2="<", iconImage='DefaultAddon.png')
-            #listitem.setInfo( type="Video", infoLabels={ "Title": 'h[1]', "plot": "self.rez", "studio": 'hoster', "votes": "0" } )
+            back_image='DefaultFolderBackSquare.png'
+            listitem = xbmcgui.ListItem(label='..', label2="<", iconImage=back_image)
+            #listitem.setInfo( type="Video", infoLabels={ "Title": '..', "plot": "", "studio": '' } )
+            listitem.setArt({"thumb": back_image, "poster":back_image, "banner":back_image, "fanart":back_image, "landscape":back_image   })
             #listitem.setPath(url)
             self.gui_listbox.addItem(listitem)
         
@@ -78,7 +80,7 @@ class cGUI(xbmcgui.WindowXML):
             if num == 0:
                 #log( "  %d clicked on %d" %(self.pluginhandle, num ) )
                 #xbmcplugin.setResolvedUrl(self.pluginhandle, True, item)   #<-- for testing the first item added in onInit() 
-                if include_parent_directory_entry: 
+                if self.include_parent_directory_entry: 
                     self.close()  #include_parent_directory_entry means that we've added a ".." as the first item on the list onInit
             else:
                 #name = item.getLabel()
