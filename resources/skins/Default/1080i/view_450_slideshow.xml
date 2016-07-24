@@ -324,7 +324,7 @@
 							<height>250</height>
 							<texture border="22">dialog-bg.png</texture>
 						</control>
-						<control type="textbox" id=53300>
+						<control type="textbox" id="65591">
 							<top>15</top>
 							<left>130</left>
 							<width>1148</width>
@@ -375,7 +375,7 @@
 					<animation effect="fade" start="0" end="100" time="300">WindowOpen</animation>
 					<animation effect="fade" start="100" end="0" time="200">WindowClose</animation>
 					<animation effect="slide" end="0,12" time="200" reversible="true" condition="String.IsEmpty(Container.SortMethod)">Conditional</animation>
-					<control type="label" id=1>
+					<control type="label" id="1">
 						<!-- label>$INFO[Window(10000).Property(view_450_slideshow_title)]</label-->
 						<label></label>
 						<!-- include>BreadcrumbsLabel</include -->

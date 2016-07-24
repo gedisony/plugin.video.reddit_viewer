@@ -220,16 +220,30 @@
 					<height>870</height>
 					<texture border="22">dialog-bg.png</texture>
 				</control>
-				<control type="textbox">
+				
+				<control type="textbox" id="65591">
+					<description>if thumb is empty this bigger textbox is visible</description>
 					<left>612</left>
 					<top>128</top>
 					<width>1210</width>
 					<height>810</height>
-					<font>font11</font>
+					<font>font14</font>
 					<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
-					<visible>Control.IsVisible(55)</visible>
+					<visible>isEmpty(Container(55).ListItem.Art(thumb)</visible>
 					<label>$INFO[Container(55).ListItem.Plot]</label>					<!-- label>$INFO[ListItem.Label]</label-->
 				</control>
+				
+				<control type="textbox" id="65591">
+					<left>612</left>
+					<top>128</top>
+					<width>1210</width>
+					<height>216</height>
+					<font>font13</font>
+					<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
+					<visible>!isEmpty(Container(55).ListItem.Art(thumb)</visible>
+					<label>$INFO[Container(55).ListItem.Plot]</label>					
+				</control>
+				
 				<control type="image">
 					<left>602</left>
 					<top>344</top>
@@ -238,6 +252,7 @@
 					<aspectratio>scale</aspectratio>
 					<fadetime>300</fadetime>
 					<visible>!isEmpty(Container(55).ListItem.Art(thumb)</visible>
+					<visible>!Player.HasMedia</visible>
 					<texture background="true" fallback="colors/black.png">$INFO[Container(55).ListItem.Art(thumb)]</texture>
 				</control>
 				<control type="videowindow">
@@ -291,7 +306,7 @@
 					<animation effect="fade" start="0" end="100" time="300">WindowOpen</animation>
 					<animation effect="fade" start="100" end="0" time="200">WindowClose</animation>
 					<animation effect="slide" end="0,12" time="200" reversible="true" condition="String.IsEmpty(Container.SortMethod)">Conditional</animation>
-					<control type="label" id=1>
+					<control type="label" id="1">
 						<width>1300</width>
 						<scroll>true</scroll>
 						<scrollspeed>50</scrollspeed>

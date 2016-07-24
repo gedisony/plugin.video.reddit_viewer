@@ -437,6 +437,12 @@ def index(url,name,type):
     #log( addonID )     #plugin.video.reddit_viewer
     #log( "aaaaaaa" + addon.getAddonInfo('path') )
     #log( "bbbbbbb" + addon.getAddonInfo('profile') )
+
+    #testing code
+    #h="as _You **can** combine them_ d"
+    #log(markdown_to_bbcode(h))
+    #addDir(h+":"+markdown_to_bbcode(h), "url", "next_mode", "", "subreddit" )
+    
     
     entries = []
     if os.path.exists(subredditsFile):
@@ -1102,7 +1108,7 @@ def listLinksInComment(url, name, type):
 #     return
 
     directory_items=[]
-
+    author=""
     ShowOnlyCommentsWithlink=False
     if type=='linksOnly':
         ShowOnlyCommentsWithlink=True
@@ -1199,6 +1205,7 @@ def listLinksInComment(url, name, type):
             
             #helps the the textbox control treat [url description] and (url) as separate words. so that tehy can be separated into 2 lines 
             result=result.replace('](', '] (')
+            result=markdown_to_bbcode(result)
             #log(result)
 
             liz=xbmcgui.ListItem(label=     "[COLOR greenyellow]"+     list_title+"[%s] %s"%(hoster, result.replace('\n',' ')[0:100])  + "[/COLOR]", 
@@ -1206,7 +1213,12 @@ def listLinksInComment(url, name, type):
                                  iconImage="DefaultVideo.png", 
                                  thumbnailImage=thumb_url,
                                  path=DirectoryItem_url)
-
+            if poster_url:
+                thumb_url=poster_url
+                
+            if thumb_url: pass
+            else: thumb_url="DefaultVideo.png"
+            
             
             liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": result, "studio": hoster, "votes": str(h[0]), "director": author } )
             liz.setArt({"thumb": thumb_url, "poster":thumb_url, "banner":thumb_url, "fanart":thumb_url, "landscape":thumb_url   })
@@ -1221,6 +1233,7 @@ def listLinksInComment(url, name, type):
             #this section are for comments that have no links or unsupported links
             if not ShowOnlyCommentsWithlink:
                 result=h[3].replace('](', '] (')
+                result=markdown_to_bbcode(result)
                 liz=xbmcgui.ListItem(label=list_title + desc100 , 
                                      label2="",
                                      iconImage="", 
@@ -1283,10 +1296,11 @@ def r_linkHunter(json_node,d=0):
     from resources.domains import url_is_supported
     #recursive function to harvest stuff from the reddit comments json reply
     prog = re.compile('<a href=[\'"]?([^\'" >]+)[\'"]>(.*?)</a>')   
-
     for e in json_node:
         link_desc=""
         link_http=""
+        author=""
+        created_utc=""
         if e['kind']=='t1':     #'t1' for comments   'more' for more comments (not supported)
         
             #log("replyid:"+str(d)+" "+e['data']['id'])
@@ -2176,7 +2190,54 @@ def reddit_revoke_refresh_token(url, name, type):
         log("  Revoking refresh token EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )    
     
 
-
+def markdown_to_bbcode(s):
+    #https://gist.github.com/sma/1513929
+    links = {}
+    codes = []
+    try:
+        #def gather_link(m):
+        #    links[m.group(1)]=m.group(2); return ""
+        #def replace_link(m):
+        #    return "[url=%s]%s[/url]" % (links[m.group(2) or m.group(1)], m.group(1))
+        #def gather_code(m):
+        #    codes.append(m.group(3)); return "[code=%d]" % len(codes)
+        #def replace_code(m):
+        #    return "%s" % codes[int(m.group(1)) - 1]
+        
+        def translate(p="%s", g=1):
+            def inline(m):
+                s = m.group(g)
+                #s = re.sub(r"(`+)(\s*)(.*?)\2\1", gather_code, s)
+                #s = re.sub(r"\[(.*?)\]\[(.*?)\]", replace_link, s)
+                #s = re.sub(r"\[(.*?)\]\((.*?)\)", "[url=\\2]\\1[/url]", s)
+                #s = re.sub(r"<(https?:\S+)>", "[url=\\1]\\1[/url]", s)
+                s = re.sub(r"\B([*_]{2})\b(.+?)\1\B", "[B]\\2[/B]", s)
+                s = re.sub(r"\B([*_])\b(.+?)\1\B", "[I]\\2[/I]", s)
+                return p % s
+            return inline
+        
+        #s = re.sub(r"(?m)^\[(.*?)]:\s*(\S+).*$", gather_link, s)
+        #s = re.sub(r"(?m)^    (.*)$", "~[code]\\1[/code]", s)
+        #s = re.sub(r"(?m)^(\S.*)\n=+\s*$", translate("~[size=200][b]%s[/b][/size]"), s)
+        #s = re.sub(r"(?m)^(\S.*)\n-+\s*$", translate("~[size=100][b]%s[/b][/size]"), s)
+        s = re.sub(r"(?m)^#{4,6}\s*(.*?)\s*#*$", translate("[LIGHT]%s[/LIGHT]"), s)       #heading4-6 becomed light
+        s = re.sub(r"(?m)^#{1,3}\s*(.*?)\s*#*$", translate("[B]%s[/B]"), s)               #heading1-3 becomes bold
+        #s = re.sub(r"(?m)^##\s+(.*?)\s*#*$", translate("[B]%s[/B]"), s)
+        #s = re.sub(r"(?m)^###\s+(.*?)\s*#*$", translate("[B]%s[/B]"), s)
+    
+        s = re.sub(r"(?m)^>\s*(.*)$", translate("|%s"), s)                                #quotes  get pipe character beginning
+        #s = re.sub(r"(?m)^[-+*]\s+(.*)$", translate("~[list]\n[*]%s\n[/list]"), s)
+        #s = re.sub(r"(?m)^\d+\.\s+(.*)$", translate("~[list=1]\n[*]%s\n[/list]"), s)
+        s = re.sub(r"(?m)^((?!~).*)$", translate(), s)
+        #s = re.sub(r"(?m)^~\[", "[", s)
+        #s = re.sub(r"\[/code]\n\[code(=.*?)?]", "\n", s)
+        #s = re.sub(r"\[/quote]\n\[quote]", "\n", s)
+        #s = re.sub(r"\[/list]\n\[list(=1)?]\n", "", s)
+        #s = re.sub(r"(?m)\[code=(\d+)]", replace_code, s)
+        
+        return s
+    except:
+        return s
     
 DATEFORMAT = xbmc.getRegion('dateshort')
 TIMEFORMAT = xbmc.getRegion('meridiem')

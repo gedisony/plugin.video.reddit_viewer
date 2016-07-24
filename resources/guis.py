@@ -41,6 +41,9 @@ class cGUI(xbmcgui.WindowXML):
     include_parent_directory_entry=True
     title_bar_text=""
     
+    #plot_font="a" #font used for 'plot' <- where the image or comment description is stored ### cannot set font size.
+    #CONTROL_ID_FOR_PLOT_TEXTBOX=65591
+    
     def __init__(self, *args, **kwargs):
         xbmcgui.WindowXML.__init__(self, *args, **kwargs)
         #xbmcgui.WindowXMLDialog.__init__(self, *args, **kwargs)   #<--- what's the difference?
@@ -57,6 +60,12 @@ class cGUI(xbmcgui.WindowXML):
             self.ctl_title_bar = self.getControl(1)
             self.ctl_title_bar.setLabel(self.title_bar_text)
             
+        # will not work. 'xbmcgui.ControlTextBox' does not have methods to set font size
+        # it might be possible to make the textbox control in code and addcontrol() it. but then you would have to figure out how to get text to change when listbox selection changes.   
+        #if self.plot_font:
+        #    self.ctl_plot_textbox = self.getControl(self.CONTROL_ID_FOR_PLOT_TEXTBOX)
+        #    self.ctl_plot_textbox.setLabel('Status', 'font14', '0xFFFFFFFF', '0xFFFF3300', '0xFF000000')
+            
         #url="plugin://plugin.video.reddit_viewer/?url=plugin%3A%2F%2Fplugin.video.youtube%2Fplay%2F%3Fvideo_id%3D73lsIXzBar0&mode=playVideo"
         #url="http://i.imgur.com/ARdeL4F.mp4"
         if self.include_parent_directory_entry:
@@ -72,7 +81,7 @@ class cGUI(xbmcgui.WindowXML):
         pass
 
     def onClick(self, controlID):
-    
+        
         if controlID == self.main_control_id:
             num = self.gui_listbox.getSelectedPosition()
             item = self.gui_listbox.getSelectedItem()
@@ -84,10 +93,10 @@ class cGUI(xbmcgui.WindowXML):
                     self.close()  #include_parent_directory_entry means that we've added a ".." as the first item on the list onInit
             else:
                 #name = item.getLabel()
-                try:di_url=item.getProperty('url')
+                try:di_url=item.getProperty('url') #this property is created when assembling the kwargs.get("listing") for this class
                 except:di_url=""
                 
-                log( "  clicked on %d  desc=%s url=%s " %( num, item.getProperty('id'), di_url )   )
+                log( "  clicked on %d   url=%s " %( num, di_url )   )
                 if di_url:
                     modes={'listImgurAlbum','playSlideshow','listLinksInComment','playTumblr','playInstagram','playFlickr' }
                     if any(x in di_url for x in modes):
