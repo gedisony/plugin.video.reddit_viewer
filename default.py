@@ -439,9 +439,9 @@ def index(url,name,type):
     #log( "bbbbbbb" + addon.getAddonInfo('profile') )
 
     #testing code
-    h="as asd [S]asdasd[/S] asdas "
-    log(markdown_to_bbcode(h))
-    addDir(h+":"+markdown_to_bbcode(h), "url", "next_mode", "", "subreddit" )
+    #h="as asd [S]asdasd[/S] asdas "
+    #log(markdown_to_bbcode(h))
+    #addDir(h+":"+markdown_to_bbcode(h), "url", "next_mode", "", "subreddit" )
     
     
     entries = []
