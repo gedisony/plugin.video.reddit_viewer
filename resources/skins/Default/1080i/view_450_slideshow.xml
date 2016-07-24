@@ -4,7 +4,7 @@
 	<onload>SetProperty(foox,barsddsd,10000)</onload>
 
 	<defaultcontrol always="true">53</defaultcontrol>
-	<backgroundcolor>background</backgroundcolor>
+	<backgroundcolor>0xff000000</backgroundcolor>
 
 	<menucontrol>9000</menucontrol>
 	<!-- No includes and no $PARAM for xml guis. we gotta do this the hard way -->
@@ -301,43 +301,37 @@
 
 
 		<control type="group">
-			<visible>Control.IsVisible(53)</visible>
+			<top>700</top>
+			<left>640</left>
+			<description>description box gets hidden when button 101 is in focus</description>
+			<visible>! [Control.HasFocus(101)|Control.HasFocus(102)|Control.HasFocus(103)|Control.HasFocus(104)|Control.HasFocus(105)]</visible>
 
-			<control type="group">
-				<top>700</top>
-				<left>640</left>
-				<description>description box gets hidden when button 101 is in focus</description>
-				<visible>! [Control.HasFocus(101)|Control.HasFocus(102)|Control.HasFocus(103)|Control.HasFocus(104)|Control.HasFocus(105)]</visible>
+			<animation effect="fade" time="200" start="0" end="100" >Visible</animation>
+			<animation effect="fade" time="200" start="100" end="0" >Hidden</animation>
 
-				<animation effect="fade" time="200" start="0" end="100" >Visible</animation>
-				<animation effect="fade" time="200" start="100" end="0" >Hidden</animation>
-
-				<animation effect="fade" time="200" start="0" end="100" condition="!String.IsEmpty(Container(53).ListItem.Plot)">Conditional</animation>
-				<animation effect="fade" time="200" start="100" end="0" condition="String.IsEmpty(Container(53).ListItem.Plot)">Conditional</animation>
-				 
-				<!--  BEGIN include content="ShiftTextbox" -->
-					<control type="group">
-						<control type="image">
-							<visible>! [String.IsEmpty(Container(53).ListItem.Plot)]</visible>
-							<top>-20</top>
-							<left>90</left>
-							<width>1188</width>
-							<height>250</height>
-							<texture border="22">dialog-bg.png</texture>
-						</control>
-						<control type="textbox" id="65591">
-							<top>15</top>
-							<left>130</left>
-							<width>1148</width>
-							<height>190</height>
-							<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
-							<label>$INFO[Container(53).ListItem.Plot]</label>
-							<font>font12</font>
-							<shadowcolor>text_shadow</shadowcolor>
-						</control>
+			<animation effect="fade" time="200" start="0" end="100" condition="!String.IsEmpty(Container(53).ListItem.Plot)">Conditional</animation>
+			<animation effect="fade" time="200" start="100" end="0" condition="String.IsEmpty(Container(53).ListItem.Plot)">Conditional</animation>
+			 
+			<!--  BEGIN include content="ShiftTextbox" -->
+					<control type="image">
+						<visible>! [String.IsEmpty(Container(53).ListItem.Plot)]</visible>
+						<top>-20</top>
+						<left>90</left>
+						<width>1188</width>
+						<height>250</height>
+						<texture border="22">dialog-bg.png</texture>
 					</control>
-				<!-- END include content="ShiftTextbox" -->
-			</control>
+					<control type="textbox" id="65591">
+						<top>15</top>
+						<left>130</left>
+						<width>1148</width>
+						<height>190</height>
+						<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
+						<label>$INFO[Container(53).ListItem.Plot]</label>
+						<font>font12</font>
+						<shadowcolor>text_shadow</shadowcolor>
+					</control>
+			<!-- END include content="ShiftTextbox" -->
 			
 		</control>
 

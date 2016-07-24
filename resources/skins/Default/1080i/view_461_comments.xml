@@ -108,7 +108,7 @@
 						<top>0</top>
 						<width>1396</width>
 						<height>43</height>
-						<texture colordiffuse="button_focus">focus.png</texture>
+						<texture colordiffuse="9933EEEE">focus.png</texture>
 						<visible>Control.HasFocus(55)</visible>
 					</control>
 					<control type="label"><!-- the little square(bullet) on the right of list gets replaced by 'year' -->
@@ -163,7 +163,7 @@
 						<align>right</align>
 						<font>font12</font>
 						<label>$INFO[ListItem.votes]</label>
-						<textcolor>button_focus</textcolor>
+						<textcolor>9933EEEE</textcolor><!-- button_focus removed for isengard compatibility -->
 						<shadowcolor>text_shadow</shadowcolor>
 					</control>
 					<control type="label"><!-- ListItem.Label -->
