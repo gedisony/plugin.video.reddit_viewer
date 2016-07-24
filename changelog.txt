@@ -175,5 +175,6 @@
  - add more sites supported by youtube-dl 
  - reorganize classes and functions
  - add custom ui for albums
+ - update custom ui for comments
  
  
