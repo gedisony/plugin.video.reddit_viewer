@@ -439,9 +439,9 @@ def index(url,name,type):
     #log( "bbbbbbb" + addon.getAddonInfo('profile') )
 
     #testing code
-    #h="as _You **can** combine them_ d"
-    #log(markdown_to_bbcode(h))
-    #addDir(h+":"+markdown_to_bbcode(h), "url", "next_mode", "", "subreddit" )
+    h="as asd [S]asdasd[/S] asdas "
+    log(markdown_to_bbcode(h))
+    addDir(h+":"+markdown_to_bbcode(h), "url", "next_mode", "", "subreddit" )
     
     
     entries = []
@@ -1424,7 +1424,8 @@ def display_album_from(dictlist, album_name):
             #There is only 1 textbox for Title and description in our custom gui. 
             #  I don't know how to achieve this in the xml file so it is done here:
             #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
-            
+            #  new note: this is how it is done: 
+            #     $INFO[Container(53).ListItem.Label,[B],[/B][CR]] $INFO[Container(53).ListItem.Plot]  #if the infolabel is empty, nothing is printed for that block
             combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
             combined += d['infoLabels'].get('plot')
             d['infoLabels']['plot'] = combined
