@@ -98,7 +98,7 @@ class cGUI(xbmcgui.WindowXML):
                 
                 log( "  clicked on %d   url=%s " %( num, di_url )   )
                 if di_url:
-                    modes={'listImgurAlbum','playSlideshow','listLinksInComment','playTumblr','playInstagram','playFlickr' }
+                    modes=['listImgurAlbum','playSlideshow','listLinksInComment','playTumblr','playInstagram','playFlickr' ]
                     if any(x in di_url for x in modes):
                         #playSlideshow uses xml gui, xbmc.Player() sometimes report an error after 'play'-ing 
                         #   use RunPlugin to avoid this issue

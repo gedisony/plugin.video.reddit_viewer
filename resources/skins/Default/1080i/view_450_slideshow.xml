@@ -318,6 +318,7 @@
 				<!--  BEGIN include content="ShiftTextbox" -->
 					<control type="group">
 						<control type="image">
+							<visible>! [String.IsEmpty(Container(53).ListItem.Plot)]</visible>
 							<top>-20</top>
 							<left>90</left>
 							<width>1188</width>
