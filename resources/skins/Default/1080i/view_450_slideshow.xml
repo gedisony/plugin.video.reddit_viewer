@@ -138,7 +138,7 @@
 			<description>Poster Viewtype</description>
 			<left>0</left>
 			<top>960</top>
-			<height>120</height>
+			<height>130</height>
 			<visible allowhiddenfocus="true">! [Control.HasFocus(101)|Control.HasFocus(102)|Control.HasFocus(103)|Control.HasFocus(104)|Control.HasFocus(105)] </visible>
 			<visible allowhiddenfocus="true"> Integer.IsGreater(Container(53).NumItems,1) </visible>
 			<animation effect="slide" start="0,152" time="300" tween="sine" easing="inout" >Visible</animation>
@@ -149,14 +149,14 @@
 				<left>0</left>
 				<top>-62</top>
 				<!-- width>1720</width-->
-				<height>200</height>
+				<height>220</height>
 				<texture border="22">dialog-bg.png</texture>
 			</control>
 
 			<!-- BEGIN include content="LeftRightArrows"-->
 				<control type="group">
 					<control type="image">
-						<left>35</left>
+						<left>25</left>
 						<top>70</top>
 						<width>28</width>
 						<height>28</height>
@@ -167,7 +167,7 @@
 						<visible>Control.IsVisible(53) + Container(53).HasPrevious</visible>
 					</control>
 					<control type="image">
-						<left>1859</left>
+						<left>819</left>
 						<top>70</top>
 						<width>28</width>
 						<height>28</height>
@@ -178,7 +178,7 @@
 						<visible>Control.IsVisible(53) + Container(53).HasNext</visible>
 					</control>
 					<control type="button" id="53500">
-						<left>35</left>
+						<left>25</left>
 						<top>70</top>
 						<width>28</width>
 						<height>28</height>
@@ -188,7 +188,7 @@
 						<visible allowhiddenfocus="true">Container(53).HasPrevious + [Control.HasFocus(53) | Control.HasFocus(53500)]</visible>
 					</control>
 					<control type="button" id="53501">
-						<left>1859</left>
+						<left>819</left>
 						<top>70</top>
 						<width>28</width>
 						<height>28</height>
@@ -202,9 +202,9 @@
 
 			<control type="fixedlist" id="53">  
 				<description>the main listbox</description>
-				<left>55</left>
+				<left>35</left>
 				<bottom>0</bottom>
-				<width>1810</width>
+				<width>810</width>
 				<height>200</height>
 				<focusposition>2</focusposition>
 				<movement>2</movement>
@@ -301,9 +301,13 @@
 
 
 		<control type="group">
-			<top>700</top>
-			<left>640</left>
 			<description>description box gets hidden when button 101 is in focus</description>
+			<top>910</top>
+			<left>830</left>
+			<width>1100</width>
+			<height>220</height>
+			
+			
 			<visible>! [Control.HasFocus(101)|Control.HasFocus(102)|Control.HasFocus(103)|Control.HasFocus(104)|Control.HasFocus(105)]</visible>
 
 			<animation effect="fade" time="200" start="0" end="100" >Visible</animation>
@@ -313,20 +317,17 @@
 			<animation effect="fade" time="200" start="100" end="0" condition="String.IsEmpty(Container(53).ListItem.Plot)">Conditional</animation>
 			 
 			<!--  BEGIN include content="ShiftTextbox" -->
-					<control type="image">
+					<!-- control type="image">
 						<visible>! [String.IsEmpty(Container(53).ListItem.Plot)]</visible>
-						<top>-20</top>
-						<left>90</left>
-						<width>1188</width>
-						<height>250</height>
-						<texture border="22">dialog-bg.png</texture>
-					</control>
+						<texture>dialog-bg.png</texture>
+					</control-->
 					<control type="textbox" id="65591">
-						<top>15</top>
-						<left>130</left>
-						<width>1148</width>
-						<height>190</height>
-						<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
+						<top>12</top>
+						<left>30</left>
+						<width>1038</width>
+						<height>160</height>
+						
+						<autoscroll delay="10000" time="2000" repeat="15000">true</autoscroll>
 						<label>$INFO[Container(53).ListItem.Plot]</label>
 						<font>font12</font>
 						<shadowcolor>text_shadow</shadowcolor>

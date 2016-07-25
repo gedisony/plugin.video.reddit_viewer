@@ -741,7 +741,7 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
                 #log("   parsed media_url:" +  media_url  )
                 #log("   parsed plugi_url:" +  videoID  )
                 #WINDOW.setProperty(videoID, description )
-                WINDOW.setProperty(videoID, title )
+                WINDOW.setProperty(videoID, il_description )
 
         
         if mode_type in ['listImgurAlbum','listTumblrAlbum', 'listFlickrAlbum']:post_title='[%s] %s' %(t_Album, post_title)
@@ -1804,7 +1804,7 @@ def playSlideshow(url, name, type):
 
     li=[]
     liz=xbmcgui.ListItem(label=msg, label2="", iconImage="", thumbnailImage=url)
-    #liz.setInfo( type='video', infoLabels='' ) 
+    liz.setInfo( type='video', infoLabels={"plot": msg, } ) 
     liz.setArt({"thumb": url, "poster":url, "banner":url, "fanart":url, "landscape":url  })             
 
     li.append(liz)
