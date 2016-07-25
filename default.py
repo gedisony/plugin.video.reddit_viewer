@@ -1000,7 +1000,7 @@ def playYTDLVideo(url, name, type):
     #url='http://burningcamel.com/video/waster-blonde-amateur-gets-fucked'
     #url='http://www.3sat.de/mediathek/?mode=play&obj=51264'
     #url='http://www.4tube.com/videos/209271/hurry-fuck-i-bored'
-    url='http://www.pbs.org/newshour/rundown/cubas-elian-gonzalez-now-college-graduate/'
+    #url='http://www.pbs.org/newshour/rundown/cubas-elian-gonzalez-now-college-graduate/'
     choices = []
 
 #these checks done in around May 2016
