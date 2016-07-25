@@ -1000,7 +1000,7 @@ def playYTDLVideo(url, name, type):
     #url='http://burningcamel.com/video/waster-blonde-amateur-gets-fucked'
     #url='http://www.3sat.de/mediathek/?mode=play&obj=51264'
     #url='http://www.4tube.com/videos/209271/hurry-fuck-i-bored'
-    #url='http://www.metacafe.com/watch/an-n68V4bu7thYJm/austin_powers_the_spy_who_shagged_me_1999_escape_from_lava_death_trap/'
+    url='http://www.pbs.org/newshour/rundown/cubas-elian-gonzalez-now-college-graduate/'
     choices = []
 
 #these checks done in around May 2016
@@ -1009,9 +1009,9 @@ def playYTDLVideo(url, name, type):
 # eroshare.com kalporn.com hdvideos.porn dailygirlscute.com desianalporn.com indianxxxhd.com onlypron.com sherloxxx.com hdvideos.porn x1xporn.com pornhvd.com lxxlx.com xrhub.com shooshtime.com
 # pornvil.com lxxlx.com redclip.xyz younow.com aniboom.com  gotporn.com  virtualtaboo.com 18porn.xyz vidshort.net fapxl.com vidmega.net freudbox.com bigtits.com xfapzap.com orgasm.com
 # userporn.com hdpornstar.com moviesand.com chumleaf.com fucktube.com fookgle.com pornative.com dailee.com pornsharia.com fux.com sluttyred.com pk5.net kuntfutube.com youpunish.com
-#vidxnet.com jizzbox.com bondagetube.tv spankingtube.tv pornheed.com pornwaiter.com lubetube.com porncor.com maxjizztube.com asianxtv.com analxtv.com yteenporn.com nurglestube.com yporn.tv
-#asiantubesex.com zuzandra.com moviesguy.com bustnow.com dirtydirtyangels.com yazum.com watchersweb.com voyeurweb.com zoig.com flingtube.com yourfreeporn.us foxgay.com goshgay.com
-#
+# vidxnet.com jizzbox.com bondagetube.tv spankingtube.tv pornheed.com pornwaiter.com lubetube.com porncor.com maxjizztube.com asianxtv.com analxtv.com yteenporn.com nurglestube.com yporn.tv
+# asiantubesex.com zuzandra.com moviesguy.com bustnow.com dirtydirtyangels.com yazum.com watchersweb.com voyeurweb.com zoig.com flingtube.com yourfreeporn.us foxgay.com goshgay.com
+# player.moviefap.com(www.moviefap.com works) nosvideo.com
 
 # also does not work (non porn)
 # rutube.ru  mail.ru  afreeca.com nicovideo.jp  videos.sapo.pt(many but not all) sciencestage.com vidoosh.tv metacafe.com vzaar.com videojug.com trilulilu.ro tudou.com video.yahoo.com blinkx.com blip.tv
@@ -1021,21 +1021,26 @@ def playYTDLVideo(url, name, type):
 # cultureunplugged.com cwtv.com daum.net dctp.tv democracynow.org douyutv.com dumpert.nl eitb.tv ex.fm fc-zenit.ru  ikudonsubs.com akb48ma.com Flipagram.com ft.dk Formula1.com
 # fox.com/watch(few works) video.foxnews.com foxsports.com france2.fr franceculture.fr franceinter.fr francetv.fr/videos francetvinfo.fr giantbomb.com hbo.com History.com hitbox.tv
 # howcast.com HowStuffWorks.com hrt.hr iconosquare.com infoq.com  ivi.ru kamcord.com/v video.kankan.com karrierevideos.at KrasView.ru hlamer.ru kuwo.cn la7.it laola1.tv le.com
-# media.ccc.de 
+# media.ccc.de metacritic.com mitele.es  moevideo.net,playreplay.net,videochart.net vidspot.net(might work, can't find recent post) movieclips.com mtv.de mtviggy.com muenchen.tv myspace.com
+# myvi.ru myvideo.de myvideo.ge 163.com netzkino.de nfb.ca nicovideo.jp  videohive.net normalboots.com nowness.com ntr.nl nrk.no ntv.ru/video ocw.mit.edu odnoklassniki.ru/video 
+# onet.tv onionstudios.com/videos openload.co orf.at parliamentlive.tv pbs.org
 
 # news site (can't find sample to test) 
-# bleacherreport.com crooksandliars.com DailyMail.com channel5.com Funimation.com gamersyde.com gamespot.com gazeta.pl helsinki.fi hotnewhiphop.com lemonde.fr
+# bleacherreport.com crooksandliars.com DailyMail.com channel5.com Funimation.com gamersyde.com gamespot.com gazeta.pl helsinki.fi hotnewhiphop.com lemonde.fr mnet.com motorsport.com MSN.com
+# n-tv.de ndr.de NDTV.com NextMedia.com noz.de
 
 
 # these sites have mixed media. can handle the video in these sites: 
-# 20min.ch 5min.com archive.org Allocine.fr(added) br.de bt.no  buzzfeed.com condenast.com firstpost.com gameinformer.com gputechconf.com heise.de HotStar.com(some play) lrt.lt
-
+# 20min.ch 5min.com archive.org Allocine.fr(added) br.de bt.no  buzzfeed.com condenast.com firstpost.com gameinformer.com gputechconf.com heise.de HotStar.com(some play) lrt.lt natgeo.com
+# nbcsports.com  patreon.com 
+# 9c9media.com(no posts)
 
 #ytdl plays this fine but no video?
 #coub.com
 
 #supported but is an audio only site 
-#acast.com AudioBoom.com audiomack.com bandcamp.com clyp.it democracynow.org? freesound.org hark.com hearthis.at hypem.com libsyn.com
+#acast.com AudioBoom.com audiomack.com bandcamp.com clyp.it democracynow.org? freesound.org hark.com hearthis.at hypem.com libsyn.com mixcloud.com
+#Minhateca.com.br(direct mp3) 
 
 # 
 # ytdl also supports these sites: 
@@ -1046,6 +1051,9 @@ def playYTDLVideo(url, name, type):
 # features.aol.com  (inconsistent)
 # livestream.com (need to work capturing only videos)
 # mail.ru inconsistent(need to work capturing only videos)
+# miomio.tv(some play but most won't)
+# ooyala.com(some play but most won't)
+#  
     
 #     extractors=[]
 #     from youtube_dl.extractor import gen_extractors
@@ -1061,21 +1069,20 @@ def playYTDLVideo(url, name, type):
 
     try:
         if YDStreamExtractor.mightHaveVideo(url,resolve_redirects=True):
-            log('YDStreamExtractor.mightHaveVideo[true]' + url)
+            log('    YDStreamExtractor.mightHaveVideo[true]=' + url)
             vid = YDStreamExtractor.getVideoInfo(url,0,True)  #quality is 0=SD, 1=720p, 2=1080p and is a maximum
             if vid:
-                log("  getVideoInfo success")
+                log("      getVideoInfo playableURL="+vid.streamURL())
                 if vid.hasMultipleStreams():
-                    log("    vid hasMultipleStreams")
+                    log("        vid hasMultipleStreams")
                     for s in vid.streams():
                         title = s['title']
-                        log('choices' + title  )
+                        log('      choices' + title  )
                         choices.append(title)
                     #index = some_function_asking_the_user_to_choose(choices)
                     vid.selectStream(0) #You can also pass in the the dict for the chosen stream
         
                 stream_url = vid.streamURL()                         #This is what Kodi (XBMC) will play        
-                log("    stream_url="+stream_url)
                 listitem = xbmcgui.ListItem(path=stream_url)
                 xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
             else:
@@ -1958,7 +1965,7 @@ def test_menu(url, name, type):
 
 
 def reddit_request( url ):
-    log( "  reddit_request " + url )
+    #log( "  reddit_request " + url )
     
     #if there is a refresh_token, we use oauth.reddit.com instead of www.reddit.com
     if reddit_refresh_token:
