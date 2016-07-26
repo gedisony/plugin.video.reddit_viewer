@@ -1223,7 +1223,7 @@ def listLinksInComment(url, name, type):
             result=markdown_to_bbcode(result)
             #log(result)
 
-            liz=xbmcgui.ListItem(label=     "[COLOR greenyellow]"+     list_title+"[%s] %s"%(hoster, result.replace('\n',' ')[0:100])  + "[/COLOR]", 
+            liz=xbmcgui.ListItem(label=     "[COLOR greenyellow]  *"+     list_title+"[%s] %s"%(hoster, result.replace('\n',' ')[0:100])  + "[/COLOR]", 
                                  label2="",
                                  iconImage="DefaultVideo.png", 
                                  thumbnailImage=thumb_url,
@@ -1348,15 +1348,13 @@ def r_linkHunter(json_node,d=0):
             
             result = prog.findall(post_html)
             if result:
-                harvested=False  
+                #store the post by itself and then a separate one for each link.
+                harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )
+  
                 for link_http,link_desc in result:
-                    if url_is_supported(link_http) or not harvested:   #store at least one instance of the post but not for every link
-                        #store an entry for every supported link. if a post has a lot of links, it will repeat and look ugly
-                        if not harvested:
-                            harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )
-                        else:
-                            harvest.append((score, link_desc, link_http, link_desc, post_html, d, "t1",author,created_utc,)   )    
-                        harvested=True
+                    if url_is_supported(link_http) :   
+                        #store an entry for every supported link. 
+                        harvest.append((0, link_desc, link_http, link_desc, post_html, d, "t1",author,created_utc,)   )    
             else:
                 harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )    
     
@@ -1378,15 +1376,11 @@ def r_linkHunter(json_node,d=0):
 
             result = prog.findall(self_text_html)
             if len(result) > 0 :
-                harvested=False  
+                harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc, )   )
+                 
                 for link_http,link_desc in result:
-                    if url_is_supported(link_http) or not harvested:   #store at least one instance of the post but not for every link
-                        #store an entry for every supported link. if a post has a lot of links, it will repeat and look ugly
-                        if not harvested:
-                            harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc, )   )
-                        else:
-                            harvest.append((score, link_desc, link_http, link_desc, self_text_html, d, "t3",author,created_utc, )   )
-                        harvested=True
+                    if url_is_supported(link_http) : 
+                        harvest.append((0, link_desc, link_http, link_desc, self_text_html, d, "t3",author,created_utc, )   )
             else:
                 if len(self_text) > 0: #don't post an empty titles
                     harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc,)   )    

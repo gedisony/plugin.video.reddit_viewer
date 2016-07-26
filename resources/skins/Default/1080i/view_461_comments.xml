@@ -230,25 +230,28 @@
 					<font>font14</font>
 					<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
 					<visible>isEmpty(Container(55).ListItem.Art(thumb)</visible>
+					<visible>!Player.HasMedia</visible>
 					<label>$INFO[Container(55).ListItem.Plot]</label>					<!-- label>$INFO[ListItem.Label]</label-->
 				</control>
 				
-				<control type="textbox" id="65591">
+				<control type="textbox" id="65592">
 					<left>612</left>
 					<top>128</top>
 					<width>1210</width>
-					<height>216</height>
+					<height>156</height>
 					<font>font13</font>
-					<autoscroll delay="10000" time="2000" repeat="10000">true</autoscroll>
-					<visible>!isEmpty(Container(55).ListItem.Art(thumb)</visible>
+					<autoscroll delay="8000" time="2000" repeat="10000">true</autoscroll>
+					<!--visible>!isEmpty(Container(55).ListItem.Art(thumb)</visible-->
+					<visible>!Control.IsVisible(65591)</visible>
+					
 					<label>$INFO[Container(55).ListItem.Plot]</label>					
 				</control>
 				
 				<control type="image">
 					<left>602</left>
-					<top>344</top>
+					<top>184</top>
 					<width>1226</width>
-					<height>606</height>
+					<height>766</height>
 					<aspectratio>scale</aspectratio>
 					<fadetime>300</fadetime>
 					<visible>!isEmpty(Container(55).ListItem.Art(thumb)</visible>
@@ -257,9 +260,10 @@
 				</control>
 				<control type="videowindow">
 					<left>602</left>
-					<top>344</top>
+					<top>184</top>
 					<width>1226</width>
-					<height>606</height>
+					<height>766</height>
+					<centerbottom>0</centerbottom>
 				</control>
 				
 		</control>

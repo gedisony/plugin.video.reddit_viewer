@@ -1253,7 +1253,7 @@ def make_addon_url_from(media_url, assume_is_video=True ):
                             #pluginUrl=ret_Instagram_thumbnail(media_url,'l')
                             setInfo_type='pictures'
                             setProperty_IsPlayable='false' 
-                    elif hoster in ['porn','misc']: #hoster will show in description. we replace it with the match to inform user where video is hosted
+                    elif hoster in ['porn','misc1','misc2']: #hoster will show in description. we replace it with the match to inform user where video is hosted
                         #log('pr0n')
                         for n in match[0]:
                             if n:
