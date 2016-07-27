@@ -441,7 +441,12 @@ def index(url,name,type):
     #testing code
     #h="as asd [S]asdasd[/S] asdas "
     #log(markdown_to_bbcode(h))
-    #addDir(h+":"+markdown_to_bbcode(h), "url", "next_mode", "", "subreddit" )
+    #addDir('test', "url", "next_mode", "", "subreddit" )
+
+
+    #liz = xbmcgui.ListItem(label="test", label2="label2", iconImage="DefaultFolder.png")
+    #u=sys.argv[0]+"?url=&mode=callwebviewer&type="
+    #xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=False)
     
     
     entries = []
@@ -1223,7 +1228,7 @@ def listLinksInComment(url, name, type):
             result=markdown_to_bbcode(result)
             #log(result)
 
-            liz=xbmcgui.ListItem(label=     "[COLOR greenyellow]  *"+     list_title+"[%s] %s"%(hoster, result.replace('\n',' ')[0:100])  + "[/COLOR]", 
+            liz=xbmcgui.ListItem(label=     "[COLOR greenyellow]*"+     list_title+"[%s] %s"%(hoster, result.replace('\n',' ')[0:100])  + "[/COLOR]", 
                                  label2="",
                                  iconImage="DefaultVideo.png", 
                                  thumbnailImage=thumb_url,
@@ -1233,7 +1238,7 @@ def listLinksInComment(url, name, type):
                 
             if thumb_url: pass
             else: thumb_url="DefaultVideo.png"
-            
+
             
             liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": result, "studio": hoster, "votes": str(h[0]), "director": author } )
             liz.setArt({"thumb": thumb_url, "poster":thumb_url, "banner":thumb_url, "fanart":thumb_url, "landscape":thumb_url   })
@@ -1354,7 +1359,7 @@ def r_linkHunter(json_node,d=0):
                 for link_http,link_desc in result:
                     if url_is_supported(link_http) :   
                         #store an entry for every supported link. 
-                        harvest.append((0, link_desc, link_http, link_desc, post_html, d, "t1",author,created_utc,)   )    
+                        harvest.append((score, link_desc, link_http, link_desc, post_html, d, "t1",author,created_utc,)   )    
             else:
                 harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )    
     
@@ -1380,7 +1385,7 @@ def r_linkHunter(json_node,d=0):
                  
                 for link_http,link_desc in result:
                     if url_is_supported(link_http) : 
-                        harvest.append((0, link_desc, link_http, link_desc, self_text_html, d, "t3",author,created_utc, )   )
+                        harvest.append((score, link_desc, link_http, link_desc, self_text_html, d, "t3",author,created_utc, )   )
             else:
                 if len(self_text) > 0: #don't post an empty titles
                     harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc,)   )    
@@ -1918,15 +1923,35 @@ def send_email(recipient, Message):
 def callwebviewer(url, name, type):
     log( " callwebviewer")
 
-    #this is how you call thw webviewer addon. 
+    #this is how you call the webviewer addon. 
     #u="script.web.viewer, http://m.reddit.com/login"
     #xbmc.executebuiltin('RunAddon(%s)' %u )
-
-    #if osWin:
-    #    xbmc.executebuiltin('RunPlugin(plugin://plugin.program.webbrowser/?url='+urllib.quote_plus(request_url)+'&mode=showSite&stopPlayback=no&showPopups=no&showScrollbar=no)',)
-    #else:
-    #    entries.append((translation(30021), 'RunPlugin(plugin://plugin.program.chrome.launcher/?url='+urllib.quote_plus(request_url)+'&mode=showSite)',))
-
+    
+#     import resources.pyxbmct as pyxbmct
+# 
+#     # Create a window instance.
+#     window = pyxbmct.AddonFullWindow('Hello, World!')
+#     # Set the window width, height and the grid resolution: 2 rows, 3 columns.
+#     window.setGeometry(1920, 1080, 9, 16)
+#     
+#     #image is 1200x2220
+#     image=pyxbmct.Image('http://i.imgur.com/lYdRVRi.png', aspectRatio=2)
+#     
+#     window.placeControl(image, 0, 0, 9, 16 )
+#     
+#     #doesn't work. leaving it alone for now (7/27/2016)
+#     image.setAnimations([('WindowOpen', 'effect type="zoom" end="150" center="0" time="1800"')])
+#     
+#     #image.setAnimations([('WindowOpen', 'effect type="zoom" end="150" center="0" time="1800"',), 
+#     #                     ('WindowOpen', 'effect type="slide" end="2220"  delay="1800" time="1800"',)])
+# 
+#     
+#     # Connect a key action to a function.
+#     window.connect(pyxbmct.ACTION_NAV_BACK, window.close)
+#     # Show the created window.
+#     window.doModal()
+#     # Delete the window instance when it is no longer used.
+#     del window 
 
     log( " done callwebviewer")
 

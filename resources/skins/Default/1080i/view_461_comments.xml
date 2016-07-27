@@ -263,7 +263,7 @@
 					<top>184</top>
 					<width>1226</width>
 					<height>766</height>
-					<centerbottom>0</centerbottom>
+					<!-- doesnt work aligny>bottom</aligny-->
 				</control>
 				
 		</control>

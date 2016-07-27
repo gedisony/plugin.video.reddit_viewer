@@ -176,5 +176,7 @@
  - reorganize classes and functions
  - add custom ui for albums
  - update custom ui for comments
- 
+ 2.7.8  (2016-07-27)
+ - addon was mis-named during testing (script.reddit.viewer). fix.
+ -  
  
