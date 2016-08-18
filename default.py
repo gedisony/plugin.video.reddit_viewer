@@ -520,6 +520,9 @@ def listVideos(url, name, subreddit_key):
     #t_pts = u"\U0001F4AC"  # translation(30072) #"cmnts"  comment bubble symbol. doesn't work
     t_pts = u"\U00002709"  # translation(30072)   envelope symbol
 
+    thumb_w=0
+    thumb_h=0
+
     currentUrl = url
     xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
         
@@ -602,16 +605,38 @@ def listVideos(url, name, subreddit_key):
             except:
                 media_url = entry['data']['media']['oembed']['url'].encode('utf-8')
                 
-            #media_url=media_url.lower()  #!!! note: do not lowercase!!!     
+            thumb = entry['data']['thumbnail'].encode('utf-8')
+            #if show_listSubReddit_debug : log("       THUMB%.2d=%s" %( idx, thumb ))
+            
+            if thumb in ['nsfw','default','self']:  #reddit has a "default" thumbnail (alien holding camera with "?")
+                thumb=""               
 
+            if thumb=="":
+                try: thumb = entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8').replace('&amp;','&')
+                except: pass
+            
             try:
-                thumb = entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8')
+                #collect_thumbs(entry)
+                preview=entry['data']['preview']['images'][0]['source']['url'].encode('utf-8').replace('&amp;','&')
+                #poster = entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8')
+                #t=thumb.split('?')[0]
                 #can't preview gif thumbnail on thumbnail view, use alternate provided by reddit
-                if thumb.endswith('.gif'):
-                    thumb = entry['data']['thumbnail'].encode('utf-8')
-            except:
-                thumb = entry['data']['thumbnail'].encode('utf-8')
+                #if t.endswith('.gif'):
+                    #log('  thumb ends with .gif')
+                #    thumb = entry['data']['thumbnail'].encode('utf-8')
                 
+                try:
+                    thumb_h = float( entry['data']['preview']['images'][0]['source']['height'] )
+                    thumb_w = float( entry['data']['preview']['images'][0]['source']['width'] )
+                except:
+                    thumb_w=0
+                    thumb_h=0
+
+            except Exception as e:
+                #log("   getting preview image EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
+                thumb_w=0
+                thumb_h=0
+                preview="" #a blank preview image will be replaced with poster_url from make_addon_url_from() for domains that support it
 
             is_a_video = determine_if_video_media_from_reddit_json(entry) 
                 
@@ -643,6 +668,9 @@ def listVideos(url, name, subreddit_key):
             addLink(title=title, 
                     title_line2=title_line2,
                     iconimage=thumb, 
+                    previewimage=preview,
+                    preview_w=thumb_w,
+                    preview_h=thumb_h,
                     description=description, 
                     credate=credate, 
                     reddit_says_is_video=is_a_video, 
@@ -695,7 +723,7 @@ def listVideos(url, name, subreddit_key):
 
 
 
-def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
+def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
     
     videoID=""
     post_title=title
@@ -713,8 +741,13 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
     if iconimage in ["","nsfw", "default"]:
         #log( title+ ' iconimage blank['+iconimage+']['+thumb_url+ ']media_url:'+media_url ) 
         iconimage=thumb_url
+        
     if poster_url=="":
-        poster_url=iconimage
+        if previewimage:
+            poster_url=previewimage
+        else:
+            poster_url=iconimage
+            
     #mode=mode_type #usually 'playVideo'
     if DirectoryItem_url:
         h="[B]" + hoster + "[/B]: "
@@ -751,23 +784,21 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
         
         if mode_type in ['listImgurAlbum','listTumblrAlbum', 'listFlickrAlbum']:post_title='[%s] %s' %(t_Album, post_title)
         #if mode_type=='playSlideshow': post_title='[IMG] '+post_title   
-        if setInfo_type=='pictures'  : post_title='[%s] %s' %(t_IMG, post_title)   
+        if setInfo_type=='pictures'  : 
+            post_title='[%s] %s' %(t_IMG, post_title)
+                  
         if mode_type=='listLinksInComment': post_title='[reddit] '+post_title  
         
         liz=xbmcgui.ListItem(label=n+post_title, 
                               label2="",
                               iconImage="DefaultVideo.png", thumbnailImage=iconimage)
+
+        liz.setInfo(type='video', infoLabels=il)
         
         #art_object
         liz.setArt({"thumb": iconimage, "poster":poster_url, "banner":iconimage, "fanart":poster_url, "landscape":poster_url   })
 
         #liz.setInfo(type=setInfo_type, infoLabels=il)
-        liz.setInfo(type='video', infoLabels=il)
-
-        #log('    album_viewMode='+album_viewMode+ '  IsPlayable='+IsPlayable)
-        if album_viewMode=='450': #450 is my trigger to use a custom gui for showing album.
-            isFolder=False        #with custom gui, you need to set isFolder to false even if you're listing a folder.  
-            #IsPlayable="false"   #  set isPlayable to "false" too
         
         liz.setProperty('IsPlayable', IsPlayable)
         
@@ -777,17 +808,15 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
         if num_comments > 0:            
             #if we are using a custom gui to show comments, we need to use RunPlugin. there is a weird loading/pause if we use XBMC.Container.Update. i think xbmc expects us to use addDirectoryItem
             #  if we have xbmc manage the gui(addDirectoryItem), we need to use XBMC.Container.Update. otherwise we'll get the dreaded "Attempt to use invalid handle -1" error
+            #entries.append( ( translation(30050) + " (c)",  #Show comments
+            #              "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
+            #entries.append( ( translation(30052) , #Show comment links 
+            #              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
 
-            if comments_viewMode=='461':  #461 is my trigger to use a custom gui for showing comments. it is just an arbitrary number. i'm hoping there no skin will use the same viewid
-                entries.append( ( translation(30050) + " (c)",  #Show comments
-                              "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
-                entries.append( ( translation(30052) , #Show comment links 
-                              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
-            else:  
-                entries.append( ( translation(30052) , #Show comment links 
-                              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
-                entries.append( ( translation(30050) ,  #Show comments
-                              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
+            entries.append( ( translation(30052) , #Show comment links 
+                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
+            entries.append( ( translation(30050) ,  #Show comments
+                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )
 
             #entries.append( ( translation(30050) + " (ActivateWindow)",  #Show comments
             #              "XBMC.ActivateWindow(Video, %s?mode=listLinksInComment&url=%s)" % (  sys.argv[0], urllib.quote_plus(site) ) ) )      #***  ActivateWindow is for the standard xbmc window     
@@ -795,7 +824,6 @@ def addLink(title, title_line2, iconimage, description, credate, reddit_says_is_
             entries.append( ( translation(30053) ,  #No comments
                           "xbmc.executebuiltin('Action(Close)')" ) )            
 
-                
         #no need to show the "go to other subreddits" if the entire list is from one subreddit        
         if many_subreddit:
             #sys.argv[0] is plugin://plugin.video.reddit_viewer/
@@ -1118,26 +1146,12 @@ def listLinksInComment(url, name, type):
     #WINDOW.clearProperty( url )
     #log( '   msg=' + msg )
 
-#     #for testing
-#     from resources.guis import cGUI
-#     #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
-#     ui = cGUI('view_461_comments.xml' , addon_path, defaultSkin='Default', defaultRes='1080i')
-#     
-#     ui.doModal()
-#     del ui
-#     return
-
     directory_items=[]
     author=""
     ShowOnlyCommentsWithlink=False
+
     if type=='linksOnly':
         ShowOnlyCommentsWithlink=True
-        using_custom_gui=False #for now, our custom gui cannot handle links very well. we will let kodi handle it
-    else:
-        if comments_viewMode=='461':  #461 is just an arbitrary number. i'm hoping there no skin will use the same viewid
-            using_custom_gui=True
-        else: 
-            using_custom_gui=False
         
     #sometimes the url has a query string. we discard it coz we add .json at the end
     #url=url.split('?', 1)[0]+'.json'
@@ -1193,17 +1207,10 @@ def listLinksInComment(url, name, type):
         
         author=h[7]
         
-        if using_custom_gui: #custom gui uses infoLabel->votes to display the comment score, we don't need to prepend it on the title
-            if kind=='t1':
-                list_title=r"%s" %( tab )
-            elif kind=='t3':
-                list_title=r"[I]Title [/I] %s" %( tab )
-            author=tab + " " +author
-        else:
-            if kind=='t1':
-                list_title=r"[I]%2d pts.[/I] %s" %( h[0], tab )
-            elif kind=='t3':
-                list_title=r"[I]Title [/I] %s" %( tab )
+        if kind=='t1':
+            list_title=r"[I]%2d pts.[/I] %s" %( h[0], tab )
+        elif kind=='t3':
+            list_title=r"[I]Title [/I] %s" %( tab )
             
         desc100=h[3].replace('\n',' ')[0:100] #first 100 characters of description
         
@@ -1271,45 +1278,14 @@ def listLinksInComment(url, name, type):
     
     log('  comments_view id=%s' %comments_viewMode)
 
-    if using_custom_gui:   
-        from resources.guis import cGUI
-        
-        li=[]
-        for di in directory_items:
-            #log( str(di[1] ) )
-            li.append( di[1] )
-            
-        #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
-        ui = cGUI('view_461_comments.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=55)
-        ui.title_bar_text=post_title
-        #ui.include_parent_directory_entry=True
+    #xbmcplugin.setContent(pluginhandle, "mixed")  #in estuary, mixed have limited view id's available. it has widelist which is nice for comments but we'll just stick with 'movies'
+    xbmcplugin.setContent(pluginhandle, "movies")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos 
+    xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
+    xbmcplugin.endOfDirectory(pluginhandle)
 
-        ui.doModal()
-        del ui
+    if comments_viewMode:
+        xbmc.executebuiltin('Container.SetViewMode(%s)' %comments_viewMode)
 
-    else:
-        #xbmcplugin.setContent(pluginhandle, "mixed")  #in estuary, mixed have limited view id's available. it has widelist which is nice for comments but we'll just stick with 'movies'
-        xbmcplugin.setContent(pluginhandle, "movies")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos 
-        xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
-        xbmcplugin.endOfDirectory(pluginhandle)
-
-        if comments_viewMode:
-            xbmc.executebuiltin('Container.SetViewMode(%s)' %comments_viewMode)
-
-
-#for testing only
-def comments_gui(url, name, type):
-    from resources.guis import cGUI
-    log( 'comments gui ')
-    li=[]
-
-    ui = cGUI('view_461_comments.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
-    #ui.addItems(li )
-    
-    ui.doModal()
-    del ui
-    
-    pass
 
 harvest=[]
 def r_linkHunter(json_node,d=0):
@@ -1425,32 +1401,13 @@ def display_album_from(dictlist, album_name):
     directory_items=[]
     label=""
     
-    if album_viewMode=='450': #450 is my trigger to use a custom gui for showing album.
-        using_custom_gui=True
-    else:
-        using_custom_gui=False
-    
     for idx, d in enumerate(dictlist):
         #log('li_label:'+d['li_label'] + "  pluginhandle:"+ str(pluginhandle))
         ti=d['li_thumbnailImage']
         
-        if using_custom_gui:
-            #There is only 1 textbox for Title and description in our custom gui. 
-            #  I don't know how to achieve this in the xml file so it is done here:
-            #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
-            #  new note: this is how it is done: 
-            #     $INFO[Container(53).ListItem.Label,[B],[/B][CR]] $INFO[Container(53).ListItem.Plot]  #if the infolabel is empty, nothing is printed for that block
-            combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
-            combined += d['infoLabels'].get('plot')
-            d['infoLabels']['plot'] = combined
-            #d['infoLabels']['genre'] = "0,-2000"
-            #d['infoLabels']['year'] = 1998
-            #log( d['infoLabels'].get('plot') ) 
-        else:
-            #most of the time, the image does not have a title. it looks so lonely on the listitem, we just put a number on it.    
-            label = d['li_label2'] if d['li_label2'] else str(idx+1).zfill(2)
+        #most of the time, the image does not have a title. it looks so lonely on the listitem, we just put a number on it.    
+        label = d['li_label2'] if d['li_label2'] else str(idx+1).zfill(2)
             
-        
         liz=xbmcgui.ListItem(label=label, 
                              label2=d['li_label2'],
                              iconImage=d['li_iconImage'],
@@ -1471,42 +1428,16 @@ def display_album_from(dictlist, album_name):
 
         #xbmcplugin.addDirectoryItem(handle=pluginhandle,url=DirectoryItem_url,listitem=liz)
 
-    if using_custom_gui:
-        from resources.guis import cGUI
-     
-        msg=WINDOW.getProperty(url)
-        #WINDOW.clearProperty( url )
-        log( '   msg=' + msg )
-    
-        #<label>$INFO[Window(10000).Property(foox)]</label>
-        #WINDOW.setProperty('view_450_slideshow_title',WINDOW.getProperty(url))
-         
-        li=[]
-        for di in directory_items:
-            #log( str(di[1] ) )
-            li.append( di[1] )
-             
-        #ui = cGUI('FileBrowser.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li)
-        ui = cGUI('view_450_slideshow.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=53)
-        
-        ui.include_parent_directory_entry=False
-        ui.title_bar_text=WINDOW.getProperty(url)
-        
-        ui.doModal()
-        del ui
-        #WINDOW.clearProperty( 'view_450_slideshow_title' )
-        #log( '   WINDOW.getProperty=' + WINDOW.getProperty('foo') )
-    else:
-        xbmcplugin.setContent(pluginhandle, "episodes")
+    xbmcplugin.setContent(pluginhandle, "episodes")
 
-        log( 'album_viewMode ' + album_viewMode )
-        if album_viewMode=='0':
-            pass
-        else:
-            xbmc.executebuiltin('Container.SetViewMode('+album_viewMode+')')
-    
-        xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
-        xbmcplugin.endOfDirectory(pluginhandle)
+    log( 'album_viewMode ' + album_viewMode )
+    if album_viewMode=='0':
+        pass
+    else:
+        xbmc.executebuiltin('Container.SetViewMode('+album_viewMode+')')
+
+    xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
+    xbmcplugin.endOfDirectory(pluginhandle)
 
  
 def listTumblrAlbum(t_url, name, type):    
@@ -1802,73 +1733,6 @@ def pretty_datediff(dt1, dt2):
 def playSlideshow(url, name, type):
     #url='d:\\aa\\lego_fusion_beach1.jpg'
 
-    from resources.guis import cGUI
-    
-    msg=WINDOW.getProperty(url)
-    WINDOW.clearProperty( url )
-    log( '   msg=' + msg )
-
-    li=[]
-    liz=xbmcgui.ListItem(label=msg, label2="", iconImage="", thumbnailImage=url)
-    liz.setInfo( type='video', infoLabels={"plot": msg, } ) 
-    liz.setArt({"thumb": url, "poster":url, "banner":url, "fanart":url, "landscape":url  })             
-
-    li.append(liz)
-    ui = cGUI('view_450_slideshow.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=53)   
-    ui.include_parent_directory_entry=False
-    
-    ui.doModal()
-    del ui
-    return
-    
-    
-#     from resources.guis import qGUI
-#     
-#     ui = qGUI('view_image.xml' ,  addon_path, defaultSkin='Default', defaultRes='1080i')   
-#     #no need to download the image. kodi does it automatically!!!
-#     ui.image_path=url
-#     ui.doModal()
-#     del ui
-#     return
-# 
-# 
-#     #this is a workaround to not being able to show images on video addon
-#     log('playSlideshow:'+url +'  ' + name )
-# 
-#     ui = ssGUI('tbp_main.xml' , addon_path)
-#     items=[]
-#     
-#     items.append({'pic': url ,'description': "", 'title' : name })
-#     
-#     ui.items=items
-#     ui.album_name=""
-#     ui.doModal()
-#     del ui
-
-    #this will also work:
-    #download the image, then view it with view_image.xml.
-#     url=url.split('?')[0]
-#     
-#     filename,ext=parse_filename_and_ext_from_url(url)
-#     #empty_slideshow_folder()  # we're showing only 1 file
-#     xbmc.executebuiltin('ActivateWindow(busydialog)')
-# 
-#     os.chdir(SlideshowCacheFolder)
-#     download_file= filename+"."+ext
-#     if os.path.exists(download_file):
-#         log("  file exists")
-#     else:
-#         log('  downloading %s' %(download_file))
-#         downloadurl(url, download_file)
-#         log('  downloaded %s' %(download_file))
-#     xbmc.executebuiltin('Dialog.Close(busydialog)')
-# 
-#     ui = qGUI('view_image.xml' , addon_path, 'default')
-#     
-#     ui.image_path=SlideshowCacheFolder + fd + download_file  #fd = // or \ depending on os
-#     ui.doModal()
-#     return
-
     #download_file=download_file.replace(r"\\",r"\\\\")
 
     #addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
@@ -1882,106 +1746,6 @@ def playSlideshow(url, name, type):
     #xbmc.executebuiltin("XBMC.SlideShow(" + SlideshowCacheFolder + ")")
 
     return
-
-'''
-def empty_slideshow_folder():
-    for the_file in os.listdir(SlideshowCacheFolder):
-        file_path = os.path.join(SlideshowCacheFolder, the_file)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-                #log("deleting:"+file_path)
-            #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-        except Exception as e:
-            log("empty_slideshow_folder error:"+e)    
-'''
-
-def send_email(recipient, Message):
-    import smtplib
-    from email.mime.text import MIMEText
-    import xbmcaddon
-    import time
-    
-    thyme = time.time()
-    
-    recipient = 'gedisony@gmail.com'
-    
-    body = '<table border="1">'
-    body += '<tr><td>%s</td></tr>' % "I'm using the addon!"
-    body += '</table>'
-    
-    msg = MIMEText(body, 'html')
-    msg['Subject'] = 'LazyTV +1  %s' % thyme
-    msg['From'] = 'gemalphin@gmail.com'
-    msg['To'] = recipient
-    msg['X-Mailer'] = 'LazyTV Shout Out %s' % thyme
-    
-    smtp = smtplib.SMTP('alt4.gmail-smtp-in.l.google.com')
-    smtp.sendmail(msg['From'], msg['To'], msg.as_string(9))
-    smtp.quit()
-    
-def callwebviewer(url, name, type):
-    log( " callwebviewer")
-
-    #this is how you call the webviewer addon. 
-    #u="script.web.viewer, http://m.reddit.com/login"
-    #xbmc.executebuiltin('RunAddon(%s)' %u )
-    
-#     import resources.pyxbmct as pyxbmct
-# 
-#     # Create a window instance.
-#     window = pyxbmct.AddonFullWindow('Hello, World!')
-#     # Set the window width, height and the grid resolution: 2 rows, 3 columns.
-#     window.setGeometry(1920, 1080, 9, 16)
-#     
-#     #image is 1200x2220
-#     image=pyxbmct.Image('http://i.imgur.com/lYdRVRi.png', aspectRatio=2)
-#     
-#     window.placeControl(image, 0, 0, 9, 16 )
-#     
-#     #doesn't work. leaving it alone for now (7/27/2016)
-#     image.setAnimations([('WindowOpen', 'effect type="zoom" end="150" center="0" time="1800"')])
-#     
-#     #image.setAnimations([('WindowOpen', 'effect type="zoom" end="150" center="0" time="1800"',), 
-#     #                     ('WindowOpen', 'effect type="slide" end="2220"  delay="1800" time="1800"',)])
-# 
-#     
-#     # Connect a key action to a function.
-#     window.connect(pyxbmct.ACTION_NAV_BACK, window.close)
-#     # Show the created window.
-#     window.doModal()
-#     # Delete the window instance when it is no longer used.
-#     del window 
-
-    log( " done callwebviewer")
-
-def test_menu(url, name, type):
-    log( "  test_menu")
-
-    
-    liz = xbmcgui.ListItem("open webviewer", label2="", iconImage="DefaultFolder.png", thumbnailImage="", path="")
-    u=sys.argv[0]+"?mode=callwebviewer&type="
-
-    xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=False)
-    
-    
-    addDir("2login", sys.argv[0], "reddit_login", "" )
-    addDir("3login", sys.argv[0], "reddit_login", "" )
-    xbmcplugin.endOfDirectory(pluginhandle)
-
-#     from resources.httpd import TinyWebServer
-#       
-#     log( "*******************starting httpd")
-#     httpd = TinyWebServer('xyz')
-#     httpd.create("localhost", 8090)
-#     httpd.start()
-#       
-#     xbmc.sleep(30000)
-#       
-#     log( "*******************stopping httpd")    
-#     httpd.stop()
-
-
 
 def reddit_request( url ):
     #log( "  reddit_request " + url )
@@ -2369,9 +2133,6 @@ if __name__ == '__main__':
                     ,'playInstagram'        : playInstagram
                     ,'playFlickr'           : playFlickr
                     ,'listFlickrAlbum'      : playFlickr 
-                    ,'comments_gui'         : comments_gui    #for testing 
-                    ,'test_menu'            : test_menu 
-                    ,'callwebviewer'        : callwebviewer
                     ,'get_refresh_token'    : reddit_get_refresh_token
                     ,'get_access_token'     : reddit_get_access_token
                     ,'revoke_refresh_token' : reddit_revoke_refresh_token

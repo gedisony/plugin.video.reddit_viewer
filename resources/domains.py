@@ -1179,15 +1179,8 @@ def make_addon_url_from(media_url, assume_is_video=True ):
                 elif hoster=="Reddit.com":
                     pluginUrl=media_url 
                     modecommand='listLinksInComment'    #
-                    
-                    if comments_viewMode=='461':  #461 is my trigger to use a custom gui for showing comments. it is just an arbitrary number. i'm hoping there no skin will use the same viewid
-                        #if not using a custom gui, do the "else:" part. 
-                        #  make sure that kodi does not "wait" for directory to finish being built
-                        setProperty_IsPlayable='false'
-                        isFolder=False                                
-                    else:
-                        #setProperty_IsPlayable='false'
-                        isFolder=True                                 #<-- this is important. tells kodi that this will open another listing. fixes WARNING: Attempt to use invalid handle -1
+                    #setProperty_IsPlayable='false'
+                    isFolder=True                                 #<-- this is important. tells kodi that this will open another listing. fixes WARNING: Attempt to use invalid handle -1
     
                 elif hoster=="Flickr":
                     pluginUrl=media_url 

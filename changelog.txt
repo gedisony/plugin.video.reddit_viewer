@@ -178,5 +178,8 @@
  - update custom ui for comments
  2.7.8  (2016-07-27)
  - addon was mis-named during testing (script.reddit.viewer). fix.
- -  
+ 2.7.9  (2016-08-18)
+ - remove custom gui components
+ - get reddit preview image and use if needed
+  
  
