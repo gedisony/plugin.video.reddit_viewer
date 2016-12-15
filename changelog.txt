@@ -182,4 +182,5 @@
  - remove custom gui components
  - get reddit preview image and use if needed
   
- 
+ 3.0.0 (2016-12-14)
+ - import code from script.reddit.reader

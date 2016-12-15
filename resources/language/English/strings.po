@@ -226,7 +226,7 @@ msgid "Hide non-Video posts"
 msgstr ""
 
 msgctxt "#30105"
-msgid "ViewID for album posts (0 for default)"
+msgid "ViewID for album posts (0 for default)(custom:450) "
 msgstr ""
 
 msgctxt "#30106"
@@ -321,102 +321,34 @@ msgstr ""
 
 # settings category
 msgctxt "#30300"
-msgid "Sites (video)"
+msgid "Links"
 msgstr ""
 
 msgctxt "#30301"
-msgid "YouTube"
+msgid "Hide video posts"
 msgstr ""
 
 msgctxt "#30302"
-msgid "Vimeo"
+msgid "Hide Image/Album posts"
 msgstr ""
 
 msgctxt "#30303"
-msgid "LiveLeak"
+msgid "Hide Reddit text posts"
 msgstr ""
 
 msgctxt "#30304"
-msgid "DailyMotion"
+msgid "Hide Undetermined links"
 msgstr ""
 
 msgctxt "#30305"
-msgid "GfyCat"
+msgid "Check all links for playable video (slower)"
 msgstr ""
 
-msgctxt "#30306"
-msgid "Giphy"
-msgstr ""
 
-msgctxt "#30307"
-msgid "Vine.co"
-msgstr ""
-
-msgctxt "#30308"
-msgid "Streamable"
-msgstr ""
-
-msgctxt "#30309"
-msgid "Vid.me"
-msgstr ""
-
-msgctxt "#30310"
-msgid "Porn sites (youtube_dl add-on)"
-msgstr ""
-  
-msgctxt "#30311"
-msgid "Other sites via youtube_dl add-on"
-msgstr ""
-
-msgctxt "#30312"
+msgctxt "#30350"
 msgid "Use youtube_dl add-on for Youtube videos"
 msgstr ""
 
-msgctxt "#30313"
-msgid "Direct links to video media (mp4,webm)"
-msgstr ""
-
-msgctxt "#30314"
-msgid "Video sites via youtube_dl add-on"
-msgstr ""
-
-  
-# settings category
-msgctxt "#30350"
-msgid "Sites (other)"
-msgstr ""
-
-msgctxt "#30351"
-msgid "Imgur"
-msgstr ""
-
-msgctxt "#30352"
-msgid "Direct links to image media (jpg,png,gif)"
-msgstr ""
-
-msgctxt "#30353"
-msgid "Flickr"
-msgstr ""
-
-msgctxt "#30354"
-msgid "Reddit text posts"
-msgstr ""
-
-msgctxt "#30355"
-msgid "Instagram"
-msgstr ""
-
-msgctxt "#30356"
-msgid "Blogspot"
-msgstr ""
-
-msgctxt "#30357"
-msgid "Tumblr"
-msgstr ""
-
-msgctxt "#30358"
-msgid "Gyazo"
-msgstr ""
 
 
 # settings category
