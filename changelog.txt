@@ -184,3 +184,6 @@
   
  3.0.0 (2016-12-14)
  - import code from script.reddit.reader
+ 
+ 3.0.1
+ - change autoplay step

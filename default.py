@@ -75,12 +75,10 @@ urlMain = "https://www.reddit.com"
 #filterRating     = int(addon.getSetting("filterRating"))
 #filterThreshold  = int(addon.getSetting("filterThreshold"))
 
-showAll              = addon.getSetting("showAll") == "true"
-showUnwatched        = addon.getSetting("showUnwatched") == "true"
-showUnfinished       = addon.getSetting("showUnfinished") == "true"
-showAllNewest        = addon.getSetting("showAllNewest") == "true"
-showUnwatchedNewest  = addon.getSetting("showUnwatchedNewest") == "true"
-showUnfinishedNewest = addon.getSetting("showUnfinishedNewest") == "true"
+autoplayAll          = addon.getSetting("autoplayAll") == "true"
+autoplayUnwatched    = addon.getSetting("autoplayUnwatched") == "true"
+autoplayUnfinished   = addon.getSetting("autoplayUnfinished") == "true"
+autoplayRandomize    = addon.getSetting("autoplayRandomize") == "true"
 
 forceViewMode        = addon.getSetting("forceViewMode") == "true"
 viewMode             = str(addon.getSetting("viewMode"))
@@ -148,7 +146,19 @@ else:
 
 
 
-
+def json_query(query, ret):
+    try:
+        xbmc_request = json.dumps(query)
+        result = xbmc.executeJSONRPC(xbmc_request)
+        #print result
+        #result = unicode(result, 'utf-8', errors='ignore')
+        #log('result = ' + str(result))
+        if ret:
+            return json.loads(result)['result']
+        else:
+            return json.loads(result)
+    except:
+        return {}
 
 def getDbPath():
     path = xbmc.translatePath("special://userdata/Database")
@@ -165,14 +175,43 @@ def getDbPath():
     
 def getPlayCount(url):
     if dbPath:
-        c.execute('SELECT playCount FROM files WHERE strFilename=?', [url])
+        #log(url[:120])
+        #c.execute('SELECT playCount FROM files WHERE strFilename LIKE ?', [url[:100]])
+        
+        str_sql='SELECT playCount FROM files WHERE strFilename LIKE ?'
+        args=[url[:120]+'%']
+        
+        #str_sql='SELECT playCount FROM files WHERE strFilename = ?'
+        #args=[url]
+        
+        c.execute(str_sql,args)
+        
+        
         result = c.fetchone()
+        #log('*****************'+repr(result) )
         if result:
             result = result[0]
             if result:
                 return int(result)
             return 0
     return -1
+
+#def getPlayCount(url):
+#    
+#    #query   = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
+#    #request = '{"jsonrpc": "2.0","method": "VideoLibrary.GetMovies", "params": {"filter": {"field": "playcount", "operator": "greaterthan", "value": "0"},  "limits": { "start" : 0 }, "properties": ["playcount"], "sort": { "order": "ascending", "method": "label" } }, "id": "libMovies"}'
+#    #request='{"jsonrpc": "2.0", "method": "Player.GetItem", "params": { "properties": ["title", "album", "artist", "season", "episode", "duration", "showtitle", "tvshowid", "thumbnail", "file", "fanart", "streamdetails"], "playerid": 1}, "id": "VideoGetItem"}'
+#    
+#    #results = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
+#    
+##    get_movies       = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies",     "params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
+##    
+##    mov = json_query(get_movies, True)
+##    log(repr(mov))
+#
+#    request = {"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", "params": { "filter": {"field": "playcount", "operator": "greaterthan", "value": "0"}, "limits": { "start" : 0 }, "properties": ["playcount"], "sort": { "order": "ascending", "method": "label" } }, "id": url}
+#    results = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
+#    log(repr(results))
 
 def format_multihub(multihub):
 #properly format a multihub string
@@ -534,19 +573,9 @@ def listSubReddit(url, name, subreddit_key):
         return
 
     info_label={ "plot": translation(30013) }  #Automatically play videos
-    if showAllNewest:
-        addDir("[B]- "+translation(30016)+"[/B]", url, 'autoPlay', "", "ALL_NEW", info_label)
-    if showUnwatchedNewest:
-        addDir("[B]- "+translation(30017)+"[/B]", url, 'autoPlay', "", "UNWATCHED_NEW", info_label)
-    if showUnfinishedNewest:
-        addDir("[B]- "+translation(30018)+"[/B]", url, 'autoPlay', "", "UNFINISHED_NEW", info_label)
-    if showAll:
-        addDir("[B]- "+translation(30012)+"[/B]", url, 'autoPlay', "", "ALL_RANDOM", info_label)
-    if showUnwatched:
-        addDir("[B]- "+translation(30014)+"[/B]", url, 'autoPlay', "", "UNWATCHED_RANDOM", info_label)
-    if showUnfinished:
-        addDir("[B]- "+translation(30015)+"[/B]", url, 'autoPlay', "", "UNFINISHED_RANDOM", info_label)
-
+    if autoplayAll:       addDir("[B]- "+translation(30016)+"[/B]", url, 'autoPlay', "", "ALL", info_label)
+    if autoplayUnwatched: addDir("[B]- "+translation(30017)+"[/B]", url, 'autoPlay', "", "UNWATCHED", info_label)
+    #if autoplayUnfinished:addDir("[B]- "+translation(30018)+"[/B]", url, 'autoPlay', "", "UNFINISHED", info_label)
     
     #7-15-2016  removed the "replace(..." statement below cause it was causing error
     #content = json.loads(content.replace('\\"', '\''))
@@ -754,16 +783,16 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         n = "[COLOR red]*[/COLOR] "
         #description = "[B]" + hoster + "[/B]:[COLOR red][NSFW][/COLOR] "+title+"\n" + description
         il_description = "[COLOR red][NSFW][/COLOR] "+ h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
-        title="[COLOR red]*[/COLOR] "+ title
     else:
         mpaa=""
+        n=""
         il_description = h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
 
     if TitleAddtlInfo:     #put the additional info on the description if setting set to single line titles
         log( repr(title_line2 ))
-        post_title=title+"[CR]"+title_line2
+        post_title=n+title+"[CR]"+title_line2
     else:
-        post_title=title
+        post_title=n+title
         il_description=title_line2+"[CR]"+il_description
 
     il={"title": post_title, "plot": il_description, "plotoutline": il_description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": domain, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
@@ -787,7 +816,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     if previewimage: needs_preview=False  
     else:            needs_preview=True  #reddit has no thumbnail for this link. please get one
 
-    DirectoryItem_url=sys.argv[0]+"?url="+ urllib.quote_plus(media_url) +"&mode=play"
+    #DirectoryItem_url=sys.argv[0]+"?url="+ urllib.quote_plus(media_url) +"&mode=play"
 
     ld=parse_reddit_link(media_url,reddit_says_is_video, needs_preview, False, preview_ar  )
     
@@ -797,10 +826,10 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
 
-    arg_name=post_title
+    arg_name=title
     arg_type=previewimage
     if ld:
-        log('    ' + ld.media_type + ' -> ' + ld.link_action )
+        #log('    ' + ld.media_type + ' -> ' + ld.link_action )
         if iconimage in ["","nsfw", "default"]: iconimage=ld.thumb
 
         if ld.link_action=='viewTallImage':
@@ -856,165 +885,13 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     #    else:
     #        entries.append((translation(30021), 'RunPlugin(plugin://plugin.program.chrome.launcher/?url='+urllib.quote_plus(site)+'&mode=showSite)',))
     liz.addContextMenuItems(entries)
-
+    #log( 'playcount=' + repr(getPlayCount(DirectoryItem_url)))
     xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
         
     return ok
 
-
-def addLink2(title, title_line2, iconimage, previewimage,preview_w,preview_h,description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
-    
-    videoID=""
-    post_title=title
-    il_description=""
-    n=""  #will hold red nsfw asterisk string
-    h=""  #will hold bold hoster:  string
-    t_Album = translation(30073) if translation(30073) else "Album"
-    t_IMG =  translation(30074) if translation(30074) else "IMG"
-    
-    ok = False    
-    #DirectoryItem_url=""
-    from resources.domains import make_addon_url_from
-    hoster, DirectoryItem_url, videoID, mode_type, thumb_url, poster_url, isFolder,setInfo_type, IsPlayable=make_addon_url_from(media_url,reddit_says_is_video)
-
-    if iconimage in ["","nsfw", "default"]:
-        #log( title+ ' iconimage blank['+iconimage+']['+thumb_url+ ']media_url:'+media_url ) 
-        iconimage=thumb_url
-        
-    if poster_url=="":
-        if previewimage:
-            poster_url=previewimage
-        else:
-            poster_url=iconimage
-            
-    #mode=mode_type #usually 'playVideo'
-    if DirectoryItem_url:
-        h="[B]" + hoster + "[/B]: "
-        if over_18: 
-            mpaa="R"
-            n = "[COLOR red]*[/COLOR] "
-            #description = "[B]" + hoster + "[/B]:[COLOR red][NSFW][/COLOR] "+title+"\n" + description
-            il_description = "[COLOR red][NSFW][/COLOR] "+ h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
-        else:
-            mpaa=""
-            il_description = h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
-
-        if TitleAddtlInfo:     #put the additional info on the description if setting set to single line titles
-            post_title=title+"[CR]"+title_line2
-        else:
-            post_title=title
-            il_description=title_line2+"[CR]"+il_description
-            
-        il={"title": post_title, "plot": il_description, "plotoutline": il_description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
-
-        if setting_hide_images==True and mode_type in ['listImgurAlbum','playSlideshow','listLinksInComment' ]:
-            log('setting: hide non-video links') #and text links(reddit.com)
-            return
-        else:
-            if mode_type in ['listImgurAlbum','playSlideshow','listLinksInComment','playTumblr','playInstagram','playFlickr' ]:
-                #after all that work creating DirectoryItem_url, we parse it to get the media_url. this is used by playSlideshow as 'key' to get the image description
-                #parsed = urlparse.urlparse(DirectoryItem_url)
-                #media_url=urlparse.parse_qs(parsed.query)['url'][0]  #<-- this will error in openelec/linux    
-                #log("   parsed media_url:" +  media_url  )
-                #log("   parsed plugi_url:" +  videoID  )
-                #WINDOW.setProperty(videoID, description )
-                WINDOW.setProperty(videoID, il_description )
-
-        
-        if mode_type in ['listImgurAlbum','listTumblrAlbum', 'listFlickrAlbum']:post_title='[%s] %s' %(t_Album, post_title)
-        #if mode_type=='playSlideshow': post_title='[IMG] '+post_title   
-        if setInfo_type=='pictures'  : 
-            post_title='[%s] %s' %(t_IMG, post_title)
-                  
-        if mode_type=='listLinksInComment': post_title='[reddit] '+post_title  
-        
-        liz=xbmcgui.ListItem(label=n+post_title, 
-                              label2="",
-                              iconImage="", thumbnailImage='')
-
-        liz.setInfo(type='video', infoLabels=il)
-        
-        #art_object
-        liz.setArt({"thumb": iconimage, "poster":poster_url, "banner":iconimage, "fanart":poster_url, "landscape":poster_url   })
-
-        #liz.setInfo(type=setInfo_type, infoLabels=il)
-        
-        liz.setProperty('IsPlayable', IsPlayable)
-        
-        entries = [] #entries for listbox for when you type 'c' or rt-click 
-
-
-        if num_comments > 0:            
-            #if we are using a custom gui to show comments, we need to use RunPlugin. there is a weird loading/pause if we use XBMC.Container.Update. i think xbmc expects us to use addDirectoryItem
-            #  if we have xbmc manage the gui(addDirectoryItem), we need to use XBMC.Container.Update. otherwise we'll get the dreaded "Attempt to use invalid handle -1" error
-            #entries.append( ( translation(30050) + " (c)",  #Show comments
-            #              "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
-            #entries.append( ( translation(30052) , #Show comment links 
-            #              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
-
-            entries.append( ( translation(30052) , #Show comment links 
-                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )            
-            entries.append( ( translation(30050) ,  #Show comments
-                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )
-
-            #entries.append( ( translation(30050) + " (ActivateWindow)",  #Show comments
-            #              "XBMC.ActivateWindow(Video, %s?mode=listLinksInComment&url=%s)" % (  sys.argv[0], urllib.quote_plus(site) ) ) )      #***  ActivateWindow is for the standard xbmc window     
-        else:
-            entries.append( ( translation(30053) ,  #No comments
-                          "xbmc.executebuiltin('Action(Close)')" ) )            
-
-        #no need to show the "go to other subreddits" if the entire list is from one subreddit        
-        if many_subreddit:
-            #sys.argv[0] is plugin://plugin.video.reddit_viewer/
-            #prl=zaza is just a dummy: during testing the first argument is ignored... possible bug?
-            entries.append( ( translation(30051)+" r/%s" %subreddit , 
-                              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
-        else:
-            entries.append( ( translation(30051)+" r/%s" %subreddit , 
-                              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
-
-
-        #favEntry = '<favourite name="'+title+'" url="'+DirectoryItem_url+'" description="'+description+'" thumb="'+iconimage+'" date="'+credate+'" site="'+site+'" />'
-        #entries.append((translation(30022), 'RunPlugin(plugin://'+addonID+'/?mode=addToFavs&url='+urllib.quote_plus(favEntry)+'&type='+urllib.quote_plus(subreddit)+')',))
-        
-        #if showBrowser and (osWin or osOsx or osLinux):
-        #    if osWin and browser_win==0:
-        #        entries.append((translation(30021), 'RunPlugin(plugin://plugin.program.webbrowser/?url='+urllib.quote_plus(site)+'&mode=showSite&zoom='+browser_wb_zoom+'&stopPlayback=no&showPopups=no&showScrollbar=no)',))
-        #    else:
-        #        entries.append((translation(30021), 'RunPlugin(plugin://plugin.program.chrome.launcher/?url='+urllib.quote_plus(site)+'&mode=showSite)',))
-        liz.addContextMenuItems(entries)
-
-        #you will get a WARNING: XFILE::CFileFactory::CreateLoader - unsupported protocol(plugin) in ....
-        #reason: listitem=liz  has a   liz.setInfo(type="Video",...  set above
-        #        xbmc will check if url is compatible with type="Video"
-        #        we get a warning because url starts with 'plugin://' 
-        #to make warning not show up, do not setInfo type="Video" on liz
-        #but doing this will also not show the infolabels(title,plot,aired.etc.) to the user
-        #u='http://i.imgur.com/IcpWBvq.jpg'
-        #log("addDirectoryItem url["+u+"]")
-        
-        xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
-        
-    return ok
-#MODE listFavourites -  name, type not used
-# def listFavourites(subreddit, name, type):
-#     xbmcplugin.setContent(pluginhandle, "episodes")
-#     file = os.path.join(addonUserDataFolder, subreddit+".fav")
-#     xbmcplugin.addSortMethod(pluginhandle, xbmcplugin.SORT_METHOD_LABEL)
-#     if os.path.exists(file):
-#         fh = open(file, 'r')
-#         content = fh.read()
-#         fh.close()
-#         match = re.compile('<favourite name="(.+?)" url="(.+?)" description="(.+?)" thumb="(.+?)" date="(.+?)" site="(.+?)" />', re.DOTALL).findall(content)
-#         for name, url, desc, thumb, date, site in match:
-#             addFavLink(name, url, "playVideo", thumb, desc.replace("<br>","\n"), date, site, subreddit)
-#     if forceViewMode:
-#         xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
-#     xbmcplugin.endOfDirectory(pluginhandle)
-
-#MODE autoPlay        - name not used
 def autoPlay(url, name, autoPlay_type):
-    from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url
+    from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
     from resources.lib.utils import unescape
     #collect a list of title and urls as entries[] from the j_entries obtained from reddit
     #then create a playlist from those entries
@@ -1023,7 +900,7 @@ def autoPlay(url, name, autoPlay_type):
     entries = []
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     playlist.clear()
-    log("**********autoPlay*************")
+    log("**********autoPlay %s*************" %autoPlay_type)
     #content = opener.open(url).read()
     content = reddit_request(url)        
     if not content: return
@@ -1048,24 +925,13 @@ def autoPlay(url, name, autoPlay_type):
             #hoster, DirectoryItem_url, videoID, mode_type, thumb_url,poster_url, isFolder,setInfo_type, IsPlayable=make_addon_url_from(media_url,is_a_video)
             ld=parse_reddit_link(link_url=media_url, assume_is_video=False, needs_preview=False, get_playable_url=True )
 
-            xbmc_busy(True)
+            DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, title)
+
             if ld:
-                if ld.media_type in [sitesBase.TYPE_VIDEO, sitesBase.TYPE_VIDS, sitesBase.TYPE_MIXED]:
-                    if ld.link_action == sitesBase.DI_ACTION_PLAYABLE:
-                        autoPlay_type_entries_append( entries, autoPlay_type, title, ld.playable_url)
-                    elif ld.link_action == sitesBase.DI_ACTION_YTDL:
-                        xbmc_busy(True)
-                        playable_video_url=ydtl_get_playable_url(media_url)
-                        if playable_video_url:
-                            for u in playable_video_url:
-                                autoPlay_type_entries_append( entries, autoPlay_type, title, u)
-            else:
-                #log('    checking if ytdl supports %s' %media_url )
-                xbmc_busy(True)
-                playable_video_url=ydtl_get_playable_url(media_url)
-                if playable_video_url:
-                    for u in playable_video_url:
-                        autoPlay_type_entries_append( entries, autoPlay_type, title, u)
+                if ld.media_type not in [sitesBase.TYPE_VIDEO, sitesBase.TYPE_VIDS, sitesBase.TYPE_MIXED]:
+                    continue
+
+            autoPlay_type_entries_append( entries, autoPlay_type, title, DirectoryItem_url)
                             
         except Exception as e:
             log("  EXCEPTION Autoplay "+ str( sys.exc_info()[0]) + "  " + str(e) )
@@ -1073,7 +939,7 @@ def autoPlay(url, name, autoPlay_type):
     #def k2(x): return x[1]
     #entries=remove_duplicates(entries, k2)
             
-    if autoPlay_type.endswith("_RANDOM"):
+    if autoplayRandomize:
         random.shuffle(entries)
 
     #for title, url in entries:
@@ -1081,17 +947,18 @@ def autoPlay(url, name, autoPlay_type):
     for title, url in entries:
         listitem = xbmcgui.ListItem(title)
         playlist.add(url, listitem)
-        log('add to playlist: %s %s' %(title, url))
+        log('add to playlist: %s %s' %(url, title))
     xbmc.Player().play(playlist)
 
 def autoPlay_type_entries_append( entries, autoPlay_type, title, playable_url):
-    if autoPlay_type.startswith("ALL_"):
+    #log(' ****playcount %d:[%s] %s' %( getPlayCount(playable_url), playable_url, title) )
+    if autoPlay_type=="ALL":
         entries.append([title,playable_url])
-    elif autoPlay_type.startswith("UNWATCHED_") and getPlayCount(url) < 0:
+    elif autoPlay_type=="UNWATCHED" and getPlayCount(playable_url) <= 0:
+        #log('added to UNWATCHED %s' %( title) )
         entries.append([title,playable_url])
-    elif autoPlay_type.startswith("UNFINISHED_") and getPlayCount(url) == 0:
-        entries.append([title,playable_url])
-    
+    #elif autoPlay_type.startswith("UNFINISHED_") and getPlayCount(url) == 0:
+    #    entries.append([title,playable_url])
 
 def determine_if_video_media_from_reddit_json( entry ):
     #reads the reddit json and determines if link is a video
@@ -1485,12 +1352,11 @@ def r_linkHunter(json_node,d=0):
 
 def parse_url_and_play(url, name, type):
     from resources.lib.domains import parse_reddit_link, sitesBase, ydtl_get_playable_url
-
+    log('parse_url_and_play name='+name)
+    #log('pluginhandle='+str(pluginhandle) )
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     ld=parse_reddit_link(url,True, False, False  )
 
-    log(  repr( ld ) )
-    
     if ld:
         pass
     else:
@@ -1498,12 +1364,22 @@ def parse_url_and_play(url, name, type):
         #playable_url= '(worked)' + title.ljust(15)[:15] + '... '+ w_url
         #work
         if playable_url:
-            playlist.clear()
-            for u in playable_url:
-                log('    link has multiple videos'  )
-                #self.queue.put( [title, u] )
-                queueVideo(u, name, type)
-            xbmc.Player().play(playlist)
+            if pluginhandle>0:
+                for u in playable_url: 
+                    
+                    listitem = xbmcgui.ListItem(path=u, label=name)   #plugins play video like this.
+                    xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+                     
+            else:
+                #log('pluginhandleXXXX name=')
+                #this portion won't work with autoplay (playlist)
+                playlist.clear()
+                if len(playable_url)>1: log('    link has multiple videos'  )
+
+                for u in playable_url:
+                    #self.queue.put( [title, u] )
+                    queueVideo(u, name, type)
+                xbmc.Player().play(playlist)
         else:
             xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( translation(30192), 'Youtube_dl')  )
     
@@ -1973,6 +1849,8 @@ if __name__ == '__main__':
     if dbPath:
         conn = sqlite3.connect(dbPath)
         c = conn.cursor()
+
+
     
     params = parameters_string_to_dict(sys.argv[2])
     mode   = urllib.unquote_plus(params.get('mode', ''))

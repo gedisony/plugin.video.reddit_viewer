@@ -15,13 +15,11 @@
         <setting id="viewMode"              type="number" label="30109" default="504"/>
     </category>
     <category label="30120">
-        <setting id="showAllNewest"         type="bool" label="30121" default="false"/>
-        <setting id="showUnwatchedNewest"   type="bool" label="30122" default="true"/>
-        <setting id="showUnfinishedNewest"  type="bool" label="30123" default="false"/>
+        <setting id="autoplayAll"               type="bool" label="30124" default="false"/>
+        <setting id="autoplayUnwatched"         type="bool" label="30125" default="false"/>
+        <!--setting id="autoplayUnfinished"        type="bool" label="30126" default="false"/-->
         <setting type="sep" />
-        <setting id="showAll"               type="bool" label="30124" default="false"/>
-        <setting id="showUnwatched"         type="bool" label="30125" default="false"/>
-        <setting id="showUnfinished"        type="bool" label="30126" default="false"/>
+        <setting id="autoplayRandomize"         type="bool" label="30121" default="false"/>
     </category>
     <category label="30300">
         <setting id="hide_video"           type="bool" label="30301" default="false"/>
@@ -29,7 +27,7 @@
         <setting id="hide_reddit"          type="bool" label="30303" default="false"/>
         <setting id="hide_undetermined"    type="bool" label="30304" default="false"/>
         <!-- setting id="resolve_undetermined" type="bool" label="30305" default="false"/-->
-        <!-- setting id="use_ytdl_for_yt"    type="bool" label="30350" default="false"/-->
+        <setting id="use_ytdl_for_yt"      type="bool" label="30350" default="false"/>
     </category>
 
     <!-- category label="30150">

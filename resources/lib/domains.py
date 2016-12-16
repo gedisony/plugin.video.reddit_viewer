@@ -227,13 +227,12 @@ class ClassYoutube(sitesBase):
         log('      youtube video id:' + self.video_id )
         
         if self.video_id:
-            #if use_ytdl_for_yt:
-            # (10/2/2016) --- please only use script.module.youtube.dl if possible and remove these dependencies.
-            self.link_action='playYTDLVideo'
-            return "http://youtube.com/v/" + self.video_id, self.TYPE_VIDEO
-            #else:
-            #    self.link_action=self.DI_ACTION_PLAYABLE
-            #    return "plugin://plugin.video.youtube/play/?video_id=" + self.video_id, self.TYPE_VIDEO
+            if use_ytdl_for_yt:
+                self.link_action='playYTDLVideo'
+                return "http://youtube.com/v/" + self.video_id, self.TYPE_VIDEO
+            else:
+                self.link_action=self.DI_ACTION_PLAYABLE
+                return "plugin://plugin.video.youtube/play/?video_id=" + self.video_id, self.TYPE_VIDEO
         else:
             log("    %s cannot get videoID %s" %( self.__class__.__name__, media_url) )
             self.link_action='playYTDLVideo'
@@ -3201,7 +3200,7 @@ def viewTallImage(image_url, width, height):
 
 
 def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='', script_to_call=""):
-    setProperty_IsPlayable='false'
+    setProperty_IsPlayable='false'  #recorded in vieoxxx.db if set to 'true'
     isFolder=True
     DirectoryItem_url=''
     title_prefix=''
@@ -3230,11 +3229,13 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
             if addon.getSetting("hide_video") == "true": return
             setProperty_IsPlayable='true'
             isFolder=False
-    
+            #log('  %s:%s'%(ld.link_action,ld.playable_url))
+                
         if ld.link_action == sitesBase.DI_ACTION_PLAYABLE:
             setProperty_IsPlayable='true'
             isFolder=False
             DirectoryItem_url=ld.playable_url
+
         else:
             DirectoryItem_url=sys.argv[0]\
             +"?url="+ urllib.quote_plus(ld.playable_url) \
@@ -3244,12 +3245,14 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
     else:
         if addon.getSetting("hide_undetermined") == "true": return
         title_prefix='[?]'
-        setProperty_IsPlayable='false'
-        isFolder=True #isFolder=True avoids the WARNING: XFILE::CFileFactory::CreateLoader /  ERROR: InputStream: Error opening, ...
+        setProperty_IsPlayable='true'  #pluginhandle=-1 if set to 'false' and isFolder set to False
+        isFolder=False                 #isFolder=True avoids the WARNING: XFILE::CFileFactory::CreateLoader /  ERROR: InputStream: Error opening, ...
 
         DirectoryItem_url=sys.argv[0]\
         +"?url="+ urllib.quote_plus(url) \
+        +"&name="+urllib.quote_plus(arg_name) \
         +"&mode=play" 
+
     
     return DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix
 
