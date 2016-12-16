@@ -432,7 +432,7 @@ class ClassImgur(sitesBase):
         
         #return o.scheme+"://"+o.netloc+"/"+filename+ thumbnail_type +"."+ext
         thumb= ("%s://%s/%s%c.%s" % ( o.scheme, o.netloc, filename, thumbnail_type, ext ) ) 
-        log('      imgur thumb:' + thumb)
+        #log('      imgur thumb:' + thumb)
 
         return thumb
 
