@@ -622,10 +622,10 @@ class ClassVidme(sitesBase):
         return str( self.media_status )
 
 class ClassVine(sitesBase):
-    regex='(vine.co)' 
+    regex='(vine\.co)' 
     
     def get_playable_url(self, media_url, is_probably_a_video=True):
-        
+        contentUrl=''
         #media_url='"image": "https://v.cdn.vine.co/r/videos/38B4A9174D1177703702723739648_37968e655a0.1.5.1461921223578533188.mp4.jpg?versionId=hv6zBo4kGHPH8NdQeJVo_JRGSVXV73Cc"'
         #msp=re.compile('videos\/(.*?\.mp4)')
         msp=re.compile('(https?://.*/videos/.*?\.mp4)') 
@@ -670,7 +670,7 @@ class ClassVine(sitesBase):
         return '',''
 
 class ClassVimeo(sitesBase):      
-    regex='(vimeo.com/)'      
+    regex='(vimeo\.com/)'      
     video_id=''
     
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
@@ -723,7 +723,7 @@ class ClassVimeo(sitesBase):
         return self.thumb_url
 
 class ClassGiphy(sitesBase):
-    regex='(giphy.com)'
+    regex='(giphy\.com)'
     #If your app is a form of a bot (ie. hubot), for internal purposes, open source, or for a class project, 
     #  we highly recommend you institute the beta key for your app. 
     #  Unless you're making thousands of requests per IP, you shouldn't have any issues.    
@@ -807,7 +807,7 @@ class ClassGiphy(sitesBase):
         return self.thumb_url
                 
 class ClassDailymotion(sitesBase):
-    regex='(dailymotion.com)'
+    regex='(dailymotion\.com)'
     
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
         if not media_url:
@@ -953,7 +953,7 @@ class ClassStreamable(sitesBase):
         return self.thumb_url
 
 class ClassTumblr(sitesBase):
-    regex='(tumblr.com)'
+    regex='(tumblr\.com)'
     
     api_key='no0FySaKYuQHKl0EBQnAiHxX7W0HY4gKvlmUroLS2pCVSevIVy'
     include_gif_in_get_playable=True
@@ -1091,7 +1091,7 @@ class ClassTumblr(sitesBase):
         return self.dictList    
 
 class ClassBlogspot(sitesBase):
-    regex='(blogspot.com)'
+    regex='(blogspot\.com)'
     include_gif_in_get_playable=True
     
     #go here:  https://console.developers.google.com/apis/credentials?project=_
@@ -1329,7 +1329,7 @@ class ClassInstagram(sitesBase):
         pass
 
 class ClassGyazo(sitesBase):
-    regex='(gyazo.com)'
+    regex='(gyazo\.com)'
     
     def get_playable_url(self, media_url, is_probably_a_video=True):
 
@@ -1746,7 +1746,7 @@ class ClassFlickr(sitesBase):
         return ''
 
 class ClassGifsCom(sitesBase):
-    regex='(gifs.com)'
+    regex='(gifs\.com)'
     #also vidmero.com
     
     api_key='gifs577da09e94ee1'   #gifs577da0485bf2a'
@@ -2803,7 +2803,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
     if not link_url: return
 
     hoster = sitesManager( link_url )
-    #log( '  %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
+    log( '  %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
 
     try:
         if hoster:

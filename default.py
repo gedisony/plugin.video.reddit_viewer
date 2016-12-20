@@ -116,14 +116,15 @@ except: int_CommentTreshold = -1000    #if CommentTreshold can't be converted to
 #browser_win     = int(addon.getSetting("browser_win"))
 #browser_wb_zoom = str(addon.getSetting("browser_wb_zoom"))
 
-ll_qualiy  = int(addon.getSetting("ll_qualiy"))
-ll_qualiy  = ["480p", "720p"][ll_qualiy]
-ll_downDir = str(addon.getSetting("ll_downDir"))
+#ll_qualiy  = int(addon.getSetting("ll_qualiy"))
+#ll_qualiy  = ["480p", "720p"][ll_qualiy]
+#ll_downDir = str(addon.getSetting("ll_downDir"))
 
-istreamable_quality =int(addon.getSetting("streamable_quality"))  #values 0 or 1
+try:istreamable_quality=int(addon.getSetting("streamable_quality"))  #values 0 or 1
+except:istreamable_quality=0
 streamable_quality  =["full", "mobile"][istreamable_quality]       #https://streamable.com/documentation
 
-gfy_downDir = str(addon.getSetting("gfy_downDir"))
+#gfy_downDir = str(addon.getSetting("gfy_downDir"))
 
 addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
 subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
