@@ -2,16 +2,11 @@
 <addon
     id="plugin.video.reddit_viewer"
     name="Reddit Viewer"
-    version="3.0.2"
+    version="3.0.3"
     provider-name="gedisony">
     <requires>
         <import addon="xbmc.python"                     version="2.14.0"                />
         <import addon="xbmc.addon"                      version="13.0.0"                />
-        <import addon="plugin.video.youtube"            version="5.0.0"                 />
-        <import addon="plugin.video.vimeo"              version="4.0.0" optional="true" />
-        <import addon="plugin.video.dailymotion_com"    version="1.0.0" optional="true" />
-        <import addon="script.module.simple.downloader" version="1.0.0" />
-        <import addon="plugin.program.chrome.launcher"  version="1.0.0" optional="true" />
 	    <import addon="script.module.requests"          version="1.1.0"/>
 	    <import addon="script.module.youtube.dl"        version="16.521.0"/>
     </requires>

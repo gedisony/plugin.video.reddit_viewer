@@ -2803,7 +2803,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
     if not link_url: return
 
     hoster = sitesManager( link_url )
-    log( '  %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
+    #log( '  %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
 
     try:
         if hoster:

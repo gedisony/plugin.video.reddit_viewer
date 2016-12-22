@@ -190,3 +190,8 @@
  
  3.0.2
  - remove liveleak quality setting (no longer needed)
+ 
+ 3.0.3
+ - add support for handling links sent via:
+      videoUrl = "plugin://plugin.video.reddit_viewer/?mode=play&url=" + URLEncoder.encode(videoUri.toString(), "UTF-8");
+      (custom kore remote)

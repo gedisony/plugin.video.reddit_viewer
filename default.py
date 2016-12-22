@@ -1352,14 +1352,18 @@ def r_linkHunter(json_node,d=0):
             
 
 def parse_url_and_play(url, name, type):
-    from resources.lib.domains import parse_reddit_link, sitesBase, ydtl_get_playable_url
-    log('parse_url_and_play name='+name)
+    from resources.lib.domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
+
+    log('parse_url_and_play url='+url)
     #log('pluginhandle='+str(pluginhandle) )
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     ld=parse_reddit_link(url,True, False, False  )
 
+    DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, url)
+    
     if ld:
-        pass
+        #log('parse_url_and_play:'+DirectoryItem_url)
+        playVideo(DirectoryItem_url,'','')
     else:
         playable_url = ydtl_get_playable_url( url )  #<-- will return a playable_url or a list of playable urls
         #playable_url= '(worked)' + title.ljust(15)[:15] + '... '+ w_url
@@ -1870,7 +1874,8 @@ if __name__ == '__main__':
     #log("HideImagePostsOnVideo:"+str(HideImagePostsOnVideo)+"  setting_hide_images:"+str(setting_hide_images))
     # log("params="+sys.argv[2]+"  ")
     
-    log( "v" + addon.getAddonInfo('version')  + ' ' + ( mode+':'+url if mode else '' ) )
+    log( "----------------v" + addon.getAddonInfo('version')  + ' ' + ( mode+':'+url if mode else '' ) +'-----------------')
+#    log( repr(sys.argv))
 #    log("----------------------")
 #    log("params="+ str(params))
 #    log("mode="+ mode)
