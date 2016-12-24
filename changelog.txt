@@ -195,3 +195,6 @@
  - add support for handling links sent via:
       videoUrl = "plugin://plugin.video.reddit_viewer/?mode=play&url=" + URLEncoder.encode(videoUri.toString(), "UTF-8");
       (custom kore remote)
+      
+ 3.0.4
+ - custom kore remote support 
