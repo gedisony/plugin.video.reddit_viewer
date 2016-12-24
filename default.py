@@ -17,14 +17,17 @@ import xbmcgui
 import xbmcaddon
 import urlparse
 
-import SimpleDownloader
+#import SimpleDownloader
 import requests
 #from email import Message
 
 #this import for the youtube_dl addon causes our addon to start slower. we'll import it when we need to playYTDLVideo   
-modes_that_use_ytdl=['mode=playYTDLVideo','mode=play', 'mode=autoPlay']
-if any(mode in sys.argv[2] for mode in modes_that_use_ytdl):   ##if 'mode=playYTDLVideo' in sys.argv[2] :
-    import YDStreamExtractor      #note: you can't just add this import in code, you need to re-install the addon with <import addon="script.module.youtube.dl"        version="16.521.0"/> in addon.xml
+modes_that_use_ytdl=['mode=playYTDLVideo','mode=play']
+try:
+    if any(mode in sys.argv[2] for mode in modes_that_use_ytdl):   ##if 'mode=playYTDLVideo' in sys.argv[2] :
+        import YDStreamExtractor      #note: you can't just add this import in code, you need to re-install the addon with <import addon="script.module.youtube.dl"        version="16.521.0"/> in addon.xml
+except: 
+    pass
 
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
 from urllib import urlencode
@@ -948,7 +951,7 @@ def autoPlay(url, name, autoPlay_type):
     for title, url in entries:
         listitem = xbmcgui.ListItem(title)
         playlist.add(url, listitem)
-        log('add to playlist: %s %s' %(url, title))
+        log('add to playlist: %s %s' %(title.ljust(25)[:25],url ))
     xbmc.Player().play(playlist)
 
 def autoPlay_type_entries_append( entries, autoPlay_type, title, playable_url):
@@ -1350,43 +1353,99 @@ def r_linkHunter(json_node,d=0):
                 if len(self_text) > 0: #don't post an empty titles
                     harvest.append((score, link_desc, link_http, self_text, self_text_html, d, "t3",author,created_utc,)   )    
             
-
+#This handles the links sent via jsonrpc (i.e.: links sent by kore to kodi by calling) 
+# videoUrl = "plugin://script.reddit.reader/?mode=play&url=" + URLEncoder.encode(videoUri.toString(), "UTF-8");
 def parse_url_and_play(url, name, type):
     from resources.lib.domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
-
+    from resources.lib.domains import viewImage
+    isFolder=False
+    
     log('parse_url_and_play url='+url)
     #log('pluginhandle='+str(pluginhandle) )
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     ld=parse_reddit_link(url,True, False, False  )
 
     DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, url)
+
     
-    if ld:
-        #log('parse_url_and_play:'+DirectoryItem_url)
+
+    if setProperty_IsPlayable=='true':
+        log( '---------IsPlayable---------->'+ DirectoryItem_url)
         playVideo(DirectoryItem_url,'','')
     else:
-        playable_url = ydtl_get_playable_url( url )  #<-- will return a playable_url or a list of playable urls
-        #playable_url= '(worked)' + title.ljust(15)[:15] + '... '+ w_url
-        #work
-        if playable_url:
-            if pluginhandle>0:
-                for u in playable_url: 
-                    
-                    listitem = xbmcgui.ListItem(path=u, label=name)   #plugins play video like this.
-                    xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
-                     
-            else:
-                #log('pluginhandleXXXX name=')
-                #this portion won't work with autoplay (playlist)
-                playlist.clear()
-                if len(playable_url)>1: log('    link has multiple videos'  )
+        if isFolder: #showing album
+            log( '---------ActivateWindow------>'+ DirectoryItem_url)
+            xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
+        else:  #viewing image
+            log( '---------TESTING------------->'+ DirectoryItem_url)
+            #viewImage(DirectoryItem_url,'','' )
+            
+            #error message after picture is displayed, kore remote will be unresponsive
+            #playVideo(DirectoryItem_url,'','')
+            
+            #endless loop. picture windowxml opens after closing, opens again after closing....
+            #xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
+            
+            #log( 'Container.Update(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) )  )
+            #xbmc.executebuiltin('Container.Update(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) ) )
 
-                for u in playable_url:
-                    #self.queue.put( [title, u] )
-                    queueVideo(u, name, type)
-                xbmc.Player().play(playlist)
-        else:
-            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( translation(30192), 'Youtube_dl')  )
+            listitem = xbmcgui.ListItem(path='')
+            listitem.setProperty('IsPlayable', 'false')
+            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+            
+            #DirectoryItem_url=DirectoryItem_url.replace('plugin://', 'script://')
+            #xbmc.executebuiltin('RunScript(script.reddit.reader)' )
+            #xbmc.executebuiltin('RunScript(script.reddit.reader,mode=viewImage&url=%s)' %urllib.quote_plus(url) )
+            #xbmc.executebuiltin('RunPlugin(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) ) )
+            xbmc.executebuiltin('RunPlugin(%s)' % ( DirectoryItem_url ) )
+            
+            
+            
+            
+            #listitem = xbmcgui.ListItem(path=DirectoryItem_url)
+            #listitem.setProperty('IsPlayable', setProperty_IsPlayable) #  'false'
+            #xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+
+
+            
+        #listitem = xbmcgui.ListItem(path=DirectoryItem_url)
+        #listitem.setProperty('IsPlayable', setProperty_IsPlayable)
+        #xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+        
+        #xbmc.executebuiltin('RunPlugin(%s)' %DirectoryItem_url)
+        #xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
+        
+#    if ld:
+#        if setProperty_IsPlayable=='true':
+#            playVideo(DirectoryItem_url,'','')
+#        else:
+#            listitem = xbmcgui.ListItem(path=DirectoryItem_url)
+#            listitem.setProperty('IsPlayable', setProperty_IsPlayable)
+#            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+#
+#    
+#        
+#    else:
+#        playable_url = ydtl_get_playable_url( url )  #<-- will return a playable_url or a list of playable urls
+#        #playable_url= '(worked)' + title.ljust(15)[:15] + '... '+ w_url
+#        #work
+#        if playable_url:
+#            if pluginhandle>0:
+#                for u in playable_url: 
+#                    listitem = xbmcgui.ListItem(path=u, label=name)   #plugins play video like this.
+#                    xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+#            else:
+#                #log('pluginhandleXXXX name=')
+#                #this portion won't work with autoplay (playlist)
+#                playlist.clear()
+#                if len(playable_url)>1: log('    link has multiple videos'  )
+#
+#                for u in playable_url:
+#                    #self.queue.put( [title, u] )
+#                    queueVideo(u, name, type)
+#                xbmc.Player().play(playlist)
+#        else:
+#            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( translation(30192), 'Youtube_dl')  )
     
 
 #MODE queueVideo       -type not used

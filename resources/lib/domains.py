@@ -3208,7 +3208,6 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
     if ld:
         if ld.media_type==sitesBase.TYPE_IMAGE:
             if addon.getSetting("hide_IMG") == "true": return
-            setProperty_IsPlayable='false'
             title_prefix='[IMG]'
             isFolder=False            
             if ld.link_action=='viewTallImage':
@@ -3251,7 +3250,7 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
         DirectoryItem_url=sys.argv[0]\
         +"?url="+ urllib.quote_plus(url) \
         +"&name="+urllib.quote_plus(arg_name) \
-        +"&mode=play" 
+        +"&mode=playYTDLVideo" 
 
     
     return DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix
