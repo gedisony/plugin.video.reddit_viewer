@@ -67,7 +67,6 @@ class sitesBase(object):
     DI_ACTION_PLAYABLE='playable'
     DI_ACTION_YTDL='playYTDLVideo'
     DI_ACTION_URLR='playURLRVideo'
-    REGEX_SPECIAL='special'
     
     def __init__(self, link_url):
         self.media_url=link_url
@@ -3242,6 +3241,31 @@ def viewTallImage(image_url, width, height):
         del useWindow
     except Exception as e:
         log("  EXCEPTION viewTallImage:="+ str( sys.exc_info()[0]) + "  " + str(e) )    
+
+def playURLRVideo(url, name, type):
+
+    from urlparse import urlparse
+    parsed_uri = urlparse( url )
+    domain = '{uri.netloc}'.format(uri=parsed_uri)
+    #log( '-----------------'+ domain +'---------------------- play url resolver  ' + repr(url ))
+
+    #ytdl seems better than urlresolver for getting the playable url...
+    
+    #hmf = urlresolver.HostedMediaFile(url)
+    #log( ' --------------valid_url-----' + repr( hmf.valid_url() )  )
+    
+    try:
+        media_url = urlresolver.resolve(url)
+        if media_url:
+            log( '  URLResolver stream url=' + repr(media_url ))
+            
+            listitem = xbmcgui.ListItem(path=media_url)   
+            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+        else:
+            xbmc.executebuiltin('XBMC.Notification("%s", "%s (URLresolver" )'  %( translation(30192), domain )  )
+    except Exception as e:
+        xbmc.executebuiltin('XBMC.Notification("%s","%s (URLresolver)")' %(  str(e), domain )  )
+    
 
 
 def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='', script_to_call=""):
