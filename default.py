@@ -31,6 +31,9 @@ except:
 
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
 from urllib import urlencode
+
+import urlresolver
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
@@ -879,6 +882,12 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         entries.append( ( translation(30051)+" r/%s" %subreddit , 
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
 
+    #not working...
+    #entries.append( ( translation(30054) , 
+    #                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=playURLResolver&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(media_url) ) ) )
+    #entries.append( ( translation(30054) , 
+    #                  "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=playURLRVideo&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(media_url) ) ) )
+
 
     #favEntry = '<favourite name="'+title+'" url="'+DirectoryItem_url+'" description="'+description+'" thumb="'+iconimage+'" date="'+credate+'" site="'+site+'" />'
     #entries.append((translation(30022), 'RunPlugin(plugin://'+addonID+'/?mode=addToFavs&url='+urllib.quote_plus(favEntry)+'&type='+urllib.quote_plus(subreddit)+')',))
@@ -1016,6 +1025,31 @@ def playVideo(url, name, type):
         xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
     else:
         log("playVideo(url) url is blank")
+
+def playURLRVideo(url, name, type):
+
+    #from urlparse import urlparse
+    #parsed_uri = urlparse( url )
+    #domain = '{uri.netloc}'.format(uri=parsed_uri)
+    #log( '-----------------'+ domain +'---------------------- play url resolver  ' + repr(url ))
+
+    #ytdl seems better than urlresolver for getting the playable url...
+    
+    #hmf = urlresolver.HostedMediaFile(url)
+    #log( ' --------------valid_url-----' + repr( hmf.valid_url() )  )
+    
+    try:
+        media_url = urlresolver.resolve(url)
+        if media_url:
+            log( '  URLResolver stream url=' + repr(media_url ))
+            
+            listitem = xbmcgui.ListItem(path=media_url)   
+            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+        else:
+            xbmc.executebuiltin('XBMC.Notification("%s", "%s (URLresolver" )'  %( translation(30192), domain )  )
+    except Exception as e:
+        xbmc.executebuiltin('XBMC.Notification("%s(URLresolver)","%s")' %(  domain, str(e))  )
+    
         
 def playYTDLVideo(url, name, type):
     #url = "http://www.youtube.com/watch?v=_yVv9dx88x0"   #a youtube ID will work as well and of course you could pass the url of another site
@@ -1097,15 +1131,22 @@ def playYTDLVideo(url, name, type):
     try:
         from resources.lib.domains import ydtl_get_playable_url
         stream_url = ydtl_get_playable_url(url)
-        #log( ' ytdl stream url ' + repr(stream_url ))
-        #if len(stream_url) == 1:
-        #    playVideo(stream_url, name, type)
         
         if stream_url:
             listitem = xbmcgui.ListItem(path=stream_url[0])   #plugins play video like this.
             xbmcplugin.setResolvedUrl(pluginhandle, True, listitem) 
         else:
-            xbmc.executebuiltin('XBMC.Notification("%s", "%s (YTDL)" )'  %( translation(30192), domain )  )  
+            log('YTDL Unable to get playable URL, Trying UrlResolver...' )  
+
+            #ytdl seems better than urlresolver for getting the playable url...
+            media_url = urlresolver.resolve(url)
+            if media_url:
+                #log( '------------------------------------------------urlresolver stream url ' + repr(media_url ))
+                listitem = xbmcgui.ListItem(path=media_url)   
+                xbmcplugin.setResolvedUrl(pluginhandle, True, listitem) 
+            else:    
+                log('UrlResolver cannot get a playable url' )  
+                xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( translation(30192), domain )  )
     
     except Exception as e:
         xbmc.executebuiltin('XBMC.Notification("%s(YTDL)","%s")' %(  domain, str(e))  )
@@ -1933,7 +1974,7 @@ if __name__ == '__main__':
     #log("HideImagePostsOnVideo:"+str(HideImagePostsOnVideo)+"  setting_hide_images:"+str(setting_hide_images))
     # log("params="+sys.argv[2]+"  ")
     
-    log( "----------------v" + addon.getAddonInfo('version')  + ' ' + ( mode+':'+url if mode else '' ) +'-----------------')
+    log( "----------------v" + addon.getAddonInfo('version')  + ' ' + ( mode+': '+url if mode else '' ) +'-----------------')
 #    log( repr(sys.argv))
 #    log("----------------------")
 #    log("params="+ str(params))
@@ -1974,6 +2015,7 @@ if __name__ == '__main__':
                     ,'listLinksInComment'   : listLinksInComment
 #                    ,'playVineVideo'        : playVineVideo
                     ,'playYTDLVideo'        : playYTDLVideo
+                    ,'playURLRVideo'        : playURLRVideo
 #                    ,'playVidmeVideo'       : playVidmeVideo
 #                    ,'listTumblrAlbum'      : listTumblrAlbum
 #                    ,'playStreamable'       : playStreamable

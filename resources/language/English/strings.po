@@ -101,6 +101,10 @@ msgctxt "#30053"
 msgid "No comments"
 msgstr ""
 
+msgctxt "#30054"
+msgid "play using URLResolver"
+msgstr ""
+
 
 #begin strings used in pretty date to indicate how long ago a post is posted (keep these strings short and similar length) 
 msgctxt "#30060"

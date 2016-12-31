@@ -11,6 +11,7 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 #sys.setdefaultencoding("utf-8")
+import urlresolver
 
 from default import addon, addonID, streamable_quality   #,addon_path,pluginhandle,addonID
 from default import log, translation
@@ -65,6 +66,8 @@ class sitesBase(object):
     TYPE_REDDIT='reddit'
     DI_ACTION_PLAYABLE='playable'
     DI_ACTION_YTDL='playYTDLVideo'
+    DI_ACTION_URLR='playURLRVideo'
+    REGEX_SPECIAL='special'
     
     def __init__(self, link_url):
         self.media_url=link_url
@@ -216,7 +219,7 @@ class sitesBase(object):
 """
 
 class ClassYoutube(sitesBase):      
-    regex='(youtube.com/)|(youtu.be/)'      
+    regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)'      
     video_id=''
     
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
@@ -2772,7 +2775,36 @@ class genericVideo(sitesBase):
     def get_thumb_url(self):
         pass
 
-    def get_playable_url(self, media_url, is_probably_a_video):
+    def get_playable(self, media_url='', is_probably_a_video=False ):
+        if not media_url:
+            media_url=self.media_url
+
+        #check if video is urlresolver supported 
+        if urlresolver.HostedMediaFile(media_url).valid_url():
+            self.link_action=sitesBase.DI_ACTION_URLR   
+            return media_url, sitesBase.TYPE_VIDEO
+        
+        #we don't resolve the urlresolver links. some sites (openload.co) opens a dialog to pair.   
+#        resolved_url = urlresolver.resolve(media_url)
+#        if resolved_url:
+#            log( ' ---urlresolved_url-----' + repr( resolved_url )  )
+#            self.link_action=sitesBase.DI_ACTION_PLAYABLE
+#            return resolved_url, sitesBase.TYPE_VIDEO
+            
+        filename,ext=parse_filename_and_ext_from_url(media_url)
+        if ext in ["mp4","webm"]:
+            self.link_action=self.DI_ACTION_PLAYABLE
+            return self.media_url,self.TYPE_VIDEO
+
+        if ext in image_exts:  #excludes .gif
+            self.thumb_url=media_url
+            self.poster_url=self.thumb_url
+            return self.media_url,self.TYPE_IMAGE
+
+        return self.get_playable_url(self.media_url, is_probably_a_video=False )
+    
+
+    def get_playable_url(self, link_url, is_probably_a_video):
         pass
 
     
@@ -2832,6 +2864,19 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
             return ld
             
         else:
+            #check if video is urlresolver supported 
+            if urlresolver.HostedMediaFile(link_url).valid_url():
+                #log( ' ---urlresolver valid_url-----'   )
+                #    we don't resolve the urlresolver links. some sites (openload.co) opens a dialog and that's annoying when directory listing     
+                #    resolved_url = urlresolver.resolve(media_url)
+                #    if resolved_url:
+                #        log( ' ---urlresolved_url-----' + repr( resolved_url )  )
+                #        self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                #        return resolved_url, sitesBase.TYPE_VIDEO
+
+                ld=LinkDetails(sitesBase.TYPE_VIDEO, sitesBase.DI_ACTION_URLR, link_url, '', '')
+                return ld
+            
             if False: #resolve_undetermined:  (abandoned, too slow)
                 log('sending undetermined link to ytdl...')
                 media_url=ydtl_get_playable_url(link_url)
