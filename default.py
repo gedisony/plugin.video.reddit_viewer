@@ -145,7 +145,6 @@ if not os.path.isdir(addonUserDataFolder):
 #if not os.path.isdir(SlideshowCacheFolder):
 #    os.mkdir(SlideshowCacheFolder)
 
-allHosterQuery = urllib.quote_plus("site:youtu.be OR site:youtube.com OR site:vimeo.com OR site:liveleak.com OR site:dailymotion.com OR site:gfycat.com")
 if os.path.exists(nsfwFile):
     nsfw = ""
 else:
@@ -573,6 +572,11 @@ def listSubReddit(url, name, subreddit_key):
 
     currentUrl = url
     xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
+
+    dialog_progress = xbmcgui.DialogProgressBG()
+    dialog_progress_heading='Loading'
+    dialog_progress.create(dialog_progress_heading )
+    dialog_progress.update(0,dialog_progress_heading, subreddit_key  )
         
     content = reddit_request(url)        
     
@@ -709,6 +713,10 @@ def listSubReddit(url, name, subreddit_key):
             #if show_listVideos_debug :log("       HOSTER"+str(idx)+"="+hoster)
             #log("    VIDEOID"+str(idx)+"="+videoID)
             #log( "["+description+"]1["+ str(date)+"]2["+ str( count)+"]3["+ str( commentsUrl)+"]4["+ str( subreddit)+"]5["+ video_url +"]6["+ str( over_18))+"]"
+
+            loading_percentage=int((float(idx)/posts_count)*100)
+            dialog_progress.update( loading_percentage,dialog_progress_heading, title  )
+            
             addLink(title=title, 
                     title_line2=title_line2,
                     iconimage=thumb, 
@@ -735,6 +743,8 @@ def listSubReddit(url, name, subreddit_key):
     #log("**reddit query returned "+ str(idx) +" items")
     #window = xbmcgui.Window(xbmcgui.getCurrentWindowId())
     #log("focusid:"+str(window.getFocusId()))
+    dialog_progress.update( 100,dialog_progress_heading  )
+    dialog_progress.close() #it is important to close xbmcgui.DialogProgressBG
 
     try:
         #this part makes sure that you load the next page instead of just the first
@@ -1070,7 +1080,7 @@ def playYTDLVideo(url, name, type):
 #ytdl plays this fine but no video?
 #coub.com
 
-#supported but is an audio only site 
+#supported but is an audio only site
 #acast.com AudioBoom.com audiomack.com bandcamp.com clyp.it democracynow.org? freesound.org hark.com hearthis.at hypem.com libsyn.com mixcloud.com
 #Minhateca.com.br(direct mp3) 
 
@@ -1103,19 +1113,26 @@ def playYTDLVideo(url, name, type):
     parsed_uri = urlparse( url )
     domain = '{uri.netloc}'.format(uri=parsed_uri)
 
+    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
+    dialog_progress_YTDL.create('YTDL' )
+    dialog_progress_YTDL.update(10,'YTDL','Checking link...' )
+
     try:
         from resources.lib.domains import ydtl_get_playable_url
         stream_url = ydtl_get_playable_url(url)
         
         if stream_url:
+            dialog_progress_YTDL.update(80,'YTDL', 'Playing' )
             listitem = xbmcgui.ListItem(path=stream_url[0])   #plugins play video like this.
             xbmcplugin.setResolvedUrl(pluginhandle, True, listitem) 
         else:
+            dialog_progress_YTDL.update(40,'YTDL', 'Trying URLResolver' )
             log('YTDL Unable to get playable URL, Trying UrlResolver...' )  
 
             #ytdl seems better than urlresolver for getting the playable url...
             media_url = urlresolver.resolve(url)
             if media_url:
+                dialog_progress_YTDL.update(88,'YTDL', 'Playing' )
                 #log( '------------------------------------------------urlresolver stream url ' + repr(media_url ))
                 listitem = xbmcgui.ListItem(path=media_url)   
                 xbmcplugin.setResolvedUrl(pluginhandle, True, listitem) 
@@ -1125,6 +1142,11 @@ def playYTDLVideo(url, name, type):
     
     except Exception as e:
         xbmc.executebuiltin('XBMC.Notification("%s(YTDL)","%s")' %(  domain, str(e))  )
+    finally:
+        dialog_progress_YTDL.update(100,'YTDL' ) #not sure if necessary to set to 100 before closing dialogprogressbg
+        dialog_progress_YTDL.close()
+
+
 
 def listLinksInComment(url, name, type):
     from resources.lib.domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
@@ -1510,18 +1532,6 @@ def searchReddits(url, name, type):
 def translation(id):
     return addon.getLocalizedString(id).encode('utf-8')
 
-def cleanTitle(title):
-        title = title.replace("&lt;","<").replace("&gt;",">").replace("&amp;","&").replace("&#039;","'").replace("&quot;","\"")
-        return title.strip()
-#MODE openSettings     --name, type not used
-def openSettings(id, name,type):
-    if id=="youtube":
-        addonY = xbmcaddon.Addon(id='plugin.video.youtube')
-    elif id=="vimeo":
-        addonY = xbmcaddon.Addon(id='plugin.video.vimeo')
-    elif id=="dailymotion":
-        addonY = xbmcaddon.Addon(id='plugin.video.dailymotion_com')
-    addonY.openSettings()
 #MODE toggleNSFW     -- url, name, type not uised
 def toggleNSFW(url, name, type):
 #when you toggle the show nsfw in addon setting, the plugin is called and this function handles the dialog box
@@ -1644,25 +1654,6 @@ def pretty_datediff(dt1, dt2):
     except:
         pass
 
-
-
-
-def playSlideshow(url, name, type):
-    #url='d:\\aa\\lego_fusion_beach1.jpg'
-
-    #download_file=download_file.replace(r"\\",r"\\\\")
-
-    #addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
-    #i cannot get this to work reliably...
-    #xbmc.executeJSONRPC('{"jsonrpc":"2.0","id":"1","method":"Player.Open","params":{"item":{"directory":"%s"}}}' %(addonUserDataFolder) )
-    #xbmc.executeJSONRPC('{"jsonrpc":"2.0","id":"1","method":"Player.Open","params":{"item":{"directory":"%s"}}}' %(r"d:\\aa\\") )
-    #xbmc.executeJSONRPC('{"jsonrpc":"2.0","id":"1","method":"Player.Open","params":{"item":{"file":"%s"}}}' %(download_file) )
-    #return
-
-    #whis won't work if addon is a video add-on
-    #xbmc.executebuiltin("XBMC.SlideShow(" + SlideshowCacheFolder + ")")
-
-    return
 
 def reddit_request( url ):
     #log( "  reddit_request " + url )

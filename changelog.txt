@@ -201,3 +201,6 @@
  
  3.0.5
  - add URLResolver to check links
+ 
+ 3.0.6
+ - add loading indicator
