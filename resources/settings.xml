@@ -28,6 +28,8 @@
         <setting id="hide_undetermined"    type="bool" label="30304" default="false"/>
         <!-- setting id="resolve_undetermined" type="bool" label="30305" default="false"/-->
         <setting id="use_ytdl_for_yt"      type="bool" label="30350" default="false"/>
+        <setting type="sep" />
+        <setting id="repeat_gif_video"     type="enum" label="30351" values="0|1|3|10|100" default="0"/>
     </category>
 
     <!-- category label="30150">

@@ -914,11 +914,13 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     return ok
 
 def autoPlay(url, name, autoPlay_type):
-    from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
+    from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type, setting_gif_repeat_count
     from resources.lib.utils import unescape
     #collect a list of title and urls as entries[] from the j_entries obtained from reddit
     #then create a playlist from those entries
     #then play the playlist
+
+    gif_repeat_count=setting_gif_repeat_count()
 
     entries = []
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
@@ -948,13 +950,16 @@ def autoPlay(url, name, autoPlay_type):
             #hoster, DirectoryItem_url, videoID, mode_type, thumb_url,poster_url, isFolder,setInfo_type, IsPlayable=make_addon_url_from(media_url,is_a_video)
             ld=parse_reddit_link(link_url=media_url, assume_is_video=False, needs_preview=False, get_playable_url=True )
 
-            DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, title)
+            DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, title, on_autoplay=True)
 
             if ld:
-                if ld.media_type not in [sitesBase.TYPE_VIDEO, sitesBase.TYPE_VIDS, sitesBase.TYPE_MIXED]:
+                if ld.media_type not in [sitesBase.TYPE_VIDEO, sitesBase.TYPE_GIF, sitesBase.TYPE_VIDS, sitesBase.TYPE_MIXED]:
                     continue
 
             autoPlay_type_entries_append( entries, autoPlay_type, title, DirectoryItem_url)
+            if ld.media_type == sitesBase.TYPE_GIF:
+                for x in range( 0, gif_repeat_count ):
+                    autoPlay_type_entries_append( entries, autoPlay_type, title, DirectoryItem_url)
                             
         except Exception as e:
             log("  EXCEPTION Autoplay "+ str( sys.exc_info()[0]) + "  " + str(e) )
@@ -1946,7 +1951,7 @@ if __name__ == '__main__':
 #    log("pluginhandle:" + str(pluginhandle) )
 #    log("-----------------------")
 
-    from resources.lib.domains import viewImage, listAlbum, viewTallImage, playURLRVideo
+    from resources.lib.domains import viewImage, listAlbum, viewTallImage, playURLRVideo, loopedPlayback
     from resources.lib.slideshow import autoSlideshow
     from resources.lib.converthtml import readHTML
     
@@ -1977,6 +1982,7 @@ if __name__ == '__main__':
 #                    ,'playVineVideo'        : playVineVideo
                     ,'playYTDLVideo'        : playYTDLVideo
                     ,'playURLRVideo'        : playURLRVideo
+                    ,'loopedPlayback'       : loopedPlayback
 #                    ,'playVidmeVideo'       : playVidmeVideo
 #                    ,'listTumblrAlbum'      : listTumblrAlbum
 #                    ,'playStreamable'       : playStreamable

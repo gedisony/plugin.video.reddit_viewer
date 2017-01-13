@@ -204,3 +204,6 @@
  
  3.0.6
  - add loading indicator
+ 
+ 3.0.7
+ - add option to repeat gif playback
