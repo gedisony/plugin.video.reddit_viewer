@@ -108,6 +108,8 @@ TitleAddtlInfo        = addon.getSetting("TitleAddtlInfo") == "true"   #Show add
 HideImagePostsOnVideo = addon.getSetting("HideImagePostsOnVideo") == 'true' #<string id="30204">Hide image posts on video addon</string>
 setting_hide_images = False
 
+DoNotResolveLinks     = addon.getSetting("DoNotResolveLinks") == 'true'
+
 # searchSort = int(addon.getSetting("searchSort"))
 # searchSort = ["ask", "relevance", "new", "hot", "top", "comments"][searchSort]
 # searchTime = int(addon.getSetting("searchTime"))
@@ -475,7 +477,7 @@ def index(url,name,type):
         fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
         #fh.write('SlowMotion+timelapse+PerfectTiming\n')
         fh.write('all\n')
-        fh.write('aww+funny+Nickelodeons\n')
+        fh.write('gametrailers+tvtrailers+trailers\n')
         fh.write('music+listentothis+musicvideos\n')
         fh.write('site:youtube.com\n')
         fh.write('videos\n')
@@ -601,10 +603,13 @@ def listSubReddit(url, name, subreddit_key):
         try:
             title = unescape(entry['data']['title'].encode('utf-8'))
             
-            try:
-                description = unescape(entry['data']['media']['oembed']['description'].encode('utf-8'))
-            except:
-                description = ' '
+            try:    description = unescape(entry['data']['media']['oembed']['description'].encode('utf-8'))
+            except: description = ''
+            #log('    description  [%s]' %description)
+            try:    post_selftext=unescape(entry['data']['selftext'].encode('utf-8'))
+            except: post_selftext=''
+            
+            description=post_selftext+'[CR]'+description if post_selftext else description
                 
             commentsUrl = urlMain+entry['data']['permalink'].encode('utf-8')
             #if show_listVideos_debug :log("commentsUrl"+str(idx)+"="+commentsUrl)
@@ -834,33 +839,39 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     else:            needs_preview=True  #reddit has no thumbnail for this link. please get one
 
     #DirectoryItem_url=sys.argv[0]+"?url="+ urllib.quote_plus(media_url) +"&mode=play"
-
-    ld=parse_reddit_link(media_url,reddit_says_is_video, needs_preview, False, preview_ar  )
     
-    queried_preview_image=ld.poster if ld else iconimage
-    if previewimage=="":
-       previewimage=queried_preview_image
+    if DoNotResolveLinks:
+        ld=None
+        DirectoryItem_url=sys.argv[0]\
+            +"?url="+ urllib.quote_plus(media_url) \
+            +"&name="+urllib.quote_plus(title) \
+            +"&mode=play"
+        setProperty_IsPlayable='true'
+        isFolder=False
+        title_prefix=''
+    else:
+        ld=parse_reddit_link(media_url,reddit_says_is_video, needs_preview, False, preview_ar  )
+    
+        queried_preview_image=ld.poster if ld else iconimage
+        if previewimage=="":
+           previewimage=queried_preview_image
+    
+        arg_name=title
+        arg_type=previewimage
+        if ld:
+            #log('    ' + ld.media_type + ' -> ' + ld.link_action )
+            if iconimage in ["","nsfw", "default"]: iconimage=ld.thumb
+    
+        DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, arg_name, arg_type, script_to_call="")
 
-    liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
-
-    arg_name=title
-    arg_type=previewimage
-    if ld:
-        #log('    ' + ld.media_type + ' -> ' + ld.link_action )
-        if iconimage in ["","nsfw", "default"]: iconimage=ld.thumb
-
-        if ld.link_action=='viewTallImage':
-            arg_name=str(preview_w)
-            arg_type=str(preview_h)
-
-    DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, arg_name, arg_type, script_to_call="")
-
+    
     if title_prefix:
         liz.setLabel( title_prefix+' '+post_title )
 
     liz.setProperty('IsPlayable', setProperty_IsPlayable)
     liz.setInfo('video', {"title": liz.getLabel(), } )
     
+    liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
         
     entries = [] #entries for listbox for when you type 'c' or rt-click 
     if num_comments > 0:            
@@ -1417,10 +1428,10 @@ def parse_url_and_play(url, name, type):
         playVideo(DirectoryItem_url,'','')
     else:
         if isFolder: #showing album
-            log( '---------ActivateWindow------>'+ DirectoryItem_url)
+            log( '---------using ActivateWindow------>'+ DirectoryItem_url)
             xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
         else:  #viewing image
-            log( '---------TESTING------------->'+ DirectoryItem_url)
+            log( '---------using setResolvedUrl------>'+ DirectoryItem_url)
             #viewImage(DirectoryItem_url,'','' )
             
             #error message after picture is displayed, kore remote will be unresponsive

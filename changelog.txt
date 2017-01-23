@@ -207,3 +207,6 @@
  
  3.0.7
  - add option to repeat gif playback
+ 
+ 3.0.8
+ - add option to resolve links only when clicked (faster listing but boggy image viewing)

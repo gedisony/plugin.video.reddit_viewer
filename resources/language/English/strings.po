@@ -253,6 +253,15 @@ msgctxt "#30110"
 msgid "ViewID for comments (0 for default)"
 msgstr ""
 
+msgctxt "#30111"
+msgid "Resolve links only when clicked (faster listing)"
+msgstr ""
+
+msgctxt "#30112"
+msgid "Subreddits will list faster but viewing images will be buggy"
+msgstr ""
+
+
 #30110-30119 empty
 
 #setting category
