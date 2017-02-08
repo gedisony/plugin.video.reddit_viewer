@@ -9,7 +9,7 @@ Reddit is a social news and entertainment website. It is organized into areas of
 - Read user comments
 
 ##Modified Kore remote
-- Send any links to reddit viewer plugin
+- Send any links to kodi from your android phone
 - Watch media supported by reddit viewer
 - No longer limited to youtube and vimeo
 
