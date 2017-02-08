@@ -9,7 +9,7 @@ Reddit is a social news and entertainment website. It is organized into areas of
 - Read user comments
 
 ##Modified Kore remote
-Use the modified kore remote to send any links to your android phone and have reddit_viewer parse the link.
+Use the modified kore remote to send any links from your android phone to kodi and have reddit_viewer resolve the link.
 - Watch media supported by reddit viewer
 - No longer limited to youtube and vimeo
 
