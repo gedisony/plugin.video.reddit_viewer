@@ -16,13 +16,13 @@
 				could not figure out how to detect when original image still loading. 
 				  Attempt a different method by Hiding the thumbnail image after list changes focus. 
 				  it works but it is hard to guess proper the delay -how long the original image finishes loading. 
-				    -->
+				    
 				<control type="image" id="200">
 					<visible>!Container(53).OnNext + !Container(53).OnPrevious</visible>
 					<aspectratio scalediffuse="true" aligny="center">keep</aspectratio>
 					<texture>$INFO[Container(53).ListItem.Art(thumb)]</texture>
-					<!-- animation effect="fade" start="100" end="0" time="1000" delay="0" tween="back" easing="in">visible</animation-->
-				</control>
+					<!-- animation effect="fade" start="100" end="0" time="1000" delay="0" tween="back" easing="in">visible</animation>
+				</control-->
 
 		        <control type="image">
 		        	<top>-100</top>

@@ -360,7 +360,7 @@ msgid "Hide posts by subreddit (separate by comma)"
 msgstr ""
 
 msgctxt "#30308"
-msgid "Enable/disable NSFW content"
+msgid "Hide posts marked as NSFW"
 msgstr ""
 
 msgctxt "#30350"

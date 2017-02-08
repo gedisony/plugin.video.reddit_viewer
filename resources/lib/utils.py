@@ -4,7 +4,7 @@ import re, htmlentitydefs
 import time
 from urllib import urlencode
 
-from default import log, translation, urlMain, nsfw, itemsPerPage, addonID, subredditsFile
+from default import log, translation, urlMain, itemsPerPage, addonID, subredditsFile
 
 DATEFORMAT = xbmc.getRegion('dateshort')
 TIMEFORMAT = xbmc.getRegion('meridiem')
@@ -210,8 +210,6 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
             url+= "/.json?"
             pass            
 
-    url+= "&"+nsfw       #nsfw = "nsfw:no+"
-    
     url += "&limit="+str(itemsPerPage)
     #url += "&limit=12"
     #log("assemble_reddit_filter_string="+url)
@@ -389,6 +387,28 @@ def post_excluded_from( filter, str_to_check):
         #log( '    exclude filter:' +str(filter_list))
         if str_to_check.lower() in filter_list:
             return True
+    return False
+
+def post_is_filtered_out( entry ):
+    from default import hide_nsfw, domain_filter, subreddit_filter
+
+    domain=entry['data']['domain'].encode('utf-8')
+    if post_excluded_from( domain_filter, domain ):
+        log( '  POST is excluded by domain_filter [%s]' %domain )
+        return True
+    
+    subreddit=entry['data']['subreddit'].encode('utf-8')
+    if post_excluded_from( subreddit_filter, subreddit ):
+        log( '  POST is excluded by subreddit_filter [r/%s]' %subreddit )
+        return True
+
+    try:    over_18 = entry['data']['over_18']
+    except: over_18 = False
+
+    if over_18 and hide_nsfw:
+        log( '  POST is excluded by NSFW filter'  )
+        return True
+    
     return False
 
 def prettify_reddit_query(subreddit_entry):

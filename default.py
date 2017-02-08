@@ -98,6 +98,7 @@ album_viewMode       = str(addon.getSetting("album_viewMode"))
 #hide_video            = addon.getSetting("hide_video") == "true"
 #resolve_undetermined  = addon.getSetting("resolve_undetermined") == "true"
 
+hide_nsfw            = addon.getSetting("hide_nsfw") == "true"
 domain_filter        = addon.getSetting("domain_filter")
 subreddit_filter     = addon.getSetting("subreddit_filter")
 
@@ -140,7 +141,6 @@ streamable_quality  =["full", "mobile"][istreamable_quality]       #https://stre
 
 addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
 subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
-nsfwFile            = xbmc.translatePath("special://profile/addon_data/"+addonID+"/nsfw")
 
 #C:\Users\myusername\AppData\Roaming\Kodi\userdata\addon_data\plugin.video.reddit_viewer
 #SlideshowCacheFolder    = xbmc.translatePath("special://profile/addon_data/"+addonID+"/slideshowcache") #will use this to cache images for slideshow in video mode
@@ -150,13 +150,6 @@ if not os.path.isdir(addonUserDataFolder):
 
 #if not os.path.isdir(SlideshowCacheFolder):
 #    os.mkdir(SlideshowCacheFolder)
-
-if os.path.exists(nsfwFile):
-    nsfw = ""
-else:
-    nsfw = "nsfw:no+"
-
-
 
 def json_query(query, ret):
     try:
@@ -380,8 +373,6 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
             url+= "/search.json?q=" + urllib.quote_plus(site_filter)
             #url += urllib.quote_plus(site_filter)
 
-    url+= "&"+nsfw       #nsfw = "nsfw:no+"
-    
     url += "&limit="+str(itemsPerPage)
     #url += "&limit=12"
     #log("assemble_reddit_filter_string="+url)
@@ -553,9 +544,8 @@ def index(url,name,type):
     
     xbmcplugin.endOfDirectory(pluginhandle)
 
-
 def listSubReddit(url, name, subreddit_key):
-    from resources.lib.utils import unescape, pretty_datediff, post_excluded_from
+    from resources.lib.utils import unescape, pretty_datediff, post_is_filtered_out
     #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
     #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
     #url='https://www.reddit.com/search.json?q=site%3A4tube&sort=relevance&t=all'
@@ -605,6 +595,9 @@ def listSubReddit(url, name, subreddit_key):
     
     for idx, entry in enumerate(content['data']['children']):
         try:
+            if post_is_filtered_out( entry ):
+                continue
+            
             title = unescape(entry['data']['title'].encode('utf-8'))
             
             try:    description = unescape(entry['data']['media']['oembed']['description'].encode('utf-8'))
@@ -638,10 +631,6 @@ def listSubReddit(url, name, subreddit_key):
 
             subreddit=entry['data']['subreddit'].encode('utf-8')
             #if show_listVideos_debug :log("  SUBREDDIT"+str(idx)+"="+subreddit)
-            if post_excluded_from( subreddit_filter, subreddit ):
-                log( '    [r/%s] excluded by subreddit_filter' %subreddit )
-                continue;
-            
             
             try: author = entry['data']['author'].encode('utf-8')
             except: author = ""
@@ -650,9 +639,6 @@ def listSubReddit(url, name, subreddit_key):
             try: domain= entry['data']['domain'].encode('utf-8')
             except: domain = ""
             #log("     DOMAIN%.2d=%s" %(idx,domain))
-            if post_excluded_from( domain_filter, domain ):
-                log( '    [%s] excluded by domain_filter' %domain )
-                continue;
             
             ups = entry['data']['score']       #downs not used anymore
             try:num_comments = entry['data']['num_comments']
@@ -934,7 +920,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
 def autoPlay(url, name, autoPlay_type):
     from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type, setting_gif_repeat_count
-    from resources.lib.utils import unescape, post_excluded_from
+    from resources.lib.utils import unescape, post_is_filtered_out
     #collect a list of title and urls as entries[] from the j_entries obtained from reddit
     #then create a playlist from those entries
     #then play the playlist
@@ -954,24 +940,15 @@ def autoPlay(url, name, autoPlay_type):
     
     for j_entry in content['data']['children']:
         try:
+            if post_is_filtered_out( j_entry ):
+                continue
+
             title = unescape(j_entry['data']['title'].encode('utf-8'))
 
             try:
                 media_url = j_entry['data']['url']
             except:
                 media_url = j_entry['data']['media']['oembed']['url']
-
-
-            subreddit=j_entry['data']['subreddit'].encode('utf-8')
-            if post_excluded_from( subreddit_filter, subreddit ):
-                log( '    [r/%s] excluded by subreddit_filter' %subreddit )
-                continue;
-            
-            try: domain=j_entry['data']['domain'].encode('utf-8')
-            except: domain = ""
-            if post_excluded_from( domain_filter, domain ):
-                log( '    [%s] excluded by domain_filter' %domain )
-                continue;
 
             is_a_video = determine_if_video_media_from_reddit_json(j_entry) 
 
@@ -1564,20 +1541,6 @@ def searchReddits(url, name, type):
 def translation(id):
     return addon.getLocalizedString(id).encode('utf-8')
 
-#MODE toggleNSFW     -- url, name, type not uised
-def toggleNSFW(url, name, type):
-#when you toggle the show nsfw in addon setting, the plugin is called and this function handles the dialog box
-    if os.path.exists(nsfwFile):
-        dialog = xbmcgui.Dialog()
-        if dialog.yesno(translation(30187), translation(30189)):
-            os.remove(nsfwFile)
-    else:
-        dialog = xbmcgui.Dialog()
-        if dialog.yesno(translation(30188), translation(30190)+"\n"+translation(30191)):
-            fh = open(nsfwFile, 'w')
-            fh.write("")
-            fh.close()
-
 def parameters_string_to_dict(parameters):
     paramDict = {}
     if parameters:
@@ -1689,9 +1652,9 @@ def reddit_request( url ):
                 
                 except urllib2.HTTPError, err:
                     xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
-                    log( err.reason )         
+                    log( err.msg )         
                 except urllib2.URLError, err:
-                    log( err.reason ) 
+                    log( err.msg ) 
             else:
                 log( "*** failed to get new access token - don't know what to do " )
 
@@ -1699,8 +1662,8 @@ def reddit_request( url ):
         xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
         log( err.reason )         
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
-        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
-        log( err.reason ) 
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.msg, url)  )
+        log( err.msg ) 
     
         
 def reddit_get_refresh_token(url, name, type):
@@ -1951,9 +1914,6 @@ if __name__ == '__main__':
     plugin_modes = {'index'                 : index
                     ,'listSubReddit'        : listSubReddit
                     ,'playVideo'            : playVideo           
-#                    ,'playLiveLeakVideo'    : playLiveLeakVideo  
-#                    ,'playGfycatVideo'      : playGfycatVideo   
-#                    ,'downloadLiveLeakVideo': downloadLiveLeakVideo
                     ,'addSubreddit'         : addSubreddit         
                     ,'editSubreddit'        : editSubreddit         
                     ,'removeSubreddit'      : removeSubreddit      
@@ -1966,11 +1926,7 @@ if __name__ == '__main__':
 #                    ,'removeFromFavs'       : removeFromFavs
 #                    ,'searchReddits'        : searchReddits          
 #                    ,'openSettings'         : openSettings        
-#                    ,'toggleNSFW'           : toggleNSFW 
-#                    ,'listImgurAlbum'       : listImgurAlbum    
-#                    ,'playSlideshow'        : playSlideshow
                     ,'listLinksInComment'   : listLinksInComment
-#                    ,'playVineVideo'        : playVineVideo
                     ,'playYTDLVideo'        : playYTDLVideo
                     ,'playURLRVideo'        : playURLRVideo
                     ,'loopedPlayback'       : loopedPlayback

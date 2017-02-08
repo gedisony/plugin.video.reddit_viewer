@@ -33,7 +33,7 @@
         <!-- setting id="resolve_undetermined" type="bool" label="30305" default="false"/-->
 
         <setting type="sep" />
-        <setting label="30308"              type="action" action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=toggleNSFW)"/>
+        <setting id="hide_nsfw"             type="bool" label="30308" default="true"/>
     	<setting id="domain_filter"         type="text" label="30306" default=""/>
         <setting id="subreddit_filter"      type="text" label="30307" default=""/>
     </category>

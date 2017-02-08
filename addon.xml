@@ -2,7 +2,7 @@
 <addon
     id="plugin.video.reddit_viewer"
     name="Reddit Viewer"
-    version="3.0.9"
+    version="3.1.0"
     provider-name="gedisony">
     <requires>
         <import addon="xbmc.python"                     version="2.14.0"                />
@@ -31,7 +31,7 @@
 		<disclaimer>This add-on is not published nor endorsed by reddit inc.</disclaimer>
 		<assets>
 			<icon>icon.png</icon>
-			<fanart>resources/rv_fanart.jpg</fanart>
+			<fanart>resources/r_fanart.jpg</fanart>
 		</assets>		
     </extension>
 </addon>

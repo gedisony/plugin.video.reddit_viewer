@@ -215,3 +215,8 @@
  - add fanart
  - rearrange settings
  - add option to hide posts by domain or subreddit
+ 
+ 3.1.0
+ - update fanart
+ - fix nsfw filter
+ - remove thumbnail preview on view_450_slideshow
