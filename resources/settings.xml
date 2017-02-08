@@ -11,7 +11,8 @@
     	<setting id="CommentTreshold"       type="select" label="30106" values="All|0|5|10|50|100"/>
         <setting id="comments_viewMode"     type="number" label="30110" default="0"/-->
         <setting type="sep" />
-        <setting label="30107"              type="action" action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=toggleNSFW)"/>
+        <setting id="use_ytdl_for_yt"      type="bool" label="30350" default="false"/>
+        <setting id="repeat_gif_video"     type="enum" label="30351" values="0|1|3|10|100" default="0"/>
         <setting type="sep" />
     	<setting id="album_viewMode"        type="number" label="30105" default="0"/>
         <setting id="forceViewMode"         type="bool"   label="30108" default="false"/>
@@ -30,9 +31,11 @@
         <setting id="hide_reddit"          type="bool" label="30303" default="false"/>
         <setting id="hide_undetermined"    type="bool" label="30304" default="false"/>
         <!-- setting id="resolve_undetermined" type="bool" label="30305" default="false"/-->
-        <setting id="use_ytdl_for_yt"      type="bool" label="30350" default="false"/>
+
         <setting type="sep" />
-        <setting id="repeat_gif_video"     type="enum" label="30351" values="0|1|3|10|100" default="0"/>
+        <setting label="30308"              type="action" action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=toggleNSFW)"/>
+    	<setting id="domain_filter"         type="text" label="30306" default=""/>
+        <setting id="subreddit_filter"      type="text" label="30307" default=""/>
     </category>
 
     <!-- category label="30150">

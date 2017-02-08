@@ -237,10 +237,6 @@ msgctxt "#30106"
 msgid "Comments threshold"
 msgstr ""
 
-msgctxt "#30107"
-msgid "Enable/disable NSFW content"
-msgstr ""
-
 msgctxt "#30108"
 msgid "Force View"
 msgstr ""
@@ -261,8 +257,6 @@ msgctxt "#30112"
 msgid "Subreddits will list faster but viewing images will be buggy"
 msgstr ""
 
-
-#30110-30119 empty
 
 #setting category
 msgctxt "#30120"
@@ -334,7 +328,7 @@ msgstr ""
 
 # settings category
 msgctxt "#30300"
-msgid "Links"
+msgid "Filters"
 msgstr ""
 
 msgctxt "#30301"
@@ -357,6 +351,17 @@ msgctxt "#30305"
 msgid "Check all links for playable video (slower)"
 msgstr ""
 
+msgctxt "#30306"
+msgid "Hide posts by domain (separate by comma)"
+msgstr ""
+
+msgctxt "#30307"
+msgid "Hide posts by subreddit (separate by comma)"
+msgstr ""
+
+msgctxt "#30308"
+msgid "Enable/disable NSFW content"
+msgstr ""
 
 msgctxt "#30350"
 msgid "Use youtube_dl add-on for Youtube videos"

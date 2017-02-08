@@ -210,3 +210,8 @@
  
  3.0.8
  - add option to resolve links only when clicked (faster listing but boggy image viewing)
+ 
+ 3.0.9
+ - add fanart
+ - rearrange settings
+ - add option to hide posts by domain or subreddit

@@ -91,11 +91,15 @@ viewMode             = str(addon.getSetting("viewMode"))
 comments_viewMode    = str(addon.getSetting("comments_viewMode"))
 album_viewMode       = str(addon.getSetting("album_viewMode"))
 
+#this part moved to in domains.py
 #hide_IMG              = addon.getSetting("hide_IMG") == "true"
 #hide_reddit           = addon.getSetting("hide_reddit") == "true"
 #hide_undetermined     = addon.getSetting("hide_undetermined") == "true"
 #hide_video            = addon.getSetting("hide_video") == "true"
 #resolve_undetermined  = addon.getSetting("resolve_undetermined") == "true"
+
+domain_filter        = addon.getSetting("domain_filter")
+subreddit_filter     = addon.getSetting("subreddit_filter")
 
 r_AccessToken         = addon.getSetting("r_AccessToken") 
 
@@ -551,7 +555,7 @@ def index(url,name,type):
 
 
 def listSubReddit(url, name, subreddit_key):
-    from resources.lib.utils import unescape
+    from resources.lib.utils import unescape, pretty_datediff, post_excluded_from
     #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
     #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
     #url='https://www.reddit.com/search.json?q=site%3A4tube&sort=relevance&t=all'
@@ -634,6 +638,11 @@ def listSubReddit(url, name, subreddit_key):
 
             subreddit=entry['data']['subreddit'].encode('utf-8')
             #if show_listVideos_debug :log("  SUBREDDIT"+str(idx)+"="+subreddit)
+            if post_excluded_from( subreddit_filter, subreddit ):
+                log( '    [r/%s] excluded by subreddit_filter' %subreddit )
+                continue;
+            
+            
             try: author = entry['data']['author'].encode('utf-8')
             except: author = ""
             #if show_listVideos_debug :log("     AUTHOR"+str(idx)+"="+author)
@@ -641,9 +650,9 @@ def listSubReddit(url, name, subreddit_key):
             try: domain= entry['data']['domain'].encode('utf-8')
             except: domain = ""
             #log("     DOMAIN%.2d=%s" %(idx,domain))
-            #if post_excluded_from( domain_filter, domain ):
-            #    log( '    %s excluded by domain_filter' %domain )
-            #    continue;
+            if post_excluded_from( domain_filter, domain ):
+                log( '    [%s] excluded by domain_filter' %domain )
+                continue;
             
             ups = entry['data']['score']       #downs not used anymore
             try:num_comments = entry['data']['num_comments']
@@ -780,7 +789,6 @@ def listSubReddit(url, name, subreddit_key):
             xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
         
     xbmcplugin.endOfDirectory(pluginhandle)
-
 
 def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
     from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script
@@ -926,7 +934,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
 def autoPlay(url, name, autoPlay_type):
     from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type, setting_gif_repeat_count
-    from resources.lib.utils import unescape
+    from resources.lib.utils import unescape, post_excluded_from
     #collect a list of title and urls as entries[] from the j_entries obtained from reddit
     #then create a playlist from those entries
     #then play the playlist
@@ -937,7 +945,6 @@ def autoPlay(url, name, autoPlay_type):
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     playlist.clear()
     log("**********autoPlay %s*************" %autoPlay_type)
-    #content = opener.open(url).read()
     content = reddit_request(url)        
     if not content: return
 
@@ -947,13 +954,24 @@ def autoPlay(url, name, autoPlay_type):
     
     for j_entry in content['data']['children']:
         try:
-            #title = cleanTitle(entry['data']['media']['oembed']['title'].encode('utf-8'))
             title = unescape(j_entry['data']['title'].encode('utf-8'))
 
             try:
                 media_url = j_entry['data']['url']
             except:
                 media_url = j_entry['data']['media']['oembed']['url']
+
+
+            subreddit=j_entry['data']['subreddit'].encode('utf-8')
+            if post_excluded_from( subreddit_filter, subreddit ):
+                log( '    [r/%s] excluded by subreddit_filter' %subreddit )
+                continue;
+            
+            try: domain=j_entry['data']['domain'].encode('utf-8')
+            except: domain = ""
+            if post_excluded_from( domain_filter, domain ):
+                log( '    [%s] excluded by domain_filter' %domain )
+                continue;
 
             is_a_video = determine_if_video_media_from_reddit_json(j_entry) 
 
@@ -1161,8 +1179,6 @@ def playYTDLVideo(url, name, type):
     finally:
         dialog_progress_YTDL.update(100,'YTDL' ) #not sure if necessary to set to 100 before closing dialogprogressbg
         dialog_progress_YTDL.close()
-
-
 
 def listLinksInComment(url, name, type):
     from resources.lib.domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
@@ -1634,42 +1650,6 @@ def addDirR(name, url, mode, iconimage, type="", listitem_infolabel=None, file_e
     #log("handle="+sys.argv[1]+" url="+u+" ")
     ok = xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=True)
     return ok
-
-def pretty_datediff(dt1, dt2):
-    try:
-        diff = dt1 - dt2
-        
-        sec_diff = diff.seconds
-        day_diff = diff.days
-    
-        if day_diff < 0:
-            return 'future'
-    
-        if day_diff == 0:
-            if sec_diff < 10:
-                return translation(30060)     #"just now"
-            if sec_diff < 60:
-                return str(sec_diff) + translation(30061)      #" secs ago"
-            if sec_diff < 120:
-                return translation(30062)     #"a min ago"
-            if sec_diff < 3600:
-                return str(sec_diff / 60) + translation(30063) #" mins ago"
-            if sec_diff < 7200:
-                return translation(30064)     #"an hour ago"
-            if sec_diff < 86400:
-                return str(sec_diff / 3600) + translation(30065) #" hrs ago"
-        if day_diff == 1:
-            return translation(30066)         #"Yesterday"
-        if day_diff < 7:
-            return str(day_diff) + translation(30067)      #" days ago"
-        if day_diff < 31:
-            return str(day_diff / 7) + translation(30068)  #" wks ago"
-        if day_diff < 365:
-            return str(day_diff / 30) + translation(30069) #" months ago"
-        return str(day_diff / 365) + translation(30070)    #" years ago"
-    except:
-        pass
-
 
 def reddit_request( url ):
     #log( "  reddit_request " + url )

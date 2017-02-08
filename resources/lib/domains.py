@@ -232,7 +232,7 @@ class ClassYoutube(sitesBase):
             media_url=self.media_url
             
         self.get_video_id()
-        log('      youtube video id:' + self.video_id )
+        #log('      youtube video id:' + self.video_id )
         
         if self.video_id:
             if use_ytdl_for_yt:
@@ -1876,10 +1876,10 @@ class ClassGfycat(sitesBase):
 
                     #pick the smaller of the streams
                     if mp4Size > webmSize:
-                        log('      using webm  wm(%d) m4(%d)' %(webmSize,mp4Size) )
+                        #log('      using webm  wm(%d) m4(%d)' %(webmSize,mp4Size) )
                         stream_url=gfyItem.get('webmUrl') if gfyItem.get('webmUrl') else gfyItem.get('mp4Url')
                     else:
-                        log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
+                        #log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
                         stream_url=gfyItem.get('mp4Url') if gfyItem.get('mp4Url') else gfyItem.get('webmUrl')
                     
                     log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
@@ -2863,7 +2863,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
 
     album_dict_list=None
     hoster = sitesManager( link_url )
-    log( '  %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
+    log( '    %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
 
     try:
         if hoster:
