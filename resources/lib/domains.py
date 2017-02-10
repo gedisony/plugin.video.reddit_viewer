@@ -16,13 +16,11 @@ import urlresolver
 from default import addon, addonID, streamable_quality   #,addon_path,pluginhandle,addonID
 from default import log, translation
 
-from default import playVideo, addon_path, pluginhandle, reddit_userAgent
+from default import playVideo, addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
 from utils import build_script, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, remove_duplicates, safe_cast
 
 use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
 #resolve_undetermined = addon.getSetting("resolve_undetermined") == "true" #let youtube_dl addon get playable links if unknown url(slow)
-
-REQUEST_TIMEOUT=5 #requests.get timeout in seconds
 
 from CommonFunctions import parseDOM
 import pprint
@@ -2235,7 +2233,6 @@ class ClassReddit(sitesBase):
             self.video_id=match[0]
         
     def get_thumb_url(self):
-        
         if self.video_id:
             #get subreddit icon_img, header_img or banner_img
             headers = {'User-Agent': reddit_userAgent}
@@ -2248,10 +2245,12 @@ class ClassReddit(sitesBase):
                 j=j.get('data')
                 #log( pprint.pformat(j, indent=1) )
                 icon_img=j.get('icon_img')
+                banner_img=j.get('banner_img')  
+                header_img=j.get('header_img')   #not used? usually similar to with header_img
                 #header_img=j.get('icon_img')
                 #banner_img=j.get('banner_img')
                 self.thumb_url=icon_img
-                self.poster_url=self.thumb_url
+                self.poster_url=banner_img
                 #log( repr(self.thumb_url) )
             else:
                 log( '    getting subreddit info:%s' %r.status_code ) 

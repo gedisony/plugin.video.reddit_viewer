@@ -1,10 +1,15 @@
 import urllib
 import xbmc, xbmcgui
 import re, htmlentitydefs
-import time
+import time, pickle
+import requests
+import json
+import pprint
+import random
+
 from urllib import urlencode
 
-from default import log, translation, urlMain, itemsPerPage, addonID, subredditsFile
+from default import log, translation, urlMain, itemsPerPage, addonID, subredditsFile, subredditsPickle, reddit_userAgent, REQUEST_TIMEOUT
 
 DATEFORMAT = xbmc.getRegion('dateshort')
 TIMEFORMAT = xbmc.getRegion('meridiem')
@@ -13,6 +18,21 @@ TIMEFORMAT = xbmc.getRegion('meridiem')
 #used to filter out image links if content_type is video (when this addon is called from pictures)
 image_exts = ['jpg','png', 'RAW', 'jpeg', 'tiff', 'tga', 'pcx', 'bmp'] #exclude 'gif' as we consider it as gifv
 
+def save_dict( dict_to_save, pickle_filename ):
+    with open(pickle_filename, 'wb') as output:
+        pickle.dump(dict_to_save, output)
+        output.close()
+
+def append_dict( dict_to_save, pickle_filename ):
+    with open(pickle_filename, 'a+b') as output:
+        pickle.dump(dict_to_save, output)
+        output.close()
+
+def load_dict( pickle_filename ):    
+    with open(pickle_filename, 'rb') as inputpkl:
+        rows_dict= pickle.load(inputpkl)
+        inputpkl.close()    
+    return rows_dict
 
 def create_default_subreddits():
     #create a default file and sites
@@ -20,20 +40,103 @@ def create_default_subreddits():
     
         #fh.write('/user/gummywormsyum/m/videoswithsubstance\n')
         fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(32006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
-        fh.write('Documentaries+ArtisanVideos\n')
+        fh.write('Documentaries+ArtisanVideos+lectures+LearnUselessTalents\n')
         fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
         fh.write('random\n')
         #fh.write('randnsfw\n')
         fh.write('[Frontpage]\n')
         fh.write('all\n')
-        fh.write('aww+funny+Nickelodeons\n')
+        fh.write('gametrailers+tvtrailers+trailers\n')
         fh.write('music+listentothis+musicvideos\n')
         fh.write('site:youtube.com\n')
         fh.write('videos\n')
         #fh.write('videos/new\n')
         fh.write('woahdude+interestingasfuck+shittyrobots\n')
+
+def create_default_subreddits_NOTUSED():
+    #create a default file and sites
+    log('Creating default subreddits file...')
+    subreddits_dlist=[]
+    
+    subreddits_dlist.append( { 'subreddit_entry': "gonewild",} )
+    #subreddits_dlist.append( { 'subreddit_entry': "/user/gummywormsyum/m/videoswithsubstance",} )
+    subreddits_dlist.append( { 'subreddit_entry': "Documentaries+ArtisanVideos+lectures+LearnUselessTalents",} )
+    
+    for entry in subreddits_dlist:
+
+        subreddit_entry=entry.get('subreddit_entry')
         
-    #justiceporn
+        entry_type, subreddit, alias, shortcut_description=parse_subreddit_entry(subreddit_entry)
+        
+        sub_info=[]
+        
+        if entry_type=='subreddit':      #subreddit,combined,multireddit,domain
+            sub_info.append( get_subreddit_info(subreddit) )
+            subreddit_description=sub_info[0].get('public_description')
+            entry.update( {'shortcut_description':subreddit_description} )
+    
+        elif entry_type=='combined':
+            entry.update( {'shortcut_description':shortcut_description} )
+            for sub in subreddit.split('+'):
+                #log(  '*******' + sub )
+                sub_info.append(get_subreddit_info(sub))
+        
+        elif entry_type=='multireddit':
+            entry.update( {'shortcut_description':shortcut_description} )
+            pass
+        elif entry_type=='domain':
+            entry.update( {'shortcut_description':shortcut_description} )
+            pass
+
+        if sub_info:
+            entry.update( {'sub_info': sub_info} )
+        else:
+            #log('a little complicated than that')
+            pass
+        
+        if alias:
+            entry.update( {'alias':alias} )
+            
+        url=assemble_reddit_filter_string("",subreddit)            
+        entry.update( {'url':url} )
+        entry.update( {'entry_type':entry_type} )
+    
+    save_dict(subreddits_dlist, subredditsPickle)
+        
+    #log( pprint.pformat(subreddits_dlist, indent=1) )
+
+def get_subreddit_info( subreddit ):
+    subs_dict={}
+    
+    headers = {'User-Agent': reddit_userAgent}
+    req='https://www.reddit.com/r/%s/about.json' %subreddit
+    #log('headers:' + repr(headers))
+    r = requests.get( req, headers=headers, timeout=REQUEST_TIMEOUT )
+    if r.status_code == requests.codes.ok:
+        j=r.json()
+        j=j.get('data')
+        #log( pprint.pformat(j, indent=1) )
+    
+        subs_dict.update( {'entry_name':subreddit.lower(),
+                           'display_name':j.get('display_name'), 
+                           'banner_img': j.get('banner_img'),
+                           'icon_img': j.get('icon_img'),
+                           'header_img': j.get('header_img'), #not used? usually similar to with icon_img
+                           'title':j.get('title'),
+                           'header_title':j.get('header_title'),
+                           'public_description':j.get('public_description'),
+                           'subreddit_type':j.get('subreddit_type'),
+                           'subscribers':j.get('subscribers'),
+                           'created':j.get('created'),        #public, private
+                           'over18':j.get('over18'),
+                           } )
+        
+        #log( pprint.pformat(subs_dict, indent=1) )
+        return subs_dict
+        #log( repr(self.thumb_url) )
+    else:
+        log( '    getting subreddit info:%s' %r.status_code ) 
+    
 
 def format_multihub(multihub):
 #properly format a multihub string
@@ -49,7 +152,7 @@ def format_multihub(multihub):
     return "/".join(ls)
 
 
-def this_is_a_multihub(subreddit):
+def this_is_a_multireddit(subreddit):
     #subreddits and multihub are stored in the same file
     #i think we can get away with just testing for user/ to determine multihub
     if subreddit.lower().startswith('user/') or subreddit.lower().startswith('/user/'): #user can enter multihub with or without the / in the beginning
@@ -104,27 +207,32 @@ def parse_subreddit_entry(subreddit_entry_from_file):
     #    used for skins that display them
 
     subreddit, alias, viewid = subreddit_alias( subreddit_entry_from_file )
+    
+    entry_type='subreddit'
 
     description=subreddit
     #check for domain filter
     a=[':','/domain/']
     if any(x in subreddit for x in a):  #search for ':' or '/domain/'
+        entry_type='domain'
         #log("domain "+ subreddit)
         domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
-        description=translation(32008) % domain            #"Show posts from"
+        description=translation(30008) % domain            #"Show %s links"
     
     #describe combined subreddits    
     if '+' in subreddit:
+        entry_type='combined'
         description=subreddit.replace('+','[CR]')
 
     #describe multireddit or multihub
-    if this_is_a_multihub(subreddit):
-        description=translation(32007)  #"Custom Multireddit"
+    if this_is_a_multireddit(subreddit):
+        entry_type='multireddit'
+        description=translation(30007)  #"Custom Multireddit"
 
     #save that view id in our global mailbox (retrieved by listSubReddit)
     #WINDOW.setProperty('viewid-'+subreddit, viewid)
 
-    return subreddit, alias, description
+    return entry_type, subreddit, alias, description
 
 def subreddit_alias( subreddit_entry_from_file ):
     #users can specify an alias for the subredit and it is stored in the file as a regular string  e.g. diy[do it yourself]  
@@ -182,7 +290,7 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
         #https://www.reddit.com/domain/vimeo.com/?&limit=5
         url+= "/domain/%s/.json?" %(domain)   #/domain doesn't work with /search?q=
     else:
-        if this_is_a_multihub(subreddit):
+        if this_is_a_multireddit(subreddit):
             #e.g: https://www.reddit.com/user/sallyyy19/m/video/search?q=multihub&restrict_sr=on&sort=relevance&t=all
             #https://www.reddit.com/user/sallyyy19/m/video
             #url+='/user/sallyyy19/m/video'     
@@ -352,26 +460,26 @@ def pretty_datediff(dt1, dt2):
     
         if day_diff == 0:
             if sec_diff < 10:
-                return translation(32060)     #"just now"
+                return translation(30060)     #"just now"
             if sec_diff < 60:
-                return str(sec_diff) + translation(32061)      #" secs ago"
+                return str(sec_diff) + translation(30061)      #" secs ago"
             if sec_diff < 120:
-                return translation(32062)     #"a min ago"
+                return translation(30062)     #"a min ago"
             if sec_diff < 3600:
-                return str(sec_diff / 60) + translation(32063) #" mins ago"
+                return str(sec_diff / 60) + translation(30063) #" mins ago"
             if sec_diff < 7200:
                 return translation(32064)     #"an hour ago"
             if sec_diff < 86400:
-                return str(sec_diff / 3600) + translation(32065) #" hrs ago"
+                return str(sec_diff / 3600) + translation(30065) #" hrs ago"
         if day_diff == 1:
-            return translation(32066)         #"Yesterday"
+            return translation(30066)         #"Yesterday"
         if day_diff < 7:
-            return str(day_diff) + translation(32067)      #" days ago"
+            return str(day_diff) + translation(30067)      #" days ago"
         if day_diff < 31:
-            return str(day_diff / 7) + translation(32068)  #" wks ago"
+            return str(day_diff / 7) + translation(30068)  #" wks ago"
         if day_diff < 365:
-            return str(day_diff / 30) + translation(32069) #" months ago"
-        return str(day_diff / 365) + translation(32070)    #" years ago"
+            return str(day_diff / 30) + translation(30069) #" months ago"
+        return str(day_diff / 365) + translation(30070)    #" years ago"
     except:
         pass
 
@@ -702,6 +810,54 @@ def empty_slideshow_folder():
             log("empty_slideshow_folder error:"+e)    
 '''
 
+def xstr(s):
+    #http://stackoverflow.com/questions/1034573/python-most-idiomatic-way-to-convert-none-to-empty-string
+    if s is None:
+        return ''
+    return str(s)
+
+
+def samealphabetic(*args):
+    #http://stackoverflow.com/questions/16474848/python-compare-strings-ignore-special-characters
+    return len(set(filter(lambda s: s.isalpha(), arg.lower()) for arg in args)) <= 1
+
+def hassamealphabetic(*args):
+    #returns true if there is a same
+    return len(set(filter(lambda s: s.isalpha(), arg) for arg in args)) <= 2
+
+subreddits_dlist=[]
+def ret_sub_info( subreddit_entry ):
+    import os
+    #search subreddits_dlist for subreddit_entry and return info about it
+    #randomly pick one if there are multiple subreddits e.g.: gifs+funny
+    
+    global subreddits_dlist #we make sure we only load the subredditsPickle file once for this instance
+    try:
+        if not subreddits_dlist:
+            if os.path.exists(subredditsPickle):
+                subreddits_dlist=load_dict(subredditsPickle)
+        
+        subreddit_search=subreddit_entry.lower()
+        if '/' in subreddit_search:
+            subreddit_search=subreddit_search.split('/')[0]
+        
+        if '+' in subreddit_search:
+            subreddit_search=random.choice(subreddit_search.split('+'))
+        
+        for sd in subreddits_dlist:
+            #we have an entry in our pickle file about the subreddit entry
+            if sd.get('entry_name')==subreddit_search:
+                return sd
+    except:
+        #sometimes we get a race condition when the save thread is saving and the index function is listing
+        #hopefully the 'global' line up above minimizes this
+        pass
+
+def ret_sub_icon(subreddit):
+    sub_info=ret_sub_info(subreddit)
+    
+    if sub_info:
+        return sub_info.get('icon_img')
 
 if __name__ == '__main__':
     pass

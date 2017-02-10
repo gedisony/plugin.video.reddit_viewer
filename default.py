@@ -16,10 +16,12 @@ import xbmcplugin
 import xbmcgui
 import xbmcaddon
 import urlparse
+import pprint
 
 #import SimpleDownloader
 import requests
-#from email import Message
+
+import threading
 
 #this import for the youtube_dl addon causes our addon to start slower. we'll import it when we need to playYTDLVideo   
 modes_that_use_ytdl=['mode=playYTDLVideo','mode=play']
@@ -141,6 +143,9 @@ streamable_quality  =["full", "mobile"][istreamable_quality]       #https://stre
 
 addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
 subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
+subredditsPickle    = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits.pickle")  #new type of saving the settings
+
+REQUEST_TIMEOUT=5 #requests.get timeout in seconds
 
 #C:\Users\myusername\AppData\Roaming\Kodi\userdata\addon_data\plugin.video.reddit_viewer
 #SlideshowCacheFolder    = xbmc.translatePath("special://profile/addon_data/"+addonID+"/slideshowcache") #will use this to cache images for slideshow in video mode
@@ -218,22 +223,9 @@ def getPlayCount(url):
 #    results = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
 #    log(repr(results))
 
-def format_multihub(multihub):
-#properly format a multihub string
-#make sure input is a valid multihub 
-    t = multihub
-    #t='User/sallyyy19/M/video'
-    ls = t.split('/')
-
-    for idx, word in enumerate(ls):
-        if word.lower()=='user':ls[idx]='user'
-        if word.lower()=='m'   :ls[idx]='m'
-    #xbmc.log ("/".join(ls))            
-    return "/".join(ls)
-    
-    
 #MODE addSubreddit      - name, type not used
 def addSubreddit(subreddit, name, type):
+    from resources.lib.utils import this_is_a_multireddit, format_multihub
     alreadyIn = False
     fh = open(subredditsFile, 'r')
     content = fh.readlines()
@@ -257,17 +249,69 @@ def addSubreddit(subreddit, name, type):
             subreddit = keyboard.getText()
 
             #cleanup user input. make sure /user/ and /m/ is lowercase
-            if this_is_a_multihub(subreddit):
+            if this_is_a_multireddit(subreddit):
                 subreddit = format_multihub(subreddit)
+            else:
+                get_subreddit_entry_info(subreddit)
+
             
             for line in content:
                 if line.lower()==subreddit.lower()+"\n":
                     alreadyIn = True
+                    
             if not alreadyIn:
                 fh = open(subredditsFile, 'a')
                 fh.write(subreddit+'\n')
                 fh.close()
         xbmc.executebuiltin("Container.Refresh")
+
+def get_subreddit_entry_info(subreddit):
+    #from resources.lib.utils import get_subreddit_info, parse_subreddit_entry, create_default_subreddits, load_dict
+    if subreddit.lower() in ['all','random','randnsfw']:
+        return
+    s=[]
+    if '/' in subreddit:  #we want to get diy from diy/top or diy/new
+        subreddit=subreddit.split('/')[0]
+    
+    if '+' in subreddit:
+        s.extend(subreddit.split('+'))
+    else:
+        s.append(subreddit)
+
+    t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
+    #threads.append(t)
+    #log('****starting... '+repr(t))
+    t.start()
+    
+def get_subreddit_entry_info_thread(sub_list):
+    from resources.lib.utils import get_subreddit_info, load_dict, save_dict
+
+    subreddits_dlist=[]
+    #log('**** thread running')
+    if os.path.exists(subredditsPickle):
+        #log('****file exists ' + repr( subredditsPickle ))
+        subreddits_dlist=load_dict(subredditsPickle)
+        #for e in subreddits_dlist: log(e.get('entry_name'))
+        #log( pprint.pformat(subreddits_dlist, indent=1) )
+
+    #log('****------before for -------- ' + repr(sub_list ))    
+    for subreddit in sub_list:        
+        #remove old instance of subreddit
+        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
+    
+        #for e in subreddits_dlist: log(e.get('entry_name'))
+            
+        #log('****getting sub_info ' )
+        
+        sub_info=get_subreddit_info(subreddit)
+    
+        log('****sub_info ' + repr( sub_info ))
+        
+        if sub_info:
+            #log('****if sub_info ')
+            subreddits_dlist.append(sub_info)
+            save_dict(subreddits_dlist, subredditsPickle)
+            #log('****saved ')
 
 #MODE removeSubreddit      - name, type not used
 def removeSubreddit(subreddit, name, type):
@@ -286,6 +330,7 @@ def removeSubreddit(subreddit, name, type):
     xbmc.executebuiltin("Container.Refresh")
 
 def editSubreddit(subreddit, name, type):
+    from resources.lib.utils import this_is_a_multireddit, format_multihub
     #note: calling code in addDirR() 
     fh = open(subredditsFile, 'r')
     content = fh.readlines()
@@ -297,8 +342,10 @@ def editSubreddit(subreddit, name, type):
     if keyboard.isConfirmed() and keyboard.getText():
         newsubreddit = keyboard.getText()
         #cleanup user input. make sure /user/ and /m/ is lowercase
-        if this_is_a_multihub(newsubreddit):
+        if this_is_a_multireddit(newsubreddit):
             newsubreddit = format_multihub(newsubreddit)
+        else:
+            get_subreddit_entry_info(newsubreddit)
         
         for line in content:
             if line.strip()==subreddit.strip() :      #if matches the old subreddit,
@@ -313,179 +360,18 @@ def editSubreddit(subreddit, name, type):
             
         xbmc.executebuiltin("Container.Refresh")    
 
-def this_is_a_multihub(subreddit):
-    #subreddits and multihub are stored in the same file
-    #i think we can get away with just testing for user/ to determine multihub
-    if subreddit.lower().startswith('user/') or subreddit.lower().startswith('/user/'): #user can enter multihub with or without the / in the beginning
-        return True
-    else:
-        return False
-
-def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters="", domain="" ):
-    #skip_site_filters -not adding a search query makes your results more like the reddit website 
-    #search_string will not be used anymore, replaced by domain. leaving it here for now.
-    #    using search string to filter by domain returns the same result everyday 
-    
-    url = urlMain      # global variable urlMain = "http://www.reddit.com"
-
-    a=[':','/domain/']
-    if any(x in subreddit for x in a):  #search for ':' or '/domain/'
-        #log("domain "+ subreddit)
-        domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
-        #log("domain "+ str(domain))
-        
-
-    if domain:
-        # put '/?' at the end. looks ugly but works fine.
-        #https://www.reddit.com/domain/vimeo.com/?&limit=5
-        url+= "/domain/%s/.json?" %(domain)   #/domain doesn't work with /search?q=
-    else:
-        if this_is_a_multihub(subreddit):
-            #e.g: https://www.reddit.com/user/sallyyy19/m/video/search?q=multihub&restrict_sr=on&sort=relevance&t=all
-            #https://www.reddit.com/user/sallyyy19/m/video
-            #url+='/user/sallyyy19/m/video'     
-            #format_multihub(subreddit)
-            if subreddit.startswith('/'):
-                #log("startswith/") 
-                url+=subreddit  #user can enter multihub with or without the / in the beginning
-            else: url+='/'+subreddit
-        else:
-            if subreddit: 
-                url+= "/r/"+subreddit
-            else: 
-                url+= "/r/all"
- 
-        site_filter=""
-        if search_string:  #search string overrides our supported sites filter
-            search_string = urllib.unquote_plus(search_string)
-            url+= "/search.json?q=" + urllib.quote_plus(search_string)
-        elif skip_site_filters: 
-            url+= "/.json?"
-        else:            
-            #url+= "/.json?"
-            for site in supported_sites :
-                if site[0] and site[5]:  #site[0]  is the show_youtube/show_vimeo/show_dailymotion/... global variables taken from settings file
-                    site_filter += site[5] + " OR "
-            #remove the last ' OR '
-            if site_filter.endswith(" OR "):  site_filter = site_filter[:-4]
-            #log("FILTER_STRING="+site_filter)
-            #url += urllib.quote_plus(site_filter)
-            url+= "/search.json?q=" + urllib.quote_plus(site_filter)
-            #url += urllib.quote_plus(site_filter)
-
-    url += "&limit="+str(itemsPerPage)
-    #url += "&limit=12"
-    #log("assemble_reddit_filter_string="+url)
-    return url
-
-def site_filter_for_reddit_search():
-    #go through the supported sites list and assemble the reddit search filter for them
-    #except youtube_dl sites (too many)
-    
-    #this is only used for "search reddit" list item 
-    site_filter=""
-    
-    for site in supported_sites :
-        if site[0] and site[5]:  #site[0]  is the show_youtube/show_vimeo/show_dailymotion/... global variables taken from settings file
-            site_filter += site[5] + " OR "
-    #remove the last ' OR '
-    if site_filter.endswith(" OR "):  site_filter = site_filter[:-4]
-
-    #url+= "/search.json?q=" + urllib.quote_plus(site_filter)
-    
-    return urllib.quote_plus(site_filter)   #str( sites_filter )
-
-def parse_subreddit_entry(subreddit_entry_from_file):
-    #returns subreddit, [alias] and description. also populates WINDOW mailbox for custom view id of subreddit
-    #  description= a friendly description of the 'subreddit shortcut' on the first page of addon 
-    #    used for skins that display them
-
-    subreddit, alias, viewid = subreddit_alias( subreddit_entry_from_file )
-
-    description=subreddit
-    #check for domain filter
-    a=[':','/domain/']
-    if any(x in subreddit for x in a):  #search for ':' or '/domain/'
-        #log("domain "+ subreddit)
-        domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
-        description=translation(30008) % domain            #"Show posts from"
-    
-    #describe combined subreddits    
-    if '+' in subreddit:
-        description=subreddit.replace('+','[CR]')
-
-    #describe multireddit or multihub
-    if this_is_a_multihub(subreddit):
-        description=translation(30007)  #"Custom Multireddit"
-
-    #save that view id in our global mailbox (retrieved by listVideos)
-    WINDOW.setProperty('viewid-'+subreddit, viewid)
-
-    if viewid:
-        #add it in the description
-        description+='[CR]%s %s' %(translation(30011),viewid)   #View ID:
-    
-    return subreddit, alias, description
-
-def subreddit_alias( subreddit_entry_from_file ):
-    #users can specify an alias for the subredit and it is stored in the file as a regular string  e.g. diy[do it yourself]  
-    #this function returns the subreddit without the alias identifier and alias if any or alias=subreddit if none
-    ## in addition, users can specify custom viewID for a subreddit by encapsulating the viewid in ()'s
-    
-    a=re.compile(r"(\[[^\]]*\])") #this regex only catches the [] 
-    #a=re.compile(r"(\[[^\]]*\])?(\(\d+\))?") #this regex catches the [] and ()'s
-    alias=""
-    viewid=""
-    #return the subreddit without the alias. but (viewid), if present, is still there
-    subreddit = a.sub("",subreddit_entry_from_file).strip()
-    #log( "  re:" +  subreddit )
-    
-    #get the viewID
-    try:viewid= subreddit[subreddit.index("(") + 1:subreddit.rindex(")")]
-    except:viewid=""
-    #log( "viewID=%s for r/%s" %( viewid, subreddit ) )
-    
-    if viewid:
-        #remove the (viewID) string from subreddit 
-        subreddit=subreddit.replace( "(%s)"%viewid, "" )
-
-    #get the [alias]
-    a= a.findall(subreddit_entry_from_file)
-    if a:
-        alias=a[0]
-        #log( "      alias:" + alias )
-    else:
-        alias = subreddit
-    
-    return subreddit, alias, viewid
-
 def index(url,name,type):
+    from resources.lib.utils import parse_subreddit_entry, create_default_subreddits, load_dict, assemble_reddit_filter_string,xstr, ret_sub_info, samealphabetic, hassamealphabetic
     
     ## this is where the __main screen is created
     content = ""
-    if not os.path.exists(subredditsFile):
-        #create a default file and sites
-        fh = open(subredditsFile, 'a')
-        #fh.write('/user/gummywormsyum/m/videoswithsubstance\n')
-        fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(30006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
-        fh.write('Documentaries+ArtisanVideos+lectures+LearnUselessTalents\n')
-        fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
-        #fh.write('SlowMotion+timelapse+PerfectTiming\n')
-        fh.write('all\n')
-        fh.write('gametrailers+tvtrailers+trailers\n')
-        fh.write('music+listentothis+musicvideos\n')
-        fh.write('site:youtube.com\n')
-        fh.write('videos\n')
-        #fh.write('videos/new\n')
-        fh.write('woahdude+interestingasfuck+shittyrobots\n')
-        fh.close()
-        #justiceporn
-    #log(content)
+    if not os.path.exists(subredditsFile):  #if not os.path.exists(subredditsFile):
+        create_default_subreddits()
 
-    #log( sys.argv[0] ) #plugin://plugin.video.reddit_viewer/
-    #log( addonID )     #plugin.video.reddit_viewer
-    #log( "aaaaaaa" + addon.getAddonInfo('path') )
-    #log( "bbbbbbb" + addon.getAddonInfo('profile') )
+    #if os.path.exists(subredditsPickle):
+    #    subreddits_dlist=load_dict(subredditsPickle)
+    #log( pprint.pformat(subreddits_dlist, indent=1) )
+    #for e in subreddits_dlist: log(e.get('entry_name'))
 
     #testing code
     #h="as asd [S]asdasd[/S] asdas "
@@ -497,11 +383,10 @@ def index(url,name,type):
     #xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=False)
     
     entries = []
-    if os.path.exists(subredditsFile):
-        #log(subredditsFile) #....\Kodi\userdata\addon_data\plugin.video.reddit_viewer\subreddits
-        fh = open(subredditsFile, 'r')
-        content = fh.read()
-        fh.close()
+    if os.path.exists(subredditsFile):  #....\Kodi\userdata\addon_data\plugin.video.reddit_viewer\subreddits
+        with open(subredditsFile, 'r') as fh:
+            content = fh.read()
+            #fh.close()
         spl = content.split('\n')
         
         for i in range(0, len(spl), 1):
@@ -512,32 +397,56 @@ def index(url,name,type):
                 entries.append(subreddit )
     entries.sort()
 
+    addtl_subr_info={}
+
     #this controls what infolabels will be used by the skin. very skin specific. 
     #  for estuary, this lets infolabel:plot (and genre) show up below the folder
     #  giving us the opportunity to provide a shortcut_description about the shortcuts
     xbmcplugin.setContent(pluginhandle, "mixed")
 
     next_mode='listSubReddit'
+    
     for subreddit_entry in entries:
-        
         #strip out the alias identifier from the subreddit string retrieved from the file so we can process it.
         #subreddit, alias = subreddit_alias(subreddit_entry) 
+        addtl_subr_info=ret_sub_info(subreddit_entry)
         
-        subreddit, alias, shortcut_description=parse_subreddit_entry(subreddit_entry)
+        entry_type, subreddit, alias, shortcut_description=parse_subreddit_entry(subreddit_entry)
         #log( subreddit + "   " + shortcut_description )
 
         #url= urlMain+"/r/"+subreddit+"/.json?"+nsfw+allHosterQuery+"&limit="+itemsPerPage
         url= assemble_reddit_filter_string("",subreddit, "yes")
         #log("assembled================="+url)
         if subreddit.lower() == "all":  
-            #   we're NOT asking reddit to filter the links for us.  
-            #      we filter the supported sites in make_addon_url_from() to only show the supported sites to the user
-            #   it is done this way because if we ask reddit to filter the links for us (search?q=site:youtube.com OR site:vimeo.com OR ... &restrict_sr=&sort=relevance&t=all )
-            #      the results do not match the front page.
             addDir(subreddit, url, next_mode, "", subreddit, { "plot": translation(30009) } )  #Displays the currently most popular content from all of reddit....
-        else:                           
-            addDirR(alias, url, next_mode, "", subreddit, { "plot": shortcut_description }, subreddit_entry )
+        else:
+            if addtl_subr_info: #if we have additional info about this subreddit
+                title=addtl_subr_info.get('title')+'\n'
+                display_name=xstr(addtl_subr_info.get('display_name'))
+                if samealphabetic( title, display_name): title=''
+                #if re.sub('\W+','', display_name.lower() )==re.sub('\W+','', title.lower()): title=''
+                #display_name=re.sub('\W+','', display_name.lower() )
+                #title=re.sub('\W+','', title.lower())
+                
+                header_title=xstr(addtl_subr_info.get('header_title'))
+                public_description=xstr( addtl_subr_info.get('public_description'))
+                
+                if samealphabetic( header_title, public_description): public_description=''
+                if samealphabetic(title,public_description): public_description=''
+                #if hassamealphabetic(header_title,title,public_description): public_description=''
+                
+                shortcut_description='[COLOR cadetblue][B]r/%s[/B][/COLOR]\n%s[I]%s[/I]\n%s' %(display_name,title,header_title,public_description )
+                
+                icon=addtl_subr_info.get('icon_img')
+                banner=addtl_subr_info.get('banner_img')
 
+                addDirR(alias, url, next_mode, icon, 
+                        type=subreddit, 
+                        listitem_infolabel={ "plot": shortcut_description }, 
+                        file_entry=subreddit_entry, 
+                        banner_image=banner )
+            else:                            
+                addDirR(alias, url, next_mode, "", subreddit, { "plot": shortcut_description }, subreddit_entry )
 
     addDir("[B]- "+translation(30001)+"[/B]", "", 'addSubreddit', "", "", { "plot": translation(30006) } ) #"Customize this list with your favorite subreddit."
     addDir("[B]- "+translation(30005)+"[/B]", "",'searchReddits', "", "", { "plot": translation(30010) } ) #"Search reddit for a particular post or topic
@@ -545,12 +454,9 @@ def index(url,name,type):
     xbmcplugin.endOfDirectory(pluginhandle)
 
 def listSubReddit(url, name, subreddit_key):
-    from resources.lib.utils import unescape, pretty_datediff, post_is_filtered_out
+    from resources.lib.utils import unescape, pretty_datediff, post_is_filtered_out, ret_sub_icon, has_multiple_subreddits
     #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
     #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
-    #url='https://www.reddit.com/search.json?q=site%3A4tube&sort=relevance&t=all'
-    #url="https://www.reddit.com/domain/tumblr.com.json"
-    #url="https://www.reddit.com/r/wiiu.json?&nsfw:no+&limit=13"
 
     #show_listVideos_debug=False
     show_listVideos_debug=True
@@ -579,9 +485,14 @@ def listSubReddit(url, name, subreddit_key):
     if not content:
         return
 
+    page_title=" [COLOR darkslategrey]%s[/COLOR]" %subreddit_key
+
+    #setPluginCategory lets us show text at the top of window, we take advantage of this and put the subreddit name
+    xbmcplugin.setPluginCategory(pluginhandle, page_title)
+
     info_label={ "plot": translation(30013) }  #Automatically play videos
     if autoplayAll:       addDir("[B]- "+translation(30016)+"[/B]", url, 'autoPlay', "", "ALL", info_label)
-    if autoplayUnwatched: addDir("[B]- "+translation(30017)+"[/B]", url, 'autoPlay', "", "UNWATCHED", info_label)
+    if autoplayUnwatched: addDir("[B]- "+translation(30017)+"[/B]" , url, 'autoPlay', "", "UNWATCHED", info_label)
     #if autoplayUnfinished:addDir("[B]- "+translation(30018)+"[/B]", url, 'autoPlay', "", "UNFINISHED", info_label)
     
     #7-15-2016  removed the "replace(..." statement below cause it was causing error
@@ -661,6 +572,10 @@ def listSubReddit(url, name, subreddit_key):
 
             if thumb=="":
                 try: thumb = entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8').replace('&amp;','&')
+                except: pass
+
+            if thumb=="":  #use this subreddit's icon if thumb still empty
+                try: thumb=ret_sub_icon(subreddit)
                 except: pass
             
             try:
@@ -757,7 +672,7 @@ def listSubReddit(url, name, subreddit_key):
             
         # plot shows up on estuary. etc. ( avoids the "No information available" message on description ) 
         info_label={ "plot": translation(30004) }  
-        addDir(translation(30004), nextUrl, 'listSubReddit', "", subreddit,info_label)   #Next Page
+        addDir(translation(30004) + page_title, nextUrl, 'listSubReddit', "", subreddit,info_label)   #Next Page
         #if show_listVideos_debug :log("NEXT PAGE="+nextUrl) 
     except:
         pass
@@ -854,6 +769,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         arg_type=previewimage
         if ld:
             #log('    ' + ld.media_type + ' -> ' + ld.link_action )
+            #log('    ***icon:' + ld.thumb + ' -> ' + ld.link_action )
             if iconimage in ["","nsfw", "default"]: iconimage=ld.thumb
     
         DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, arg_name, arg_type, script_to_call="")
@@ -1020,22 +936,6 @@ def determine_if_video_media_from_reddit_json( entry ):
         is_a_video=False
 
     return is_a_video
-
-def has_multiple_subreddits(content_data_children):
-    #check if content['data']['children'] returned by reddit contains a single subreddit or not
-    s=""
-    #compare the first subreddit with the rest of the list. 
-    for entry in content_data_children:
-        if s:
-            if s!=entry['data']['subreddit'].encode('utf-8'):
-                #log("  multiple subreddit")
-                return True
-        else:
-            s=entry['data']['subreddit'].encode('utf-8')
-    
-    #log("  single subreddit")
-    return False
-
 
 #MODE playVideo       - name, type not used
 def playVideo(url, name, type):
@@ -1532,7 +1432,6 @@ def searchReddits(url, name, type):
         #search_string = urllib.quote_plus(keyboard.getText().replace(" ", "+"))
         search_string = keyboard.getText().replace(" ", "+")
         
-        #sites_filter = site_filter_for_reddit_search()
         url = urlMain +"/search.json?" +search_string    #+ '+' + nsfw  # + sites_filter skip the sites filter
 
         listSubReddit(url, name, "")
@@ -1586,7 +1485,8 @@ def addDir(name, url, mode, iconimage, type="", listitem_infolabel=None, label2=
     ok = xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=True)
     return ok
 
-def addDirR(name, url, mode, iconimage, type="", listitem_infolabel=None, file_entry=""):
+def addDirR(name, url, mode, icon_image='', type="", listitem_infolabel=None, file_entry="", banner_image=''):
+
     #addDir with a remove subreddit context menu
     #alias is the text for the listitem that is presented to the user
     #file_entryis the actual string(containing alias & viewid) that is saved in the "subreddit" file
@@ -1594,7 +1494,16 @@ def addDirR(name, url, mode, iconimage, type="", listitem_infolabel=None, file_e
     u = sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&type="+str(type)
     #log('addDirR='+u)
     ok = True
-    liz = xbmcgui.ListItem(name, iconImage="", thumbnailImage='')
+    liz = xbmcgui.ListItem(name)
+
+    if icon_image:
+        liz.setArt({ 'thumb': icon_image, 'icon': icon_image, 'clearlogo': icon_image  })  #thumb is used in 'shift' view (estuary)   thunb,icon are interchangeable in list view
+
+    if banner_image:
+        liz.setArt({ 'banner': banner_image  })  
+        #liz.setArt({ 'poster': banner_image  })
+        liz.setArt({ 'fanart': banner_image  })
+        #liz.setArt({ 'landscape': banner_image  })
 
     if listitem_infolabel==None:
         #liz.setInfo(type="Video", infoLabels={"Title": name})

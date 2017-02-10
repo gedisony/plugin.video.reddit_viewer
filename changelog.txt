@@ -220,3 +220,7 @@
  - update fanart
  - fix nsfw filter
  - remove thumbnail preview on view_450_slideshow
+ 
+ 3.1.1
+ - add subreddit info cache
+ - fix time info on reddit post not showing up
