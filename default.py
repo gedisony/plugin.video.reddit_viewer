@@ -672,7 +672,7 @@ def listSubReddit(url, name, subreddit_key):
             
         # plot shows up on estuary. etc. ( avoids the "No information available" message on description ) 
         info_label={ "plot": translation(30004) }  
-        addDir(translation(30004) + page_title, nextUrl, 'listSubReddit', "", subreddit,info_label)   #Next Page
+        addDir(translation(30004) + page_title, nextUrl, 'listSubReddit', "", subreddit_key,info_label)   #Next Page
         #if show_listVideos_debug :log("NEXT PAGE="+nextUrl) 
     except:
         pass
