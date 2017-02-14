@@ -224,3 +224,7 @@
  3.1.1
  - add subreddit info cache
  - fix time info on reddit post not showing up
+ 
+ 3.1.2
+ - update logic concerning which subreddit icon to pick
+  

@@ -857,7 +857,9 @@ def ret_sub_icon(subreddit):
     sub_info=ret_sub_info(subreddit)
     
     if sub_info:
-        return sub_info.get('icon_img')
+        #return the first item that isn't blank. 
+        return next((item for item in [sub_info.get('icon_img'),sub_info.get('banner_img'),sub_info.get('header_img')] if item ), '')
+        #return sub_info.get('icon_img')
 
 if __name__ == '__main__':
     pass

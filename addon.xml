@@ -2,7 +2,7 @@
 <addon
     id="plugin.video.reddit_viewer"
     name="Reddit Viewer"
-    version="3.1.1"
+    version="3.1.2"
     provider-name="gedisony">
     <requires>
         <import addon="xbmc.python"                     version="2.14.0"                />
@@ -26,8 +26,17 @@
         <forum>http://forum.kodi.tv/showthread.php?tid=280388</forum>
         <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
         <email>gediso+ny at gmail dot com</email>
-		<news>v3.0.8  (2017-1-23)
-              - Added option to resolve links only after clicking</news>
+		<news>
+v3.1.1  (2017-2-10)
+    - Retrieve subreddit info when adding or editing them on initial screen
+v3.1.0
+    - update fanart
+    - fix nsfw filter
+v3.0.7
+    - add option to repeat gif playback
+v3.0.5
+    - include check if urlresolver can play a posted link 
+        </news>
 		<disclaimer>This add-on is not published nor endorsed by reddit inc.</disclaimer>
 		<assets>
 			<icon>icon.png</icon>

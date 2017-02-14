@@ -439,6 +439,11 @@ def index(url,name,type):
                 
                 icon=addtl_subr_info.get('icon_img')
                 banner=addtl_subr_info.get('banner_img')
+                header=addtl_subr_info.get('header_img')  #usually the small icon on upper left side on subreddit screen
+                
+                #log( subreddit + ' icon=' + repr(icon) +' header=' + repr(header))
+                #picks the first item that is not None
+                icon=next((item for item in [icon,banner,header] if item ), '')
 
                 addDirR(alias, url, next_mode, icon, 
                         type=subreddit, 
@@ -485,7 +490,7 @@ def listSubReddit(url, name, subreddit_key):
     if not content:
         return
 
-    page_title=" [COLOR darkslategrey]%s[/COLOR]" %subreddit_key
+    page_title="[COLOR cadetblue]%s[/COLOR]" %subreddit_key
 
     #setPluginCategory lets us show text at the top of window, we take advantage of this and put the subreddit name
     xbmcplugin.setPluginCategory(pluginhandle, page_title)
@@ -615,7 +620,7 @@ def listSubReddit(url, name, subreddit_key):
             #title_line2 = "[I][COLOR dimgrey]%s by %s [COLOR darkslategrey]r/%s[/COLOR] %d pts.[/COLOR][/I]" %(pretty_date,author,subreddit,ups)
             #title_line2 = "[I][COLOR dimgrey]"+pretty_date+" by "+author+" [COLOR darkslategrey]r/"+subreddit+"[/COLOR] "+str(ups)+" pts.[/COLOR][/I]"
 
-            title_line2 = "[I][COLOR dimgrey]%s %s [COLOR darkslategrey]r/%s[/COLOR] (%d) %s[/COLOR][/I]" %(pretty_date,t_on, subreddit,num_comments, t_pts)
+            title_line2 = "[I][COLOR dimgrey]%s %s [COLOR cadetblue]r/%s[/COLOR] (%d) %s[/COLOR][/I]" %(pretty_date,t_on, subreddit,num_comments, t_pts)
             #title_line2 = "[I]"+str(idx)+". [COLOR dimgrey]"+ media_url[0:50]  +"[/COLOR][/I] "  # +"    "+" [COLOR darkslategrey]r/"+subreddit+"[/COLOR] "+str(ups)+" pts.[/COLOR][/I]"
 
             #if show_listVideos_debug : log( ("v" if is_a_video else " ") +"     TITLE"+str(idx)+"="+title)
@@ -671,8 +676,8 @@ def listSubReddit(url, name, subreddit_key):
             nextUrl = currentUrl+"&after="+after
             
         # plot shows up on estuary. etc. ( avoids the "No information available" message on description ) 
-        info_label={ "plot": translation(30004) }  
-        addDir(translation(30004) + page_title, nextUrl, 'listSubReddit', "", subreddit_key,info_label)   #Next Page
+        info_label={ "plot": translation(30004) + '[CR]' + page_title}  
+        addDir(translation(30004), nextUrl, 'listSubReddit', "", subreddit_key,info_label)   #Next Page
         #if show_listVideos_debug :log("NEXT PAGE="+nextUrl) 
     except:
         pass
