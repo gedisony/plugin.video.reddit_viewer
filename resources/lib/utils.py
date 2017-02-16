@@ -45,7 +45,7 @@ def create_default_subreddits():
         fh.write('random\n')
         #fh.write('randnsfw\n')
         fh.write('[Frontpage]\n')
-        fh.write('all\n')
+        fh.write('popular\n')
         fh.write('gametrailers+tvtrailers+trailers\n')
         fh.write('music+listentothis+musicvideos\n')
         fh.write('site:youtube.com\n')
@@ -135,7 +135,7 @@ def get_subreddit_info( subreddit ):
         return subs_dict
         #log( repr(self.thumb_url) )
     else:
-        log( '    getting subreddit info:%s' %r.status_code ) 
+        log( '    getting subreddit (%s) info:%s' %(subreddit, r.status_code) ) 
     
 
 def format_multihub(multihub):
@@ -824,6 +824,7 @@ def samealphabetic(*args):
 def hassamealphabetic(*args):
     #returns true if there is a same
     return len(set(filter(lambda s: s.isalpha(), arg) for arg in args)) <= 2
+
 
 subreddits_dlist=[]
 def ret_sub_info( subreddit_entry ):

@@ -808,14 +808,15 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         entries.append( ( translation(30053) ,  #No comments
                       "xbmc.executebuiltin('Action(Close)')" ) )            
 
-    #no need to show the "go to other subreddits" if the entire list is from one subreddit        
+    #show the "go to other subreddits" if the entire list is from one subreddit        
     if many_subreddit:
         #sys.argv[0] is plugin://plugin.video.reddit_viewer/
         #prl=zaza is just a dummy: during testing the first argument is ignored... possible bug?
         entries.append( ( translation(30051)+" r/%s" %subreddit , 
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
     else:
-        entries.append( ( translation(30051)+" r/%s" %subreddit , 
+        #show check /new from this subreddit if it is all the same subreddit
+        entries.append( ( translation(30055)+" r/%s" %subreddit , 
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
 
     #not working...

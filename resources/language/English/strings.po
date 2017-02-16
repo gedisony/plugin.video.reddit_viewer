@@ -105,6 +105,10 @@ msgctxt "#30054"
 msgid "play using URLResolver"
 msgstr ""
 
+#: used in context menu. "new from r/funny". <-- generate new list from r/funny/new subreddit 
+msgctxt "#30055"
+msgid "New posts from"
+msgstr ""
 
 #begin strings used in pretty date to indicate how long ago a post is posted (keep these strings short and similar length) 
 msgctxt "#30060"
