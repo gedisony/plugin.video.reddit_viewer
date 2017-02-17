@@ -117,11 +117,6 @@ setting_hide_images = False
 
 DoNotResolveLinks     = addon.getSetting("DoNotResolveLinks") == 'true'
 
-# searchSort = int(addon.getSetting("searchSort"))
-# searchSort = ["ask", "relevance", "new", "hot", "top", "comments"][searchSort]
-# searchTime = int(addon.getSetting("searchTime"))
-# searchTime = ["ask", "hour", "day", "week", "month", "year", "all"][searchTime]
-
 #--- settings related to context menu "Show Comments"
 CommentTreshold          = addon.getSetting("CommentTreshold") 
 try: int_CommentTreshold = int(CommentTreshold)
@@ -131,15 +126,9 @@ except: int_CommentTreshold = -1000    #if CommentTreshold can't be converted to
 #browser_win     = int(addon.getSetting("browser_win"))
 #browser_wb_zoom = str(addon.getSetting("browser_wb_zoom"))
 
-#ll_qualiy  = int(addon.getSetting("ll_qualiy"))
-#ll_qualiy  = ["480p", "720p"][ll_qualiy]
-#ll_downDir = str(addon.getSetting("ll_downDir"))
-
 try:istreamable_quality=int(addon.getSetting("streamable_quality"))  #values 0 or 1
 except:istreamable_quality=0
 streamable_quality  =["full", "mobile"][istreamable_quality]       #https://streamable.com/documentation
-
-#gfy_downDir = str(addon.getSetting("gfy_downDir"))
 
 addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
 subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
@@ -152,9 +141,6 @@ REQUEST_TIMEOUT=5 #requests.get timeout in seconds
 
 if not os.path.isdir(addonUserDataFolder):
     os.mkdir(addonUserDataFolder)
-
-#if not os.path.isdir(SlideshowCacheFolder):
-#    os.mkdir(SlideshowCacheFolder)
 
 def json_query(query, ret):
     try:
@@ -225,7 +211,7 @@ def getPlayCount(url):
 
 #MODE addSubreddit      - name, type not used
 def addSubreddit(subreddit, name, type):
-    from resources.lib.utils import this_is_a_multireddit, format_multihub
+    from resources.lib.utils import this_is_a_multireddit, format_multihub, colored_subreddit
     alreadyIn = False
     fh = open(subredditsFile, 'r')
     content = fh.readlines()
@@ -235,9 +221,11 @@ def addSubreddit(subreddit, name, type):
             if line.lower()==subreddit.lower():
                 alreadyIn = True
         if not alreadyIn:
-            fh = open(subredditsFile, 'a')
-            fh.write(subreddit+'\n')
-            fh.close()
+            with open(subredditsFile, 'a') as fh:
+                fh.write(subreddit+'\n')
+
+            get_subreddit_entry_info(subreddit)
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( colored_subreddit(subreddit), translation(30019)  ) )
     else:
         #dialog = xbmcgui.Dialog()
         #ok = dialog.ok('Add subreddit', 'Add a subreddit (videos)','or  Multiple subreddits (music+listentothis)','or  Multireddit (/user/.../m/video)')
@@ -361,7 +349,7 @@ def editSubreddit(subreddit, name, type):
         xbmc.executebuiltin("Container.Refresh")    
 
 def index(url,name,type):
-    from resources.lib.utils import parse_subreddit_entry, create_default_subreddits, load_dict, assemble_reddit_filter_string,xstr, ret_sub_info, samealphabetic, hassamealphabetic
+    from resources.lib.utils import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string,xstr, ret_sub_info, samealphabetic, hassamealphabetic
     
     ## this is where the __main screen is created
     content = ""
@@ -382,20 +370,9 @@ def index(url,name,type):
     #u=sys.argv[0]+"?url=&mode=callwebviewer&type="
     #xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=False)
     
-    entries = []
-    if os.path.exists(subredditsFile):  #....\Kodi\userdata\addon_data\plugin.video.reddit_viewer\subreddits
-        with open(subredditsFile, 'r') as fh:
-            content = fh.read()
-            #fh.close()
-        spl = content.split('\n')
-        
-        for i in range(0, len(spl), 1):
-            if spl[i]:
-                subreddit = spl[i].strip()
-                
-                #entries.append(subreddit.title())  #this capitalizes the first letter of a word. looks nice but not necessary
-                entries.append(subreddit )
-    entries.sort()
+    subredditsFile_entries=load_subredditsFile()
+     
+    subredditsFile_entries.sort()
 
     addtl_subr_info={}
 
@@ -406,7 +383,7 @@ def index(url,name,type):
 
     next_mode='listSubReddit'
     
-    for subreddit_entry in entries:
+    for subreddit_entry in subredditsFile_entries:
         #strip out the alias identifier from the subreddit string retrieved from the file so we can process it.
         #subreddit, alias = subreddit_alias(subreddit_entry) 
         addtl_subr_info=ret_sub_info(subreddit_entry)
@@ -697,7 +674,7 @@ def listSubReddit(url, name, subreddit_key):
     xbmcplugin.endOfDirectory(pluginhandle)
 
 def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
-    from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script
+    from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script,subreddit_in_favorites, colored_subreddit
     from resources.lib.domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
     
     videoID=""
@@ -712,6 +689,8 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     isFolder=True
     thumb_url=''
+
+    colored_subreddit=colored_subreddit(subreddit)
 
     h="[B]" + domain + "[/B]: "
     if over_18: 
@@ -812,12 +791,16 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     if many_subreddit:
         #sys.argv[0] is plugin://plugin.video.reddit_viewer/
         #prl=zaza is just a dummy: during testing the first argument is ignored... possible bug?
-        entries.append( ( translation(30051)+" r/%s" %subreddit , 
+        entries.append( ( translation(30051)+" %s" %colored_subreddit , 
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
     else:
         #show check /new from this subreddit if it is all the same subreddit
-        entries.append( ( translation(30055)+" r/%s" %subreddit , 
+        entries.append( ( translation(30055)+" %s" %colored_subreddit , 
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
+
+    if not subreddit_in_favorites(subreddit):
+        entries.append( ( translation(30056) %colored_subreddit , 
+                          "XBMC.RunPlugin(%s?mode=addSubreddit&url=%s)" % ( sys.argv[0], subreddit ) ) )
 
     #not working...
     #entries.append( ( translation(30054) , 
@@ -1401,33 +1384,6 @@ def queueVideo(url, name, type):
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     listitem = xbmcgui.ListItem(name)
     playlist.add(url, listitem)
-
-#MODE addToFavs         -name not used
-def addToFavs(url, name, subreddit):
-    file = os.path.join(addonUserDataFolder, subreddit+".fav")
-    if os.path.exists(file):
-        fh = open(file, 'r')
-        content = fh.read()
-        fh.close()
-        if url not in content:
-            fh = open(file, 'w')
-            fh.write(content.replace("</favourites>", "    "+url.replace("\n","<br>")+"\n</favourites>"))
-            fh.close()
-    else:
-        fh = open(file, 'a')
-        fh.write("<favourites>\n    "+url.replace("\n","<br>")+"\n</favourites>")
-        fh.close()
-
-#MODE removeFromFavs      -name not used
-def removeFromFavs(url, name, subreddit):
-    file = os.path.join(addonUserDataFolder, subreddit+".fav")
-    fh = open(file, 'r')
-    content = fh.read()
-    fh.close()
-    fh = open(file, 'w')
-    fh.write(content.replace("    "+url.replace("\n","<br>")+"\n", ""))
-    fh.close()
-    xbmc.executebuiltin("Container.Refresh")
 
 #searchReddits      --url, name, type not used
 def searchReddits(url, name, type):

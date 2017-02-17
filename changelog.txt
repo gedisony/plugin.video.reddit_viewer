@@ -227,4 +227,7 @@
  
  3.1.2
  - update logic concerning which subreddit icon to pick
-  
+ 3.1.3
+ - add context menu item to add subreddit to shortcuts
+ - default subreddit r/all changed to r/popular
+ - context menu entry to show new posts has correct text  

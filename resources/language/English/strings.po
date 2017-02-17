@@ -80,6 +80,10 @@ msgctxt "#30018"
 msgid "Play unfinished"
 msgstr ""
 
+msgctxt "#30019"
+msgid "Shortcut added"
+msgstr ""
+
 
 #: used in context menu. 
 msgctxt "#30050"
@@ -108,6 +112,11 @@ msgstr ""
 #: used in context menu. "new from r/funny". <-- generate new list from r/funny/new subreddit 
 msgctxt "#30055"
 msgid "New posts from"
+msgstr ""
+
+#: used in context menu. add r/funny to shortcuts list 
+msgctxt "#30056"
+msgid "Add %s to shortcuts"
 msgstr ""
 
 #begin strings used in pretty date to indicate how long ago a post is posted (keep these strings short and similar length) 

@@ -2,6 +2,7 @@ import urllib
 import xbmc, xbmcgui
 import re, htmlentitydefs
 import time, pickle
+import os
 import requests
 import json
 import pprint
@@ -468,7 +469,7 @@ def pretty_datediff(dt1, dt2):
             if sec_diff < 3600:
                 return str(sec_diff / 60) + translation(30063) #" mins ago"
             if sec_diff < 7200:
-                return translation(32064)     #"an hour ago"
+                return translation(30064)     #"an hour ago"
             if sec_diff < 86400:
                 return str(sec_diff / 3600) + translation(30065) #" hrs ago"
         if day_diff == 1:
@@ -828,7 +829,6 @@ def hassamealphabetic(*args):
 
 subreddits_dlist=[]
 def ret_sub_info( subreddit_entry ):
-    import os
     #search subreddits_dlist for subreddit_entry and return info about it
     #randomly pick one if there are multiple subreddits e.g.: gifs+funny
     
@@ -862,5 +862,36 @@ def ret_sub_icon(subreddit):
         return next((item for item in [sub_info.get('icon_img'),sub_info.get('banner_img'),sub_info.get('header_img')] if item ), '')
         #return sub_info.get('icon_img')
 
+subredditsFile_entries=[]
+def load_subredditsFile():
+    global subredditsFile_entries
+    if not subredditsFile_entries:    
+        if os.path.exists(subredditsFile):  #....\Kodi\userdata\addon_data\plugin.video.reddit_viewer\subreddits
+            with open(subredditsFile, 'r') as fh:
+                content = fh.read()
+            spl = content.split('\n')
+            
+            for i in range(0, len(spl), 1):
+                if spl[i]:
+                    subreddit = spl[i].strip()
+                    
+                    subredditsFile_entries.append(subreddit )
+    return subredditsFile_entries
+
+def subreddit_in_favorites( subreddit ):
+    sub_favorites=load_subredditsFile()
+    for entry in sub_favorites:
+        if subreddit.lower() == entry.lower():
+            return True
+        if '+' in entry:
+            spl=entry.split('+')
+            for s in spl:
+                if subreddit.lower() == s.lower():
+                    return True
+
+def colored_subreddit(subreddit):
+    return "[COLOR cadetblue]r/" + subreddit + "[/COLOR]"
+    
+    
 if __name__ == '__main__':
     pass
