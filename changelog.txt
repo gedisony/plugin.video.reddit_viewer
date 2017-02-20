@@ -231,3 +231,6 @@
  - add context menu item to add subreddit to shortcuts
  - default subreddit r/all changed to r/popular
  - context menu entry to show new posts has correct text  
+ 3.1.4 (2017-02-20)
+ - add imgFlip parsing
+ 

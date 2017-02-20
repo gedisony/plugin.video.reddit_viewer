@@ -152,6 +152,11 @@ class sitesBase(object):
         if match: 
             return match[0]        
 
+    def is_gif_extension(self, media_url):
+        filename,ext=parse_filename_and_ext_from_url(media_url)
+        if ext=='gif':
+            self.media_type=self.TYPE_GIF
+        return True
     
     def assemble_images_dictList(self,images_list):
         title=''
@@ -2620,7 +2625,6 @@ class ClassImgTrex(sitesBase):
         return self.get_playable_url(self.media_url, is_probably_a_video=False )
 
     def get_playable_url(self, media_url, is_probably_a_video=False ):
-        log('  scraping:'+ media_url )            
         content = requests.get( media_url, timeout=REQUEST_TIMEOUT )
         
         if content.status_code==200:
@@ -2657,6 +2661,41 @@ class ClassImgTrex(sitesBase):
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         return None    
+
+    def get_thumb_url(self):
+        pass
+
+class ClassImgFlip(sitesBase):
+    SITE='imgflip'
+    regex='(imgflip.com)'
+    include_gif_in_get_playable=True
+
+    def get_playable_url(self, link_url, is_probably_a_video=False ):
+        content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
+        if content.status_code==200:
+            #log(repr(content.headers))
+            i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
+            iw=parseDOM(content.text, "meta", attrs = { "property": "og:image:width" }, ret="content" )
+            ih=parseDOM(content.text, "meta", attrs = { "property": "og:image:height" }, ret="content" )
+            if i[0]:
+                image=i[0]
+                if self.is_gif_extension(image):
+                    media_type=self.TYPE_GIF
+                else:
+                    media_type=self.TYPE_IMAGE
+
+                self.thumb_url=image
+                self.media_w=iw[0]
+                self.media_h=ih[0]
+                self.poster_url=self.thumb_url
+                return image,media_type
+            else:
+                log('      %s: cant find <meta property'  %(self.__class__.__name__ ) )
+        else:
+            log('    %s :get_playable_url: %s ' %(self.__class__.__name__, repr(content.status_code) ) )
+
+    def ret_album_list(self, album_url, thumbnail_size_code=''):
+        return None
 
     def get_thumb_url(self):
         pass

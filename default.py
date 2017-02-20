@@ -351,7 +351,7 @@ def editSubreddit(subreddit, name, type):
 def index(url,name,type):
     from resources.lib.utils import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string,xstr, ret_sub_info, samealphabetic, hassamealphabetic
     
-    ## this is where the __main screen is created
+    ## this is where the main screen is created
     content = ""
     if not os.path.exists(subredditsFile):  #if not os.path.exists(subredditsFile):
         create_default_subreddits()
@@ -369,18 +369,20 @@ def index(url,name,type):
     #liz = xbmcgui.ListItem(label="test", label2="label2", iconImage="DefaultFolder.png")
     #u=sys.argv[0]+"?url=&mode=callwebviewer&type="
     #xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=False)
-    
+
+    #liz = xbmcgui.ListItem().fromString('Hello World')
+    #xbmcplugin.addDirectoryItem(handle=pluginhandle, listitem=liz, isFolder=False)
     subredditsFile_entries=load_subredditsFile()
      
-    subredditsFile_entries.sort()
+    subredditsFile_entries.sort(key=lambda y: y.lower())
 
     addtl_subr_info={}
 
     #this controls what infolabels will be used by the skin. very skin specific. 
     #  for estuary, this lets infolabel:plot (and genre) show up below the folder
     #  giving us the opportunity to provide a shortcut_description about the shortcuts
-    xbmcplugin.setContent(pluginhandle, "mixed")
-
+    xbmcplugin.setContent(pluginhandle, "mixed") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
+    
     next_mode='listSubReddit'
     
     for subreddit_entry in subredditsFile_entries:
@@ -456,6 +458,7 @@ def listSubReddit(url, name, subreddit_key):
 
     currentUrl = url
     xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
+    
 
     dialog_progress = xbmcgui.DialogProgressBG()
     dialog_progress_heading='Loading'
@@ -671,7 +674,10 @@ def listSubReddit(url, name, subreddit_key):
         if forceViewMode:
             xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
         
-    xbmcplugin.endOfDirectory(pluginhandle)
+    xbmcplugin.endOfDirectory(handle=pluginhandle, 
+                              succeeded=True, 
+                              updateListing=False,   #setting this to True causes the ".." entry to quit the plugin
+                              cacheToDisc=True)
 
 def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
     from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script,subreddit_in_favorites, colored_subreddit
@@ -1201,7 +1207,9 @@ def listLinksInComment(url, name, type):
     log('  comments_view id=%s' %comments_viewMode)
 
     #xbmcplugin.setContent(pluginhandle, "mixed")  #in estuary, mixed have limited view id's available. it has widelist which is nice for comments but we'll just stick with 'movies'
-    xbmcplugin.setContent(pluginhandle, "movies")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos 
+    xbmcplugin.setContent(pluginhandle, "movies")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
+    xbmcplugin.setPluginCategory(pluginhandle,'Comments')
+ 
     xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
     xbmcplugin.endOfDirectory(pluginhandle)
 
