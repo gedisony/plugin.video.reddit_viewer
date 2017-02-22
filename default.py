@@ -365,6 +365,9 @@ def index(url,name,type):
     #h="as asd [S]asdasd[/S] asdas "
     #log(markdown_to_bbcode(h))
     #addDir('test', "url", "next_mode", "", "subreddit" )
+    
+    #from resources.lib.youtube_dl import YoutubeDL as ydl
+    
 
     #liz = xbmcgui.ListItem(label="test", label2="label2", iconImage="DefaultFolder.png")
     #u=sys.argv[0]+"?url=&mode=callwebviewer&type="
@@ -438,7 +441,7 @@ def index(url,name,type):
     xbmcplugin.endOfDirectory(pluginhandle)
 
 def listSubReddit(url, name, subreddit_key):
-    from resources.lib.utils import unescape, pretty_datediff, post_is_filtered_out, ret_sub_icon, has_multiple_subreddits
+    from resources.lib.utils import unescape, strip_emoji, pretty_datediff, post_is_filtered_out, ret_sub_icon, has_multiple_subreddits
     #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
     #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
 
@@ -495,7 +498,8 @@ def listSubReddit(url, name, subreddit_key):
                 continue
             
             title = unescape(entry['data']['title'].encode('utf-8'))
-            
+            title = strip_emoji(title) #an emoji in the title was causing a KeyError  u'\ud83c'
+
             try:    description = unescape(entry['data']['media']['oembed']['description'].encode('utf-8'))
             except: description = ''
             #log('    description  [%s]' %description)

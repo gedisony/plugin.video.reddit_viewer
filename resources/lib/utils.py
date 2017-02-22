@@ -706,6 +706,17 @@ def unescape(text):
     text=text.replace('\n\n','\n')
     return text
 
+def strip_emoji(text):
+    #http://stackoverflow.com/questions/33404752/removing-emojis-from-a-string-in-python
+    emoji_pattern = re.compile(
+        u"(\ud83d[\ude00-\ude4f])|"  # emoticons
+        u"(\ud83c[\udf00-\uffff])|"  # symbols & pictographs (1 of 2)
+        u"(\ud83d[\u0000-\uddff])|"  # symbols & pictographs (2 of 2)
+        u"(\ud83d[\ude80-\udeff])|"  # transport & map symbols
+        u"(\ud83c[\udde0-\uddff])"  # flags (iOS)
+        "+", flags=re.UNICODE)
+    return emoji_pattern.sub(r'', text) # no emoji
+  
 def markdown_to_bbcode(s):
     #https://gist.github.com/sma/1513929
     links = {}
