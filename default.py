@@ -40,8 +40,6 @@ reload(sys)
 sys.setdefaultencoding("utf-8")
 
 
-
-
 addon         = xbmcaddon.Addon()
 addon_path    = addon.getAddonInfo('path')
 pluginhandle  = int(sys.argv[1])
@@ -366,9 +364,16 @@ def index(url,name,type):
     #log(markdown_to_bbcode(h))
     #addDir('test', "url", "next_mode", "", "subreddit" )
     
-    #from resources.lib.youtube_dl import YoutubeDL as ydl
+    #link='http://mylust.com/videos/433093/this-exotic-honey-has-spent-a-lot-of-time-perfecting-her-pussy-fingering-skills/'
+    #from resources.lib.youtube_dl import YoutubeDL
     
-
+    #ytb = YoutubeDL({'format': 'bestvideo+bestaudio/best',\
+    #                               "quiet": True,\
+    #                               "nocheckcertificate": True})
+    #with ytb:
+    #    result = ytb.extract_info(link, download=False)    
+    #    log('ytb result'+repr(result))
+    
     #liz = xbmcgui.ListItem(label="test", label2="label2", iconImage="DefaultFolder.png")
     #u=sys.argv[0]+"?url=&mode=callwebviewer&type="
     #xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=False)
@@ -809,6 +814,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
 
     if not subreddit_in_favorites(subreddit):
+        #add selected subreddit to shortcuts
         entries.append( ( translation(30056) %colored_subreddit , 
                           "XBMC.RunPlugin(%s?mode=addSubreddit&url=%s)" % ( sys.argv[0], subreddit ) ) )
 

@@ -192,8 +192,6 @@ class sitesBase(object):
                 thumbnail=item.get('thumb')
                 width    =item.get('width') if item.get('width') else 0
                 height   =item.get('height') if item.get('height') else 0
-                
-            
                     
             infoLabels={ "Title": title, "plot": desc, "PictureDesc": desc }
             e=[ title                   #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
@@ -202,8 +200,8 @@ class sitesBase(object):
                ,thumbnail               #'li_thumbnailImage'  #
                ,image_url               #'DirectoryItem_url'  #  
                ,False                   #'is_folder'          # 
-               ,'pictures'              #'type'               # video pictures  liz.setInfo(type='pictures',
-               ,True                    #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this 
+               ,item.get('type')        #'type'               # video pictures  liz.setInfo(type='pictures',
+               ,item.get('isPlayable')  #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this 
                ,infoLabels              #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
                ,'none'                  #'context_menu'       # ...
                ,width
@@ -1947,10 +1945,11 @@ class ClassEroshare(sitesBase):
                     
                     if self.all_same(media_types):
                         if media_types[0]==self.TYPE_IMAGE: 
+                            log('    eroshare link has all images %d' %len(items) )
                             self.media_type=self.TYPE_ALBUM
                             
                         elif media_types[0]==self.TYPE_VIDEO:
-                            #multiple video stream
+                            log('    eroshare link has all video %d' %len(items) )
                             self.link_action=sitesBase.DI_ACTION_YTDL
                             self.media_type=self.TYPE_VIDS
                         
@@ -1999,23 +1998,42 @@ class ClassEroshare(sitesBase):
             #log('********* ' + match[0])    
             if match:
                 j = json.loads(match[0])
-                items = j.get('items')
-                log( '      %d item(s)' % len(items) )
-
-                prefix='https:'
                 
+                reddit_submission=j.get('reddit_submission')
+                if reddit_submission:
+                    reddit_submission_title=reddit_submission.get('title')
+                    
+                title=j.get('title') if j.get('title') else reddit_submission_title
+                items=j.get('items')
+                log( '      %d item(s)' % len(items) )
+                prefix='https:'
                 for s in items:
-                    description = s.get('description') 
+                    media_type=s.get('type').lower()
+                    description=s.get('description') if s.get('description') else title  #use title if description is blank 
                     #media_url=prefix+s.get('url_orig')   #this size too big... 
                     media_url=prefix+s.get('url_full')
                     width=s.get('width')
                     height=s.get('height')
-                
-                    images.append( {'description': description, 
-                                    'url': media_url,
-                                    'width': width,
-                                    'height': height,
-                                    }  )
+                    thumb=prefix+s.get('url_thumb')
+                    if media_type==self.TYPE_VIDEO:
+                        self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                        images.append( {
+                                        'isPlayable':True,
+                                        'thumb':thumb,
+                                        'type': 'video',
+                                        'description': description,
+                                        'url': s.get('url_mp4'),
+                                        'width': width,
+                                        'height': height,
+                                        }  )
+                    else:
+                        images.append( {
+                                        'thumb':thumb,
+                                        'description': description,
+                                        'url': media_url,
+                                        'width': width,
+                                        'height': height,
+                                        }  )
                 self.assemble_images_dictList(images)
                 #self.assemble_images_dictList(   ( [ s.get('description'), prefix+s.get('url_full')] for s in items)    )
     
@@ -3075,12 +3093,12 @@ def display_album_from(dictlist, album_name):
     else:
         using_custom_gui=False
     
+    #log( repr(dictlist))
     for idx, d in enumerate(dictlist):
         ti=d['li_thumbnailImage']
         media_url=d.get('DirectoryItem_url')
 
         #log('  display_album_from list:'+ media_url + "  " )  
-        
         #There is only 1 textbox for Title and description in our custom gui. 
         #  I don't know how to achieve this in the xml file so it is done here:
         #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
@@ -3098,18 +3116,26 @@ def display_album_from(dictlist, album_name):
                              iconImage='',
                              thumbnailImage='')
 
+        #parse the link so that we can determine whether it is image or video.  
+        ld=parse_reddit_link(media_url)
+        DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, '', '', script_to_call="")
+
         if using_custom_gui:
             url_for_DirectoryItem=media_url
+            if setProperty_IsPlayable=='true':
+                liz.setProperty('type', d.get('type'))
+
         else:
+            #sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=viewImage"
+
             #with xbmc's standard gui, we need to specify to call the plugin to open the gui that shows image 
-            url_for_DirectoryItem=sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=viewImage"
-            
+            #log('*****[diu]:'+ DirectoryItem_url)
+            url_for_DirectoryItem=DirectoryItem_url
+
         liz.setInfo( type='video', infoLabels=d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
-        liz.setArt({"thumb": ti, "poster":media_url, "banner":media_url, "fanart":media_url, "landscape":media_url   })             
-        #liz.setArt({"thumb": ti, "banner":media_url })
+        liz.setArt({"thumb": ti,'icon': ti, "poster":media_url, "banner":media_url, "fanart":media_url, "landscape":media_url   })
 
         directory_items.append( (url_for_DirectoryItem, liz, False,) )
-
     #msg=WINDOW.getProperty(url)
     #WINDOW.clearProperty( url )
     #log( '   msg=' + msg )
@@ -3122,7 +3148,7 @@ def display_album_from(dictlist, album_name):
         for di in directory_items:
             #log( str(di[1] ) )
             li.append( di[1] )
-             
+
         ui = cGUI('view_450_slideshow.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=53)
         ui.include_parent_directory_entry=False
         
@@ -3384,6 +3410,14 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
             setProperty_IsPlayable='true'
             isFolder=False
             #exception to loop gifs
+
+        elif ld.media_type==sitesBase.TYPE_VIDS:
+            if addon.getSetting("hide_video") == "true": return
+            #setProperty_IsPlayable='true'
+            #isFolder=False
+            title_prefix='[ALBUM]'   #treat link with multiple video as album
+            ld.link_action='listAlbum'
+            isFolder=True
             
         elif ld.media_type==sitesBase.TYPE_GIF:
             if addon.getSetting("hide_video") == "true": return
