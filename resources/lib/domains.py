@@ -224,10 +224,10 @@ class sitesBase(object):
         print ' '.join([item[key] for key in keys])
 """
 
-class ClassYoutube(sitesBase):      
-    regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)'      
+class ClassYoutube(sitesBase):
+    regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)'
     video_id=''
-    
+
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
         if not media_url:
             media_url=self.media_url
@@ -247,7 +247,6 @@ class ClassYoutube(sitesBase):
             self.link_action='playYTDLVideo'
             return media_url, self.TYPE_VIDEO
 
-        
     def get_video_id(self):
         match = re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL).findall(self.media_url)
         if match:
@@ -280,9 +279,9 @@ class ClassYoutube(sitesBase):
         if self.video_id:            
             self.thumb_url='http://img.youtube.com/vi/%s/%d.jpg' %(self.video_id,quality0123)
             self.poster_url='http://img.youtube.com/vi/%s/%d.jpg' %(self.video_id,0)
-   
+
         return self.thumb_url
-    
+
 class ClassImgur(sitesBase):
     regex='(imgur.com)' 
 
@@ -290,13 +289,13 @@ class ClassImgur(sitesBase):
     #get client id by registering at https://api.imgur.com/oauth2/addclient
     #request_header={ "Authorization": "Client-Id a594f39e5d61396" }
     request_header={ "Authorization": "Client-Id 7b82c479230b85f" }
-    
+
     #when is_an_album() is called to check a /gallery/ link, we ask imgur; it returns more info than needed, we store some of it here   
     is_an_album_type=""
     is_an_album_link=""
     images_count=0
     image_url_of_a_single_image_album=''
-    
+
     def get_album_thumb(self, media_url):
 
         album_id=self.get_album_or_gallery_id(media_url)
@@ -3382,7 +3381,7 @@ def loopedPlayback(url, name, type):
     #pl.add(url, xbmcgui.ListItem(name))
     xbmc.Player().play(pl, windowed=False)  
 
-def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='', script_to_call="", on_autoplay=False):
+def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='', script_to_call="", on_autoplay=False, img_w=0, img_h=0):
     setProperty_IsPlayable='false'  #recorded in vieoxxx.db if set to 'true'
     isFolder=True
     DirectoryItem_url=''
@@ -3393,9 +3392,9 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
             if addon.getSetting("hide_IMG") == "true": return
             title_prefix='[IMG]'
             isFolder=False            
-            if ld.link_action=='viewTallImage':
-                arg_name=str(arg_name)
-                arg_type=str(arg_type)
+            if ld.link_action=='viewTallImage':  #viewTallImage uses/needs the name and type arg to hold the image width and height
+                arg_name=str(img_w)
+                arg_type=str(img_h)
             
         elif ld.media_type==sitesBase.TYPE_ALBUM:
             if addon.getSetting("hide_IMG") == "true": return

@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <window type="window">
-	<!-- onload>ClearProperty(foo,10000)</onload-->
-	<onload>SetProperty(foox,barsddsd,10000)</onload>
-
 	
 	<backgroundcolor>gray</backgroundcolor>
 
