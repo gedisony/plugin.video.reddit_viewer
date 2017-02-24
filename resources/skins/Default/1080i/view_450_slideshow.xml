@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <window type="window">
 	<!-- onload>ClearProperty(foo,10000)</onload-->
-	<onload>SetProperty(foox,barsddsd,10000)</onload>
+	<onload>SetProperty(foo,barsddsd)</onload>
 
 	<defaultcontrol always="true">53</defaultcontrol>
 	<backgroundcolor>0xff000000</backgroundcolor>
@@ -15,13 +15,12 @@
 				<!-- Show thumbnail image while original image still loading. but some thumbnail image stick out to the sides. 
 				could not figure out how to detect when original image still loading. 
 				  Attempt a different method by Hiding the thumbnail image after list changes focus. 
-				  it works but it is hard to guess proper the delay -how long the original image finishes loading. 
+				  it works but it is hard to guess proper the delay -how long the original image finishes loading.--> 
 				    
-				<control type="image" id="200">
+				<!-- control type="image" id="200">
 					<visible>!Container(53).OnNext + !Container(53).OnPrevious</visible>
 					<aspectratio scalediffuse="true" aligny="center">keep</aspectratio>
 					<texture>$INFO[Container(53).ListItem.Art(thumb)]</texture>
-					<!-- animation effect="fade" start="100" end="0" time="1000" delay="0" tween="back" easing="in">visible</animation>
 				</control-->
 
 		        <control type="image">
@@ -72,6 +71,22 @@
 					<texture>$INFO[Container(53).ListItem.Art(banner)]</texture>
 					<!-- fadetime>200</fadetime-->
 				</control>
+				<!-- control type=videowindow id="210">  no need to define a video window, kodi will create a full screen one for us. 
+				      <left>80</left>
+				      <top>60</top>
+				      <width>250</width>
+				      <height>200</height>
+				      <visible>true</visible>
+      			</control-->
+      			
+      			<!-- if the item is video, this will show up    this is set in domains.py display_album_from() -->
+				<control type="image" id="211">
+					<visible>String.Contains(Container(53).ListItem.Property(item_type),playable)</visible>
+					<aspectratio scalediffuse="true" aligny="center">keep</aspectratio>
+					<!-- texture>DefaultVideo.png</texture-->
+					<texture>$INFO[Container(53).ListItem.Art(thumb)]</texture>
+				</control>
+
 			</control>
 		<!--END include name="DefaultBackground"-->
 

@@ -504,9 +504,11 @@ class ClassImgur(sitesBase):
             
             
             for idx, entry in enumerate(imgs):
-                type       =entry.get('type')         #image/jpeg
-                
-                media_url=entry.get('link')          #http://i.imgur.com/gpnMihj.jpg
+                link_type =entry.get('type')         #image/jpeg
+                if link_type=='image/gif':
+                    media_url=entry.get('mp4')
+                else:
+                    media_url=entry.get('link')
                 width    =entry.get('width')
                 height   =entry.get('height')
                 title    =entry.get('title')
@@ -3123,8 +3125,9 @@ def display_album_from(dictlist, album_name):
         if using_custom_gui:
             url_for_DirectoryItem=media_url
             if setProperty_IsPlayable=='true':
-                liz.setProperty('type', d.get('type'))
-
+                liz.setProperty('item_type','playable')
+                #liz.setProperty('onClick_action', build_script('play', media_url,'','') )
+                liz.setProperty('onClick_action',  media_url )
         else:
             #sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=viewImage"
 
@@ -3146,7 +3149,6 @@ def display_album_from(dictlist, album_name):
         from resources.lib.guis import cGUI
         li=[]
         for di in directory_items:
-            #log( str(di[1] ) )
             li.append( di[1] )
 
         ui = cGUI('view_450_slideshow.xml' , addon_path, defaultSkin='Default', defaultRes='1080i', listing=li, id=53)
