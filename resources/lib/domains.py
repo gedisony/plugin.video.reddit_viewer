@@ -3156,8 +3156,6 @@ def display_album_from(dictlist, album_name):
         xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
         xbmcplugin.endOfDirectory(pluginhandle)
 
-
-
 def listAlbum(album_url, name, type):
     from slideshow import slideshowAlbum
     #log("listAlbum:"+album_url)
@@ -3179,7 +3177,6 @@ def listAlbum(album_url, name, type):
             slideshowAlbum( dictlist, name )
         else:
             display_album_from( dictlist, name )
-
 
 def viewImage(image_url, name, preview_url):
     #url='d:\\aa\\lego_fusion_beach1.jpg'
@@ -3272,7 +3269,7 @@ def viewTallImage(image_url, width, height):
     #xbmc_busy(False)
 
     #useWindow=xbmcgui.WindowDialog()
-    useWindow=xbmcgui.WindowXMLDialog('slideshow05.xml', addon_path, 'default', '720p')
+    useWindow=xbmcgui.WindowXMLDialog('slideshow05.xml', addon_path)
 
     #useWindow.setCoordinateResolution(1)
 
