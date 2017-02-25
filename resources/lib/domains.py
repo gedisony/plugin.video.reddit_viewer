@@ -2930,7 +2930,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
                 #log('      poster_url:'+poster)
             if not hoster.link_action:
                 if media_type==sitesBase.TYPE_IMAGE:
-                    if image_ar>0 and image_ar < 0.5: #special action for tall images
+                    if image_ar>0 and image_ar < 0.4: #special action for tall images
                         hoster.link_action='viewTallImage'
                     else:
                         hoster.link_action='viewImage'
@@ -3261,16 +3261,12 @@ def viewImage(image_url, name, preview_url):
     #xbmc.executebuiltin("XBMC.SlideShow(" + SlideshowCacheFolder + ")")
 
 def viewTallImage(image_url, width, height):
-    from resources.lib.utils import unescape
     log( 'viewTallImage %s: %sx%s' %(image_url, width, height))
     #image_url=unescape(image_url) #special case for handling reddituploads urls
     #log( 'viewTallImage %s: %sx%s' %(image_url, width, height))
 
-    #xbmc_busy(False)
-
     #useWindow=xbmcgui.WindowDialog()
     useWindow=xbmcgui.WindowXMLDialog('slideshow05.xml', addon_path)
-
     #useWindow.setCoordinateResolution(1)
 
     #screen_w=useWindow.getHeight()  #1280
@@ -3287,14 +3283,14 @@ def viewTallImage(image_url, width, height):
         if w > screen_w:
             new_h=int(h*resize_percent)
         else:
-            if h < screen_h:
+            if abs( h - screen_h) < ( screen_h / 10 ):  #if the image height is about 10 percent of the screen height, zoom it a bit
+                new_h=screen_h*2
+            elif h < screen_h:
                 new_h=screen_h
             else:
                 new_h=h
 
-
         log( '   image=%dx%d resize_percent %f  new_h=%d ' %(w,h, resize_percent, new_h))
-
 
         loading_img = xbmc.validatePath('/'.join((addon_path, 'resources', 'skins', 'Default', 'media', 'srr_busy.gif' )))
 
@@ -3316,11 +3312,9 @@ def viewTallImage(image_url, width, height):
         scroll_time=(int(h)/int(w))*20000
 
         img_control.setAnimations( [
-
                                     ('conditional', "condition=true delay=6000 time=%d effect=slide  start=0,-%d end=0,0 tween=sine easing=inout  pulse=true" %( scroll_time, slide_h) ),
                                     ('conditional', "condition=true delay=0  time=4000 effect=fade   start=0   end=100    "  ) ,
                                     ]  )
-
         useWindow.doModal()
         useWindow.removeControls( [img_control,img_loading] )
         del useWindow

@@ -740,6 +740,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     preview_ar=0.0
     if (preview_w==0 or preview_h==0) != True:
         preview_ar=float(preview_w) / preview_h
+        #log("preview ar: "+ repr(preview_ar))
 
     if previewimage: needs_preview=False
     else:            needs_preview=True  #reddit has no thumbnail for this link. please get one
