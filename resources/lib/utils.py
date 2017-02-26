@@ -498,6 +498,26 @@ def post_excluded_from( filter, str_to_check):
             return True
     return False
 
+def add_to_csv_setting(setting_id, string_to_add):
+    #adds a string to the end of a setting id in settings.xml 
+    #this is assuming that it is a comma separated list used in filtering subreddit / domain
+    import xbmcaddon
+    addon=xbmcaddon.Addon()
+    csv_setting=addon.getSetting(setting_id)
+    csv_list=csv_setting.split(',')
+    csv_list=[x.lower().strip() for x in csv_list]
+    csv_list.append(string_to_add)
+
+    csv_list = filter(None, csv_list)                 #removes empty string
+    addon.setSetting(setting_id, ",".join(csv_list))
+
+    if setting_id=='domain_filter':
+        s=colored_subreddit( string_to_add, 'tan',False )
+    elif setting_id=='subreddit_filter':
+        s=colored_subreddit( string_to_add )
+
+    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( s, translation(30020)+' '+setting_id.replace('_',' ') ) ) #translation(30020)=Added to
+
 def post_is_filtered_out( entry ):
     from default import hide_nsfw, domain_filter, subreddit_filter
 
@@ -519,6 +539,22 @@ def post_is_filtered_out( entry ):
         return True
 
     return False
+
+def addtoFilter(to_filter, name, type_of_filter):
+    #type_of_filter=domain or subreddit
+    from default import hide_nsfw, domain_filter, subreddit_filter
+    if type_of_filter=='domain':
+        #log( domain_filter +'+' + to_filter)
+        add_to_csv_setting('domain_filter',to_filter)
+        pass
+    elif type_of_filter=='subreddit':
+        #log( subreddit_filter +'+' + to_filter )
+        add_to_csv_setting('subreddit_filter',to_filter)
+        pass
+    else:
+        return
+    pass
+ 
 
 def prettify_reddit_query(subreddit_entry):
     #for search queries; make the reddit query string presentable
@@ -900,8 +936,36 @@ def subreddit_in_favorites( subreddit ):
                 if subreddit.lower() == s.lower():
                     return True
 
-def colored_subreddit(subreddit):
-    return "[COLOR cadetblue]r/" + subreddit + "[/COLOR]"
+def colored_subreddit(subreddit,color='cadetblue', add_r=True):
+    #return "[COLOR "+color+"]r/" + subreddit + "[/COLOR]"
+    return "[COLOR %s]%s%s[/COLOR]" %(color,('r/' if add_r else ''),subreddit )
+
+def open_web_browser(url,name,type):
+    #http://forum.kodi.tv/showthread.php?tid=235733
+    osWin = xbmc.getCondVisibility('system.platform.windows')
+    osOsx = xbmc.getCondVisibility('system.platform.osx')
+    osLinux = xbmc.getCondVisibility('system.platform.linux')
+    osAndroid = xbmc.getCondVisibility('System.Platform.Android')
+    #url = 'http://www.google.com/'
+
+    if osOsx:
+        # ___ Open the url with the default web browser
+        xbmc.executebuiltin("System.Exec(open "+url+")")
+    elif osWin:
+        # ___ Open the url with the default web browser
+        xbmc.executebuiltin("System.Exec(cmd.exe /c start "+url+")")
+    elif osLinux and not osAndroid:
+        # ___ Need the xdk-utils package
+        xbmc.executebuiltin("System.Exec(xdg-open "+url+")") 
+    elif osAndroid:
+        # ___ Open media with standard android web browser
+        xbmc.executebuiltin("StartAndroidActivity(com.android.browser,android.intent.action.VIEW,,"+url+")")
+
+        # ___ Open media with Mozilla Firefox
+        xbmc.executebuiltin("StartAndroidActivity(org.mozilla.firefox,android.intent.action.VIEW,,"+url+")")
+
+        # ___ Open media with Chrome
+        xbmc.executebuiltin("StartAndroidActivity(com.android.chrome,,,"+url+")")
 
 
 if __name__ == '__main__':

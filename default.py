@@ -23,18 +23,18 @@ import requests
 
 import threading
 
-#this import for the youtube_dl addon causes our addon to start slower. we'll import it when we need to playYTDLVideo
+#this import for the youtube_dl AND urlresolver addons causes our addon to start slower. we'll import it when we need to playYTDLVideo
 modes_that_use_ytdl=['mode=playYTDLVideo','mode=play']
 try:
     if any(mode in sys.argv[2] for mode in modes_that_use_ytdl):   ##if 'mode=playYTDLVideo' in sys.argv[2] :
         import YDStreamExtractor      #note: you can't just add this import in code, you need to re-install the addon with <import addon="script.module.youtube.dl"        version="16.521.0"/> in addon.xml
+        import urlresolver
 except:
     pass
 
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
 from urllib import urlencode
 
-import urlresolver
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -127,6 +127,15 @@ except: int_CommentTreshold = -1000    #if CommentTreshold can't be converted to
 try:istreamable_quality=int(addon.getSetting("streamable_quality"))  #values 0 or 1
 except:istreamable_quality=0
 streamable_quality  =["full", "mobile"][istreamable_quality]       #https://streamable.com/documentation
+
+cxm_show_comment_link     = addon.getSetting("cxm_show_comment_link") == "true"
+cxm_show_comments         = addon.getSetting("cxm_show_comments") == "true"
+cxm_show_go_to            = addon.getSetting("cxm_show_go_to") == "true"
+cxm_show_new_from         = addon.getSetting("cxm_show_new_from") == "true"
+cxm_show_add_shortcuts    = addon.getSetting("cxm_show_add_shortcuts") == "true"
+cxm_show_filter_subreddit = addon.getSetting("cxm_show_filter_subreddit") == "true"
+cxm_show_filter_domain    = addon.getSetting("cxm_show_filter_domain") == "true"
+cxm_show_open_browser     = addon.getSetting("cxm_show_open_browser") == "true"
 
 addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
 subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
@@ -239,7 +248,6 @@ def addSubreddit(subreddit, name, type):
                 subreddit = format_multihub(subreddit)
             else:
                 get_subreddit_entry_info(subreddit)
-
 
             for line in content:
                 if line.lower()==subreddit.lower()+"\n":
@@ -634,7 +642,7 @@ def listSubReddit(url, name, subreddit_key):
                     description=description,
                     credate=credate,
                     reddit_says_is_video=is_a_video,
-                    site=commentsUrl,
+                    commentsUrl=commentsUrl,
                     subreddit=subreddit,
                     media_url=media_url,
                     over_18=over_18,
@@ -686,8 +694,8 @@ def listSubReddit(url, name, subreddit_key):
                               updateListing=False,   #setting this to True causes the ".." entry to quit the plugin
                               cacheToDisc=True)
 
-def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, site, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
-    from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script,subreddit_in_favorites, colored_subreddit
+def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
+    #from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script
     from resources.lib.domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
     videoID=""
@@ -702,8 +710,6 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     isFolder=True
     thumb_url=''
-
-    colored_subreddit=colored_subreddit(subreddit)
 
     h="[B]" + domain + "[/B]: "
     if over_18:
@@ -786,42 +792,71 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
 
-    entries = [] #entries for listbox for when you type 'c' or rt-click
-    if num_comments > 0:
-        #if we are using a custom gui to show comments, we need to use RunPlugin. there is a weird loading/pause if we use XBMC.Container.Update. i think xbmc expects us to use addDirectoryItem
-        #  if we have xbmc manage the gui(addDirectoryItem), we need to use XBMC.Container.Update. otherwise we'll get the dreaded "Attempt to use invalid handle -1" error
-        #entries.append( ( translation(30050) + " (c)",  #Show comments
-        #              "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )
-        #entries.append( ( translation(30052) , #Show comment links
-        #              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )
+    entries = build_context_menu_entries(num_comments, commentsUrl, many_subreddit, subreddit, domain, media_url) #entries for listbox for when you type 'c' or rt-click
 
-        entries.append( ( translation(30052) , #Show comment links
-                      "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )
-        entries.append( ( translation(30050) ,  #Show comments
-                      "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(site) ) ) )
+    liz.addContextMenuItems(entries)
+    #log( 'playcount=' + repr(getPlayCount(DirectoryItem_url)))
+    xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
 
-        #entries.append( ( translation(30050) + " (ActivateWindow)",  #Show comments
-        #              "XBMC.ActivateWindow(Video, %s?mode=listLinksInComment&url=%s)" % (  sys.argv[0], urllib.quote_plus(site) ) ) )      #***  ActivateWindow is for the standard xbmc window
-    else:
-        entries.append( ( translation(30053) ,  #No comments
-                      "xbmc.executebuiltin('Action(Close)')" ) )
+    return ok
 
-    #show the "go to other subreddits" if the entire list is from one subreddit
-    if many_subreddit:
-        #sys.argv[0] is plugin://plugin.video.reddit_viewer/
-        #prl=zaza is just a dummy: during testing the first argument is ignored... possible bug?
-        entries.append( ( translation(30051)+" %s" %colored_subreddit ,
+def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subreddit, domain, link_url):
+    from resources.lib.utils import assemble_reddit_filter_string,subreddit_in_favorites, colored_subreddit
+
+    s=(subreddit[:12] + '..') if len(subreddit) > 12 else subreddit     #crop long subreddit names in context menu
+    colored_subreddit_short=colored_subreddit( s )
+    colored_subreddit_full=colored_subreddit( subreddit )
+    colored_domain_full=colored_subreddit( domain, 'tan',False )
+    entries=[]
+
+    #sys.argv[0] is plugin://plugin.video.reddit_viewer/
+    #prl=zaza is just a dummy: during testing the first argument is ignored... possible bug?
+
+    if cxm_show_open_browser:
+            entries.append( ( translation(30509),  #Open in browser
+                              "XBMC.RunPlugin(%s?mode=openBrowser&url=%s)" % ( sys.argv[0],  urllib.quote_plus( link_url ) ) ) )
+
+    if cxm_show_comment_link or cxm_show_comments:
+        if num_comments > 0:
+            #if we are using a custom gui to show comments, we need to use RunPlugin. there is a weird loading/pause if we use XBMC.Container.Update. i think xbmc expects us to use addDirectoryItem
+            #  if we have xbmc manage the gui(addDirectoryItem), we need to use XBMC.Container.Update. otherwise we'll get the dreaded "Attempt to use invalid handle -1" error
+            #entries.append( ( translation(30050) + " (c)",  #Show comments
+            #              "XBMC.RunPlugin(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
+            #entries.append( ( translation(30052) , #Show comment links
+            #              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
+            if cxm_show_comment_link:
+                entries.append( ( translation(30052) , #Show comment links
+                                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
+            if cxm_show_comments:
+                entries.append( ( translation(30050) ,  #Show comments
+                                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
+            #entries.append( ( translation(30050) + " (ActivateWindow)",  #Show comments
+            #              "XBMC.ActivateWindow(Video, %s?mode=listLinksInComment&url=%s)" % (  sys.argv[0], urllib.quote_plus(site) ) ) )      #***  ActivateWindow is for the standard xbmc window
+        else:
+            entries.append( ( translation(30053) ,  #No comments
+                          "xbmc.executebuiltin('Action(Close)')" ) )
+
+    if many_subreddit and cxm_show_go_to:
+        entries.append( ( translation(30051)+" %s" %colored_subreddit_full ,
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
-    else:
+
+    if cxm_show_new_from:
         #show check /new from this subreddit if it is all the same subreddit
-        entries.append( ( translation(30055)+" %s" %colored_subreddit ,
+        entries.append( ( translation(30055)+" %s" %colored_subreddit_short ,
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
 
-    if not subreddit_in_favorites(subreddit):
-        #add selected subreddit to shortcuts
-        entries.append( ( translation(30056) %colored_subreddit ,
-                          "XBMC.RunPlugin(%s?mode=addSubreddit&url=%s)" % ( sys.argv[0], subreddit ) ) )
+    if cxm_show_add_shortcuts: 
+        if not subreddit_in_favorites(subreddit):
+            #add selected subreddit to shortcuts
+            entries.append( ( translation(30056) %colored_subreddit_short ,
+                              "XBMC.RunPlugin(%s?mode=addSubreddit&url=%s)" % ( sys.argv[0], subreddit ) ) )
 
+    if cxm_show_filter_subreddit:
+            entries.append( ( translation(30057) %colored_subreddit_short ,
+                              "XBMC.RunPlugin(%s?mode=addtoFilter&url=%s&type=%s)" % ( sys.argv[0], subreddit, 'subreddit' ) ) )
+    if cxm_show_filter_domain:
+            entries.append( ( translation(30057) %colored_domain_full ,
+                              "XBMC.RunPlugin(%s?mode=addtoFilter&url=%s&type=%s)" % ( sys.argv[0], domain, 'domain' ) ) )
     #not working...
     #entries.append( ( translation(30054) ,
     #                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=playURLResolver&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(media_url) ) ) )
@@ -831,17 +866,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     #favEntry = '<favourite name="'+title+'" url="'+DirectoryItem_url+'" description="'+description+'" thumb="'+iconimage+'" date="'+credate+'" site="'+site+'" />'
     #entries.append((translation(30022), 'RunPlugin(plugin://'+addonID+'/?mode=addToFavs&url='+urllib.quote_plus(favEntry)+'&type='+urllib.quote_plus(subreddit)+')',))
-
-    #if showBrowser and (osWin or osOsx or osLinux):
-    #    if osWin and browser_win==0:
-    #        entries.append((translation(30021), 'RunPlugin(plugin://plugin.program.webbrowser/?url='+urllib.quote_plus(site)+'&mode=showSite&zoom='+browser_wb_zoom+'&stopPlayback=no&showPopups=no&showScrollbar=no)',))
-    #    else:
-    #        entries.append((translation(30021), 'RunPlugin(plugin://plugin.program.chrome.launcher/?url='+urllib.quote_plus(site)+'&mode=showSite)',))
-    liz.addContextMenuItems(entries)
-    #log( 'playcount=' + repr(getPlayCount(DirectoryItem_url)))
-    xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
-
-    return ok
+    return entries
 
 def autoPlay(url, name, autoPlay_type):
     from resources.lib.domains import sitesBase, parse_reddit_link, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type, setting_gif_repeat_count
@@ -1357,10 +1382,6 @@ def parse_url_and_play(url, name, type):
             #xbmc.executebuiltin('RunPlugin(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) ) )
             xbmc.executebuiltin('RunPlugin(%s)' % ( DirectoryItem_url ) )
 
-
-
-
-
         #listitem = xbmcgui.ListItem(path=DirectoryItem_url)
         #listitem.setProperty('IsPlayable', setProperty_IsPlayable)
         #xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
@@ -1399,7 +1420,7 @@ def parse_url_and_play(url, name, type):
 #                xbmc.Player().play(playlist)
 #        else:
 #            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( translation(30192), 'Youtube_dl')  )
-
+    pass
 
 #MODE queueVideo       -type not used
 def queueVideo(url, name, type):
@@ -1557,7 +1578,6 @@ def reddit_request( url ):
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
         xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.msg, url)  )
         log( err.msg )
-
 
 def reddit_get_refresh_token(url, name, type):
     #this function gets a refresh_token from reddit and keep it in our addon. this refresh_token is used to get 1-hour access tokens.
@@ -1800,7 +1820,8 @@ if __name__ == '__main__':
 
     from resources.lib.domains import viewImage, listAlbum, viewTallImage, playURLRVideo, loopedPlayback
     from resources.lib.slideshow import autoSlideshow
-    from resources.lib.converthtml import readHTML
+    from resources.lib.utils import addtoFilter,open_web_browser
+    
 
     if mode=='':mode='index'  #default mode is to list start page (index)
     #plugin_modes holds the mode string and the function that will be called given the mode
@@ -1814,6 +1835,8 @@ if __name__ == '__main__':
                     ,'viewImage'            : viewImage
                     ,'viewTallImage'        : viewTallImage
                     ,'listAlbum'            : listAlbum
+                    ,'addtoFilter'          : addtoFilter
+                    ,'openBrowser'          : open_web_browser
 #                    ,'queueVideo'           : queueVideo
 #                    ,'addToFavs'            : addToFavs
 #                    ,'removeFromFavs'       : removeFromFavs

@@ -243,4 +243,9 @@
  - update correct path for view tall image xml file
  3.1.9
  - reduce the ar requirement to trigger view tall image
- 
+ 3.2.0
+ - Context menu changes:
+   - Add open in web browser option
+   - Setting to hide context menu elements
+   - Add hide subreddit option
+   - Add hide domain option

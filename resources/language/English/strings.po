@@ -84,15 +84,21 @@ msgctxt "#30019"
 msgid "Shortcut added"
 msgstr ""
 
+#confirmation message that subreddit/domain has been added to subreddit/domain filter
+#e.g.: r/writingprompt Added to subreddit_filter
+msgctxt "#30020"
+msgid "Added to"
+msgstr ""
 
-#: used in context menu. 
+
+#: used in context menu.  (also see "#30500")
 msgctxt "#30050"
 msgid "Show comments"
 msgstr ""
 
-#: used in context menu. "More from r/funny". <-- generate new list from r/funny subreddit 
+#: used in context menu. "Go to r/funny". <-- generate new list from r/funny subreddit 
 msgctxt "#30051"
-msgid "More from"
+msgid "Go to"
 msgstr ""
 
 #show only links in comments
@@ -117,6 +123,11 @@ msgstr ""
 #: used in context menu. add r/funny to shortcuts list 
 msgctxt "#30056"
 msgid "Add %s to shortcuts"
+msgstr ""
+
+#: used in context menu. Hide r/writingprompt posts (do not show posts from r/writingprompt) or (do not show posts from fakenews.com)
+msgctxt "#30057"
+msgid "Hide %s posts"
 msgstr ""
 
 #begin strings used in pretty date to indicate how long ago a post is posted (keep these strings short and similar length) 
@@ -428,4 +439,45 @@ msgstr ""
 
 msgctxt "#30410"
 msgid "[Click here to revoke the Refresh Token]"
+msgstr ""
+
+#settings category. - customize context menu entries. strings here pair with strings in #30050, #30051, #30052...
+msgctxt "#30500"
+msgid "Context menu"
+msgstr ""
+
+msgctxt "#30501"
+msgid "Show comment links"
+msgstr ""
+
+msgctxt "#30502"
+msgid "Show comments"
+msgstr ""
+
+msgctxt "#30503"
+msgid "Go to [COLOR cadetblue]r/subreddit[/COLOR]"
+msgstr ""
+
+msgctxt "#30504"
+msgid "New posts from [COLOR cadetblue]r/subreddit[/COLOR]"
+msgstr ""
+
+msgctxt "#30505"
+msgid "Add [COLOR cadetblue]r/subreddit[/COLOR] to shortcuts"
+msgstr ""
+
+msgctxt "#30506"
+msgid "Hide posts from [COLOR cadetblue]r/subreddit[/COLOR]"
+msgstr ""
+
+msgctxt "#30507"
+msgid "Hide posts from specific website"
+msgstr ""
+
+msgctxt "#30508"
+msgid "Customize what shows up on the context menu"
+msgstr ""
+
+msgctxt "#30509"
+msgid "Open link in browser"
 msgstr ""
