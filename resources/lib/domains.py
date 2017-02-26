@@ -11,7 +11,6 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 #sys.setdefaultencoding("utf-8")
-import urlresolver
 
 from default import addon, addonID, streamable_quality   #,addon_path,pluginhandle,addonID
 from default import log, translation
@@ -364,8 +363,15 @@ class ClassImgur(sitesBase):
             self.images_count=jdata.get('images_count')
             #log('    imgur album images count ' + repr(self.images_count))
             if self.images_count == 1:
-                self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
-                log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
+                #if there is an mp4 tag in the json, use that value.  
+                #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)  
+                #     so renaming by changing the .gif to .mp4 wouldn't work. 
+                #        credit to mac1202 2/26/2017 for finding this bug.
+                if jdata.get('images')[0].get('mp4'):
+                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
+                else:
+                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
+                #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
                 return False
             else:
                 return True
@@ -2854,6 +2860,7 @@ class genericVideo(sitesBase):
         pass
 
     def get_playable(self, media_url='', is_probably_a_video=False ):
+        import urlresolver
         if not media_url:
             media_url=self.media_url
 
@@ -2910,6 +2917,8 @@ def sitesManager( media_url ):
                 return subcls( media_url )
 
 def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_playable_url=False, image_ar=0 ):
+    import urlresolver
+    
     if not link_url: return
 
     album_dict_list=None

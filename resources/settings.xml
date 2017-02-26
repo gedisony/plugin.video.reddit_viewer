@@ -50,6 +50,13 @@
         <setting id="cxm_show_filter_domain"    type="bool" label="30507" default="true"/>
     </category>
 
+    <category label="30600">
+        <setting type="lsep"                                label="30601" enable="true" />
+        <setting type="lsep"                                label="30602" enable="true" />
+        <setting id="custom_link_command"       type="text" label=""      default=""/>
+    </category>
+
+
     <!-- category label="30150">
         <setting                  type="action"      label="30151" action="RunPlugin(plugin://plugin.video.reddit_tv/?mode=openSettings&url=youtube)"/>
         <setting                  type="action"      label="30152" action="RunPlugin(plugin://plugin.video.reddit_tv/?mode=openSettings&url=vimeo)"/>

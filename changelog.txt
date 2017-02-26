@@ -249,3 +249,6 @@
    - Setting to hide context menu elements
    - Add hide subreddit option
    - Add hide domain option
+ 3.2.1
+ - Imgur bugfix
+ - Ability to customize command to run the open link in browser context menu 

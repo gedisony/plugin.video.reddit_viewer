@@ -481,3 +481,16 @@ msgstr ""
 msgctxt "#30509"
 msgid "Open link in browser"
 msgstr ""
+
+#settings category. - advanced optins
+msgctxt "#30600"
+msgid "Advanced Options"
+msgstr ""
+
+msgctxt "#30601"
+msgid "Custom command for [B]Open link in browser[/B]"
+msgstr ""
+
+msgctxt "#30602"
+msgid "{url} is replaced with the actual link"
+msgstr ""
