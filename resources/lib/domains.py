@@ -500,53 +500,44 @@ class ClassImgur(sitesBase):
             #log(r.text)
             j = r.json()   #json.loads(r.text)
 
-            #2 types of json received:
-            #first, data is an array of objects
-            #second, data has 'images' which is the array of objects
-            if 'images' in j['data']:
-                imgs=j.get('data').get('images')
-            else:
-                imgs=j.get('data')
-
-            for idx, entry in enumerate(imgs):
-                link_type =entry.get('type')         #image/jpeg
-                if link_type=='image/gif':
-                    media_url=entry.get('mp4')
-                else:
-                    media_url=entry.get('link')
-                width    =entry.get('width')
-                height   =entry.get('height')
-                title    =entry.get('title')
-                descrip  =entry.get('description')
-                #combined = self.combine_title_and_description(title, descrip)
-                #log("----description is "+description)
-
-                #filename,ext=parse_filename_and_ext_from_url(media_url)
-                #if description=='' or description==None: description=filename+"."+ext
-
-                media_thumb_url=self.get_thumb_url(media_url,thumbnail_size_code)
-
-                #log("media_url----"+media_url)
-                #log("media_thumb_url----"+media_thumb_url)
-                #log(str(idx)+type+" [" + str(description)+']'+media_url+" "  )
-                #list_item_name = entry['title'] #if entry['title'] else str(idx).zfill(2)
-
-                images.append( {'title': title,
-                                'description': descrip,
-                                'url': media_url,
-                                'thumb': media_thumb_url,
-                                'width': width,
-                                'height': height,
-                                }  )
-
+            images=self.ret_images_dict_from_album_json(j,thumbnail_size_code)
             #for i in images: log( '##' + repr(i))
-
             self.assemble_images_dictList(images)
         else:
             self.clog(r.status_code ,request_url)
 
         return self.dictList
 
+    def ret_images_dict_from_album_json(self, j, thumbnail_size_code='b'):
+        images=[]
+        #2 types of json received:
+        #first, data is an array of objects
+        #second, data has 'images' which is the array of objects
+        if 'images' in j['data']:
+            imgs=j.get('data').get('images')
+        else:
+            imgs=j.get('data')
+
+        for idx, entry in enumerate(imgs):
+            link_type =entry.get('type')         #image/jpeg
+            if link_type=='image/gif':
+                media_url=entry.get('mp4')
+            else:
+                media_url=entry.get('link')
+            width    =entry.get('width')
+            height   =entry.get('height')
+            title    =entry.get('title')
+            descrip  =entry.get('description')
+            media_thumb_url=self.get_thumb_url(media_url,thumbnail_size_code)
+
+            images.append( {'title': title,
+                            'description': descrip,
+                            'url': media_url,
+                            'thumb': media_thumb_url,
+                            'width': width,
+                            'height': height,
+                            }  )
+        return images
 
     def media_id(self, media_url):
         #return the media id from an imbur link
