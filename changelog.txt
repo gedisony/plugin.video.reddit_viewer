@@ -252,3 +252,8 @@
  3.2.1
  - Imgur bugfix
  - Ability to customize command to run the open link in browser context menu 
+ 3.2.2 (2017-02-27)
+ - remove urlresolver parsing during subreddit listing
+ - add gallery parsing for designyoutrust.com
+ - add giphy.com short url support
+  

@@ -82,6 +82,7 @@ class sitesBase(object):
             return content.text
         else:
             log('    error: %s get_html: %s %s' %(self.__class__.__name__, repr( content.status_code ), link_url ) )
+            xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( content.status_code, link_url  ) )
             return None
 
     def get_playable(self, media_url='', is_probably_a_video=False ):
@@ -134,7 +135,7 @@ class sitesBase(object):
                 else:
                     log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
             else:
-                log('    %s :get_thumb_url: %s ' %(self.__class__.__name__, repr(content.status_code) ) )
+                log('    %s :request_meta_ogimage_content: %s ' %(self.__class__.__name__, repr(content.status_code) ) )
 
     def all_same(self, items ):
         #returns True if all items the same
@@ -146,8 +147,8 @@ class sitesBase(object):
         log("    %s error:%s %s" %( self.__class__.__name__, error_code ,request_url) )
 
     def get_first_url_from(self,string_with_url):
-        match = re.compile("(https?://[^\s/$.?#].[^\s]*)['\\\"](?:$)?").findall(string_with_url)
-        #log('    matches' + repr(match) )
+        match = re.compile("(https?://[^\s/$.?#].[^\s]*)['\\\"]?(?:$)?").findall(string_with_url)
+        #log('   get_first_url_from:matches' + repr(match) )
         if match:
             return match[0]
 
@@ -164,6 +165,8 @@ class sitesBase(object):
         thumbnail=''
         width=0
         height=0
+        item_type=None
+        isPlayable=None
         for item in images_list:
             #log('      type: %s' %( type(item)  ) )
             if type(item) in [str,unicode]:  #if isinstance(item, basestring):
@@ -191,6 +194,8 @@ class sitesBase(object):
                 thumbnail=item.get('thumb')
                 width    =item.get('width') if item.get('width') else 0
                 height   =item.get('height') if item.get('height') else 0
+                item_type=item.get('type')
+                isPlayable=item.get('isPlayable')
 
             infoLabels={ "Title": title, "plot": desc, "PictureDesc": desc }
             e=[ title                   #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
@@ -199,8 +204,8 @@ class sitesBase(object):
                ,thumbnail               #'li_thumbnailImage'  #
                ,image_url               #'DirectoryItem_url'  #
                ,False                   #'is_folder'          #
-               ,item.get('type')        #'type'               # video pictures  liz.setInfo(type='pictures',
-               ,item.get('isPlayable')  #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
+               ,item_type               #'type'               # video pictures  liz.setInfo(type='pictures',
+               ,isPlayable              #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
                ,infoLabels              #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
                ,'none'                  #'context_menu'       # ...
                ,width
@@ -754,7 +759,7 @@ class ClassVimeo(sitesBase):
         return self.thumb_url
 
 class ClassGiphy(sitesBase):
-    regex='(giphy\.com)'
+    regex='(giphy\.com)|(gph\.is)'
     #If your app is a form of a bot (ie. hubot), for internal purposes, open source, or for a class project,
     #  we highly recommend you institute the beta key for your app.
     #  Unless you're making thousands of requests per IP, you shouldn't have any issues.
@@ -764,6 +769,10 @@ class ClassGiphy(sitesBase):
     video_id=''
 
     def get_playable_url(self, media_url, is_probably_a_video=True ):
+
+        if 'gph.is' in media_url:
+            log('    giphy short url detected:' + media_url)
+            media_url=self.request_meta_ogimage_content(media_url)
 
         if 'media' in media_url:
             if 'giphy.gif' in media_url:
@@ -2720,7 +2729,7 @@ class ClassImgFlip(sitesBase):
         pass
 
 class genericAlbum1(sitesBase):
-    regex='(http://www.houseofsummersville.com/)|(weirdrussia.com)|(cheezburger.com)|(hentailair.xyz)'
+    regex='(http://www.houseofsummersville.com/)|(weirdrussia.com)|(cheezburger.com)|(hentailair.xyz)|(designyoutrust.com)'
     #links are checked for valid image extensions. use no_ext to bypass this check
 
     ps=[  [ 'houseofsummersville.com', '',          ['div', { "dir": "ltr" },None],
@@ -2736,6 +2745,9 @@ class genericAlbum1(sitesBase):
             ],
           [         'hentailair.xyz', '',           ['div', { "class": "box-inner-block" },None],   # with hentailair.xyz->imgtrex the actual image is in  the style attribute of the img tag
                                                     ['a', {}, "style"]                              #  "background-image: url('http://raptor.imgtrex.com/i/01882/gntod25j7lcf_t.jpg'); background-size: cover; background-position: 50% 50%; background-repeat: no-repeat;"
+            ],
+          [     'designyoutrust.com', '',          ['div', { "class": "mainpost" },None],
+                                                    ['img', {}, "src"]
             ],
         ]
 
@@ -2757,18 +2769,11 @@ class genericAlbum1(sitesBase):
 
         html = self.get_html( album_url )
         if html:
-
-
             images=self.get_images(html, p)
-
             #for i in images: log( '      ' + repr(i) )
-
             #log( pprint.pformat(self.dictList, indent=1) )
-
             self.assemble_images_dictList( images )
 
-
-        #log( pprint.pformat(self.dictList, indent=1) )
         return self.dictList
 
     def get_images(self, html, p):
@@ -2803,6 +2808,7 @@ class genericAlbum1(sitesBase):
             if big_div:
                 #log('     %d     big_div=%s' %( len(big_div), pprint.pformat(big_div)) )
                 imgs = parseDOM(big_div,name=p[3][0], attrs=p[3][1], ret=p[3][2])
+                #imgs = parseDOM(big_div,name='img', attrs={}, ret='src')
                 #log('     %d       imags=%s' %( len(imgs)   , pprint.pformat(imgs) )   )
                 self.append_imgs( imgs, p, images)
         elif len(p)==3:
@@ -2819,7 +2825,7 @@ class genericAlbum1(sitesBase):
                 #log('          i=' + repr(i))
                 if i:
                     i=self.get_first_url_from(i)   # this is added for hentailair.xyz the actual image is in the style attribute of the img tag. probably fine for others
-
+                    #log('         *i=' + repr(i))
                     if p_options=='no_ext':   #don't check for image extensions
                         images_list.append( i )
                     else:
@@ -2860,21 +2866,8 @@ class genericVideo(sitesBase):
         pass
 
     def get_playable(self, media_url='', is_probably_a_video=False ):
-        import urlresolver
         if not media_url:
             media_url=self.media_url
-
-        #check if video is urlresolver supported
-        if urlresolver.HostedMediaFile(media_url).valid_url():
-            self.link_action=sitesBase.DI_ACTION_URLR
-            return media_url, sitesBase.TYPE_VIDEO
-
-        #we don't resolve the urlresolver links. some sites (openload.co) opens a dialog to pair.
-#        resolved_url = urlresolver.resolve(media_url)
-#        if resolved_url:
-#            log( ' ---urlresolved_url-----' + repr( resolved_url )  )
-#            self.link_action=sitesBase.DI_ACTION_PLAYABLE
-#            return resolved_url, sitesBase.TYPE_VIDEO
 
         filename,ext=parse_filename_and_ext_from_url(media_url)
         if ext in ["mp4","webm"]:
@@ -2917,8 +2910,6 @@ def sitesManager( media_url ):
                 return subcls( media_url )
 
 def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_playable_url=False, image_ar=0 ):
-    import urlresolver
-    
     if not link_url: return
 
     album_dict_list=None
@@ -2952,8 +2943,9 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
             return ld
 
         else:
+            #we skip the urlresolver check here coz it slows the addon down. we automatically try urlresolver anyway if ytdl can't get a link
             #check if video is urlresolver supported
-            if urlresolver.HostedMediaFile(link_url).valid_url():
+            #if urlresolver.HostedMediaFile(link_url).valid_url():
                 #log( ' ---urlresolver valid_url-----'   )
                 #    we don't resolve the urlresolver links. some sites (openload.co) opens a dialog and that's annoying when directory listing
                 #    resolved_url = urlresolver.resolve(media_url)
@@ -2962,8 +2954,8 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
                 #        self.link_action=sitesBase.DI_ACTION_PLAYABLE
                 #        return resolved_url, sitesBase.TYPE_VIDEO
 
-                ld=LinkDetails(sitesBase.TYPE_VIDEO, sitesBase.DI_ACTION_URLR, link_url, '', '')
-                return ld
+            #    ld=LinkDetails(sitesBase.TYPE_VIDEO, sitesBase.DI_ACTION_URLR, link_url, '', '')
+            #    return ld
 
             if False: #resolve_undetermined:  (abandoned, too slow)
                 log('sending undetermined link to ytdl...')
