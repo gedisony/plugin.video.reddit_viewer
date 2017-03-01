@@ -90,6 +90,11 @@ msgctxt "#30020"
 msgid "Added to"
 msgstr ""
 
+#generic message for unable to resolve the link on a reddit post
+msgctxt "#30021"
+msgid "Parsing error"
+msgstr ""
+
 
 #: used in context menu.  (also see "#30500")
 msgctxt "#30050"

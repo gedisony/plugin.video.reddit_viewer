@@ -765,9 +765,9 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     else:
         ld=parse_reddit_link(media_url,reddit_says_is_video, needs_preview, False, preview_ar  )
 
-        queried_preview_image=ld.poster if ld else iconimage
-        if previewimage=="":
-           previewimage=queried_preview_image
+        if needs_preview and ld:
+            queried_preview_image= next((i for i in [ld.poster,ld.thumb] if i ), '')
+            previewimage=queried_preview_image
 
         arg_name=title
         arg_type=previewimage
@@ -796,6 +796,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     liz.addContextMenuItems(entries)
     #log( 'playcount=' + repr(getPlayCount(DirectoryItem_url)))
+    #log( 'DirectoryItem_url=' + DirectoryItem_url)
     xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
 
     return ok
@@ -1053,7 +1054,6 @@ def playYTDLVideo(url, name, type):
 
 #     extractors.sort()
 #     for n in extractors: log("'%s'," %n)
-
     from urlparse import urlparse
     parsed_uri = urlparse( url )
     domain = '{uri.netloc}'.format(uri=parsed_uri)
@@ -1818,7 +1818,7 @@ if __name__ == '__main__':
 #    log("pluginhandle:" + str(pluginhandle) )
 #    log("-----------------------")
 
-    from resources.lib.domains import viewImage, listAlbum, viewTallImage, playURLRVideo, loopedPlayback
+    from resources.lib.domains import viewImage, listAlbum, viewTallImage, playURLRVideo, loopedPlayback,error_message
     from resources.lib.slideshow import autoSlideshow
     from resources.lib.utils import addtoFilter,open_web_browser
     
@@ -1846,12 +1846,7 @@ if __name__ == '__main__':
                     ,'playYTDLVideo'        : playYTDLVideo
                     ,'playURLRVideo'        : playURLRVideo
                     ,'loopedPlayback'       : loopedPlayback
-#                    ,'playVidmeVideo'       : playVidmeVideo
-#                    ,'listTumblrAlbum'      : listTumblrAlbum
-#                    ,'playStreamable'       : playStreamable
-#                    ,'playInstagram'        : playInstagram
-#                    ,'playFlickr'           : playFlickr
-#                    ,'listFlickrAlbum'      : playFlickr
+                    ,'error_message'        : error_message
                     ,'get_refresh_token'    : reddit_get_refresh_token
                     ,'get_access_token'     : reddit_get_access_token
                     ,'revoke_refresh_token' : reddit_revoke_refresh_token

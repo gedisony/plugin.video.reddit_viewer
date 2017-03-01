@@ -16,7 +16,7 @@ from default import addon, addonID, streamable_quality   #,addon_path,pluginhand
 from default import log, translation
 
 from default import playVideo, addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
-from utils import build_script, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, remove_duplicates, safe_cast
+from utils import build_script, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast
 
 use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
 #resolve_undetermined = addon.getSetting("resolve_undetermined") == "true" #let youtube_dl addon get playable links if unknown url(slow)
@@ -66,7 +66,7 @@ class sitesBase(object):
     TYPE_REDDIT='reddit'
     DI_ACTION_PLAYABLE='playable'
     DI_ACTION_YTDL='playYTDLVideo'
-    DI_ACTION_URLR='playURLRVideo'
+    DI_ACTION_ERROR='error_message'
 
     def __init__(self, link_url):
         self.media_url=link_url
@@ -76,14 +76,21 @@ class sitesBase(object):
         if not link_url:
             link_url=self.original_url
 
-        content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get(link_url)
 
-        if content.status_code==200:
-            return content.text
+        return content.text
+
+    def requests_get(self, link_url, headers=None, timeout=REQUEST_TIMEOUT):
+        content = requests.get( link_url, headers=headers, timeout=timeout )
+        if content.status_code==requests.codes.ok:
+            return content
         else:
-            log('    error: %s get_html: %s %s' %(self.__class__.__name__, repr( content.status_code ), link_url ) )
-            xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( content.status_code, link_url  ) )
+            log('    error: %s requests_get: %s %s' %(self.__class__.__name__, repr( content.status_code ), link_url ) )
+            content.raise_for_status()
+            #raise Exception()
+            #xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( content.status_code, link_url  ) )
             return None
+
 
     def get_playable(self, media_url='', is_probably_a_video=False ):
         media_type=''
@@ -126,16 +133,12 @@ class sitesBase(object):
             #if m_type=='image': return link_url
             return link_url #will a video link resolve to a preview image?
         else:
-            #content = requests.get( link_url, timeout=(0.5, 1) )
-            content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
-            if content.status_code==200:
-                i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
-                if i[0]:
-                    return i[0]
-                else:
-                    log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
+            content = self.requests_get(link_url)
+            i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
+            if i[0]:
+                return i[0]
             else:
-                log('    %s :request_meta_ogimage_content: %s ' %(self.__class__.__name__, repr(content.status_code) ) )
+                log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
 
     def all_same(self, items ):
         #returns True if all items the same
@@ -156,7 +159,9 @@ class sitesBase(object):
         filename,ext=parse_filename_and_ext_from_url(media_url)
         if ext=='gif':
             self.media_type=self.TYPE_GIF
-        return True
+            return True
+        else:
+            return False
 
     def assemble_images_dictList(self,images_list):
         title=''
@@ -306,23 +311,22 @@ class ClassImgur(sitesBase):
 
         request_url="https://api.imgur.com/3/album/"+album_id
         #log("    get_album_thumb---"+request_url )
-        r = requests.get(request_url, headers=ClassImgur.request_header, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(request_url, headers=ClassImgur.request_header)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j = r.json()    #j = json.loads(r.text)
+        j = r.json()    #j = json.loads(r.text)
 
-            thumb_image_id=j['data'].get('cover')
-            images_count=j['data'].get('images_count')
+        thumb_image_id=j['data'].get('cover')
+        images_count=j['data'].get('images_count')
 
-            if thumb_image_id:
-                #we're not guaranteed that it is jpg but it seems to work with png files as well...
-                return 'http://i.imgur.com/'+thumb_image_id+'m.jpg', 'http://i.imgur.com/'+thumb_image_id+'l.jpg'
+        if thumb_image_id:
+            #we're not guaranteed that it is jpg but it seems to work with png files as well...
+            return 'http://i.imgur.com/'+thumb_image_id+'m.jpg', 'http://i.imgur.com/'+thumb_image_id+'l.jpg'
 
-                #for i in j['data']['images']:
-                #    if thumb_image_id == i.get('id'):
-                #        thumb_image=i.get('link')
-                #        thumb_w=i.get('width')
-                #        thumb_h=i.get('height')
+            #for i in j['data']['images']:
+            #    if thumb_image_id == i.get('id'):
+            #        thumb_image=i.get('link')
+            #        thumb_w=i.get('width')
+            #        thumb_h=i.get('height')
         return "",""
 
     def is_an_album(self, media_url):
@@ -347,41 +351,40 @@ class ClassImgur(sitesBase):
                 return False
 
         #log("    imgur:check if album- request_url---"+request_url )
-        r = requests.get(request_url, headers=ClassImgur.request_header, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(request_url, headers=ClassImgur.request_header)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j = r.json()    #j = json.loads(r.text)
-            #log(" is_album=" + str(j['data']['is_album'])    )
-            #log(" in_gallery=" + str(j['data']['in_gallery'])    )
+        j = r.json()    #j = json.loads(r.text)
+        #log(" is_album=" + str(j['data']['is_album'])    )
+        #log(" in_gallery=" + str(j['data']['in_gallery'])    )
 
-            #we already incurred the bandwidth asking imgur about album info. might as well use the data provided
-            jdata=j.get('data')
-            if jdata:
-                self.is_an_album_type= jdata.get('type')   #"image/png"
-                self.is_an_album_link= jdata.get('link')
+        #we already incurred the bandwidth asking imgur about album info. might as well use the data provided
+        jdata=j.get('data')
+        if jdata:
+            self.is_an_album_type= jdata.get('type')   #"image/png"
+            self.is_an_album_link= jdata.get('link')
 
-            #this link (https://imgur.com/gallery/VNPcuYP) returned an extra 'h' on j['data']['link']  ("http:\/\/i.imgur.com\/VNPcuYPh.gif")
-            #causing the video not to play. so, we grab mp4 link if present
-                if jdata.get('mp4'):
-                    self.is_an_album_link= jdata.get('mp4')
+        #this link (https://imgur.com/gallery/VNPcuYP) returned an extra 'h' on j['data']['link']  ("http:\/\/i.imgur.com\/VNPcuYPh.gif")
+        #causing the video not to play. so, we grab mp4 link if present
+            if jdata.get('mp4'):
+                self.is_an_album_link= jdata.get('mp4')
 
-            self.images_count=jdata.get('images_count')
-            #log('    imgur album images count ' + repr(self.images_count))
-            if self.images_count == 1:
-                #if there is an mp4 tag in the json, use that value.  
-                #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)  
-                #     so renaming by changing the .gif to .mp4 wouldn't work. 
-                #        credit to mac1202 2/26/2017 for finding this bug.
-                if jdata.get('images')[0].get('mp4'):
-                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
-                else:
-                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
-                #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
-                return False
+        self.images_count=jdata.get('images_count')
+        #log('    imgur album images count ' + repr(self.images_count))
+        if self.images_count == 1:
+            #if there is an mp4 tag in the json, use that value.  
+            #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)  
+            #     so renaming by changing the .gif to .mp4 wouldn't work. 
+            #        credit to mac1202 2/26/2017 for finding this bug.
+            if jdata.get('images')[0].get('mp4'):
+                self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
             else:
-                return True
+                self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
+            #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
+            return False
+        else:
+            return True
 
-            #sometimes 'is_album' key is not returned, so we also check for 'in_gallery'
+        #sometimes 'is_album' key is not returned, so we also check for 'in_gallery'
 #            if 'is_album' in j['data']:
 #                is_album_key=jdata.get('is_album')
 #                return is_album_key
@@ -390,8 +393,8 @@ class ClassImgur(sitesBase):
 #                except: in_gallery_key=False
 #                return in_gallery_key
 
-        else: #status code not 200... what to do...
-            return True  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
+        #else: #status code not 200... what to do...
+        #    return True  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
 
     def ask_imgur_for_link(self, media_url):
         #sometimes, imgur links are posted without the extension(gif,jpg etc.). we ask imgur for it.
@@ -410,15 +413,11 @@ class ClassImgur(sitesBase):
         if img_id:
             request_url="https://api.imgur.com/3/image/"+img_id
             #log("  imgur check link- request_url---"+request_url )
-            r = requests.get(request_url, headers=ClassImgur.request_header, timeout=REQUEST_TIMEOUT)
-            #log(r.text)
-            if r.status_code == 200:   #http status code 200 is success
-                j = r.json()    #j = json.loads(r.text)
+            r = self.requests_get(request_url, headers=ClassImgur.request_header)
+            j = r.json()    #j = json.loads(r.text)
 
-                #log('link is ' + j['data'].get('link') )
-                return j['data'].get('link')
-            else:
-                log("    ask_imgur_for_link ERROR:" + r.text)
+            #log('link is ' + j['data'].get('link') )
+            return j['data'].get('link')
 
         return ''
 
@@ -492,7 +491,7 @@ class ClassImgur(sitesBase):
         #log('album name:'+album_name+' from ['+album_url+']')
         request_url="https://api.imgur.com/3/album/"+album_name+"/images"
         #log("listImgurAlbum-request_url---"+request_url )
-        r = requests.get(request_url, headers=ClassImgur.request_header, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(request_url, headers=ClassImgur.request_header)
 
         images=[]
 
@@ -607,7 +606,6 @@ class ClassVidme(sitesBase):
     regex='(vid.me)'
     #request_header={ "Authorization": "Basic " + base64_encode($key . ':') }
     request_header={ "Authorization": "Basic aneKgeMUCpXv6FdJt8YGRznHk4VeY6Ps:" }
-    media_status=""
 
     def get_playable_url(self,media_url, is_probably_a_video=True):
         #https://docs.vid.me/#api-Video-DetailByURL
@@ -618,7 +616,7 @@ class ClassVidme(sitesBase):
         #log(r.text)
 
         if r.status_code != 200:   #http status code 200 is success
-            log("    vidme request failed, trying alternate method: "+ str(r.text))
+            log("    vidme request failed, trying alternate method: "+ str(r.status_code))
 
             #try to get media id from link.
             #media_url='https://vid.me/Wo3S/skeletrump-greatest-insults'
@@ -630,71 +628,79 @@ class ClassVidme(sitesBase):
             #log(r.text)
             if r.status_code != 200:
                 log("    vidme request still failed:"+ str(r.text) )
-                #t= r.json()
-                #self.media_status=t['error']
-                return '', '' #sitesBase.TYPE_ALBUM  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
+                t= r.json()
+                raise Exception( str(r.status_code) + ' ' + t.get('error'))
 
         j = r.json()    #j = json.loads(r.text)
+        vid_info=j.get('video')
 
         #for attribute, value in j.iteritems():
         #    log(  str(attribute) + '==' + str(value))
-        status = j['video'].get( 'state' )
+        status = vid_info.get( 'state' )
 
         log( "    vidme video state: " + status ) #success / suspended / deleted
-        self.media_status=status
+        if status != 'success':
+            raise Exception( "vidme video: " +vid_info.get('state'))
+
+        self.thumb_url=vid_info.get("thumbnail_url") 
+
+        #if 'ta6C' in media_url: log(r.text)
         self.link_action=self.DI_ACTION_PLAYABLE
-        return ( j['video']['complete_url'] ), sitesBase.TYPE_VIDEO
+        return ( vid_info.get('complete_url') ), sitesBase.TYPE_VIDEO
 
-    def whats_wrong(self):
-        return str( self.media_status )
+    def get_thumb_url(self):
+        return self.thumb_url
 
-class ClassVine(sitesBase):
-    regex='(vine\.co)'
-
-    def get_playable_url(self, media_url, is_probably_a_video=True):
-        contentUrl=''
-        #media_url='"image": "https://v.cdn.vine.co/r/videos/38B4A9174D1177703702723739648_37968e655a0.1.5.1461921223578533188.mp4.jpg?versionId=hv6zBo4kGHPH8NdQeJVo_JRGSVXV73Cc"'
-        #msp=re.compile('videos\/(.*?\.mp4)')
-        msp=re.compile('(https?://.*/videos/.*?\.mp4)')
-        match=msp.findall(media_url)
-        if match:
-            #the media_url from reddit already leads to the actual stream, no need to ask vine
-            log('    the media_url from reddit already leads to the actual stream [%s]' %match[0])
-            return media_url, sitesBase.TYPE_VIDEO   #return 'https://v.cdn.vine.co/r/videos/'+match[0]
-
-        #request_url="https://vine.co/oembed.json?url="+media_url   won't work. some streams can't be easily "got" by removing the .jpg at the end
-        request_url=media_url
-        #log("    %s get_playable_url request_url--%s" %( self.__class__.__name__, request_url) )
-        r = requests.get(request_url, timeout=REQUEST_TIMEOUT)
-        #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            """
-            #there are parsed characters(\u2122 etc.) in r.text that causes errors somewhere else in the code.
-            #matches the json script from the reply
-            json_match=re.compile('<script type=\"application\/ld\+json\">\s*([\s\S]*?)<\/script>' , re.DOTALL).findall(r.text)
-            if json_match:
-                #log(json_match[0])
-                #the text returned causes a json parsing error, we fix them below before decoding
-                #use this site to find out where the decoding failed https://jsonformatter.curiousconcept.com/
-                jt = json_match[0].replace('"name" : ,','"name" : "",').encode('ascii', errors='ignore')   #('utf-8')
-                j=json.loads(jt)
-                contentUrl=j['sharedContent']['contentUrl']
-                thumbnailUrl=j['sharedContent']['thumbnailUrl']
-
-            """
-            m_strm=re.compile('"contentUrl"\s:\s"(https?://.*?\.mp4.*?)"').findall(r.text)
-            if m_strm:
-                contentUrl=m_strm[0]
-                #log('matched:'+ contentUrl )
-            #m_thumb=re.compile('"thumbnailUrl"\s:\s"(https?://.*?\.jpg)\?').findall(r.text)
-            #if m_thumb:
-            #    thumbnailUrl=m_thumb[0]
-
-            self.link_action=self.DI_ACTION_PLAYABLE
-            return contentUrl, sitesBase.TYPE_VIDEO
-
-            #log('vine type %s thumbnail_url[%s]' %(type, thumbnail_url) )
-        return '',''
+#vine parsing broken
+#class ClassVine(sitesBase):
+#    regex='(vine\.co)'
+#
+#    def get_playable_url(self, media_url, is_probably_a_video=True):
+#        contentUrl=''
+#        #media_url='"image": "https://v.cdn.vine.co/r/videos/38B4A9174D1177703702723739648_37968e655a0.1.5.1461921223578533188.mp4.jpg?versionId=hv6zBo4kGHPH8NdQeJVo_JRGSVXV73Cc"'
+#        #msp=re.compile('videos\/(.*?\.mp4)')
+#        msp=re.compile('(https?://.*/videos/.*?\.mp4)')
+#        match=msp.findall(media_url)
+#        if match:
+#            #the media_url from reddit already leads to the actual stream, no need to ask vine
+#            log('    the media_url from reddit already leads to the actual stream [%s]' %match[0])
+#            return media_url, sitesBase.TYPE_VIDEO   #return 'https://v.cdn.vine.co/r/videos/'+match[0]
+#
+#        #request_url="https://vine.co/oembed.json?url="+media_url   won't work. some streams can't be easily "got" by removing the .jpg at the end
+#        request_url=media_url
+#        #log("    %s get_playable_url request_url--%s" %( self.__class__.__name__, request_url) )
+#        r = self.requests_get(request_url)
+#        log( r.text)
+#        """
+#        #there are parsed characters(\u2122 etc.) in r.text that causes errors somewhere else in the code.
+#        #matches the json script from the reply
+#        json_match=re.compile('<script type=\"application\/ld\+json\">\s*([\s\S]*?)<\/script>' , re.DOTALL).findall(r.text)
+#        if json_match:
+#            #log(json_match[0])
+#            #the text returned causes a json parsing error, we fix them below before decoding
+#            #use this site to find out where the decoding failed https://jsonformatter.curiousconcept.com/
+#            jt = json_match[0].replace('"name" : ,','"name" : "",').encode('ascii', errors='ignore')   #('utf-8')
+#            j=json.loads(jt)
+#            contentUrl=j['sharedContent']['contentUrl']
+#            thumbnailUrl=j['sharedContent']['thumbnailUrl']
+#
+#        """
+#        m_strm=re.compile('"contentUrl"\s:\s"(https?://.*?\.mp4.*?)"').findall(r.text)
+#        if m_strm:
+#            contentUrl=m_strm[0]
+#            #log('matched:'+ contentUrl )
+#        #m_thumb=re.compile('"thumbnailUrl"\s:\s"(https?://.*?\.jpg)\?').findall(r.text)
+#        #if m_thumb:
+#        #    thumbnailUrl=m_thumb[0]
+#
+#        self.link_action=self.DI_ACTION_PLAYABLE
+#        return contentUrl, sitesBase.TYPE_VIDEO
+#
+#        #log('vine type %s thumbnail_url[%s]' %(type, thumbnail_url) )
+#        return '',''
+#
+#    def get_thumb_url(self):
+#        pass
 
 class ClassVimeo(sitesBase):
     regex='(vimeo\.com/)'
@@ -739,13 +745,12 @@ class ClassVimeo(sitesBase):
 
         request_url='http://vimeo.com/api/v2/video/%s.json' % self.video_id
         #log(request_url)
-        r = requests.get(request_url, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(request_url)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j=r.json()
-            self.poster_url=j[0].get('thumbnail_large')
-            self.thumb_url=self.poster_url
-            #log( "   ***** thumbnail " + self.poster_url)
+        j=r.json()
+        self.poster_url=j[0].get('thumbnail_large')
+        self.thumb_url=self.poster_url
+        #log( "   ***** thumbnail " + self.poster_url)
 
         return self.thumb_url
 
@@ -787,33 +792,30 @@ class ClassGiphy(sitesBase):
         if self.video_id:
             request_url="http://api.giphy.com/v1/gifs/%s?api_key=%s" %( self.video_id, self.key )
             #log('    Giphy request:'+ request_url)
-            content = requests.get(request_url, timeout=REQUEST_TIMEOUT )
-            if content.status_code==200:
-                j = content.json()
-                #d=j.get('data')
-                images=j.get('data').get('images')
-                #log( pprint.pformat(images, indent=1) )
+            content = self.requests_get(request_url)
+            j = content.json()
+            #d=j.get('data')
+            images=j.get('data').get('images')
+            #log( pprint.pformat(images, indent=1) )
 
-                #log('      vid=%s' %  images.get('original').get('mp4')  )
-                #log('     loop=%s' %  images.get('looping').get('mp4')  )
+            #log('      vid=%s' %  images.get('original').get('mp4')  )
+            #log('     loop=%s' %  images.get('looping').get('mp4')  )
 
-                original=images.get('original')
-                self.media_w=original.get('width')
-                self.media_h=original.get('height')
-                original_video=original.get('mp4')
-                looping_video=images.get('looping').get('mp4')
+            original=images.get('original')
+            self.media_w=original.get('width')
+            self.media_h=original.get('height')
+            original_video=original.get('mp4')
+            looping_video=images.get('looping').get('mp4')
 
-                self.thumb_url=images.get('fixed_height_still').get('url')
-                self.poster_url=images.get('original_still').get('url')
+            self.thumb_url=images.get('fixed_height_still').get('url')
+            self.poster_url=images.get('original_still').get('url')
 
-                if looping_video:
-                    self.video_url=looping_video
-                else:
-                    self.video_url=original_video
-
-                return True
+            if looping_video:
+                self.video_url=looping_video
             else:
-                log("  giphy query failed:" + str(content.status_code) )
+                self.video_url=original_video
+
+            return True
         else:
             log("cannot get giphy id")
 
@@ -924,41 +926,38 @@ class ClassStreamable(sitesBase):
 
         if self.video_id:
             api_url='https://api.streamable.com/videos/%s' %self.video_id
-            r = requests.get(api_url, timeout=REQUEST_TIMEOUT)
+            r = self.requests_get(api_url)
             #log(r.text)
-            if r.status_code == 200:   #http status code 200 is success
-                j=json.loads(r.text.replace('\\"', '\''))
+            j=json.loads(r.text.replace('\\"', '\''))
 
-                if j.get('files'):  #we are not guaranteed that 'mp4-mobile' etc. exists.
-                    if j['files'].get('mp4'):
-                        url_mp4=j['files']['mp4']['url']
-                    if j['files'].get('mp4-mobile'):
-                        url_mp4m=j['files']['mp4-mobile']['url']
-                    if j['files'].get('webm'):
-                        url_webm=j['files']['mp4']['url']
-                    if j['files'].get('webm-mobile'):
-                        url_webmm=j['files']['mp4-mobile']['url']
+            if j.get('files'):  #we are not guaranteed that 'mp4-mobile' etc. exists.
+                if j['files'].get('mp4'):
+                    url_mp4=j['files']['mp4']['url']
+                if j['files'].get('mp4-mobile'):
+                    url_mp4m=j['files']['mp4-mobile']['url']
+                if j['files'].get('webm'):
+                    url_webm=j['files']['mp4']['url']
+                if j['files'].get('webm-mobile'):
+                    url_webmm=j['files']['mp4-mobile']['url']
 
-                    #use mp4 if mp4 is present else use mp4mobile then if it is still empty, use webm versions
-                    url_hq=url_mp4 if url_mp4 else url_mp4m
-                    if url_hq=="":
-                        url_hq=url_webm if url_webm else url_webmm
+                #use mp4 if mp4 is present else use mp4mobile then if it is still empty, use webm versions
+                url_hq=url_mp4 if url_mp4 else url_mp4m
+                if url_hq=="":
+                    url_hq=url_webm if url_webm else url_webmm
 
-                    url_mq=url_mp4m if url_mp4m else url_mp4
-                    if url_mq=="":
-                        url_mq=url_webmm if url_webmm else url_webm
+                url_mq=url_mp4m if url_mp4m else url_mp4
+                if url_mq=="":
+                    url_mq=url_webmm if url_webmm else url_webm
 
-                    #finally if no hq available use mq
-                    if url_hq=="": url_hq=url_mq
-                    if url_mq=="": url_mq=url_hq
+                #finally if no hq available use mq
+                if url_hq=="": url_hq=url_mq
+                if url_mq=="": url_mq=url_hq
 
-                    self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                    if streamable_quality=='full' :
-                        return "https:" + url_hq, sitesBase.TYPE_VIDEO
-                    else:
-                        return "https:" + url_mq, sitesBase.TYPE_VIDEO
-            else:
-                log('      %s: %s '  %(self.__class__.__name__, r.text ) )
+                self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                if streamable_quality=='full' :
+                    return "https:" + url_hq, sitesBase.TYPE_VIDEO
+                else:
+                    return "https:" + url_mq, sitesBase.TYPE_VIDEO
         else:
             log('      %s: cant get video id '  %(self.__class__.__name__ ) )
 
@@ -1018,32 +1017,31 @@ class ClassTumblr(sitesBase):
         #url='http://api.tumblr.com/v2/blog/boo-rad13y/posts?api_key=no0FySaKYuQHKl0EBQnAiHxX7W0HY4gKvlmUroLS2pCVSevIVy&id=146015264096'
         #log('apiurl:'+api_url)
         #log(api_url)
-        r = requests.get(api_url, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(api_url)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j=json.loads(r.text.replace('\\"', '\''))
+        j=json.loads(r.text.replace('\\"', '\''))
 
-            #log("aaaaa "+ str( j['response']['blog']['url'])   )
+        #log("aaaaa "+ str( j['response']['blog']['url'])   )
 
-            #this is only one post so no need to iterate through posts
-            #for post in j['response']['posts']:
-            post=j['response']['posts'][0]
+        #this is only one post so no need to iterate through posts
+        #for post in j['response']['posts']:
+        post=j['response']['posts'][0]
 
-            media_type=post['type']  #  text, photo, quote, link, chat, audio, video, answer
-            #log('  Tumblr media type: ' + post['type'])
+        media_type=post['type']  #  text, photo, quote, link, chat, audio, video, answer
+        #log('  Tumblr media type: ' + post['type'])
 
-            if media_type == 'photo':
-                #log('len of photos ' + str(  len(post['photos']) )  )
-                self.thumb_url=post['photos'][0]['alt_sizes'][1]['url']    #alt_sizes 0-5
+        if media_type == 'photo':
+            #log('len of photos ' + str(  len(post['photos']) )  )
+            self.thumb_url=post['photos'][0]['alt_sizes'][1]['url']    #alt_sizes 0-5
 
-                if len(post['photos'])==1:
-                    image=post['photos'][0]['original_size']['url']
-                    #log('media url: ' + post['photos'][0]['original_size']['url']  )
+            if len(post['photos'])==1:
+                image=post['photos'][0]['original_size']['url']
+                #log('media url: ' + post['photos'][0]['original_size']['url']  )
 
-                    self.poster_url=image
-                    return image, sitesBase.TYPE_IMAGE
+                self.poster_url=image
+                return image, sitesBase.TYPE_IMAGE
 
-                else:
+            else:
 #                     dictList=[]
 #                     for i, photo in enumerate( post['photos'] ):
 #                         #log("%d %s" %(i, photo['original_size']['url'] ))
@@ -1063,13 +1061,13 @@ class ClassTumblr(sitesBase):
 #                               ]
 #
 #                         dictList.append(dict(zip(keys, e)))
-                    return self.media_url, sitesBase.TYPE_ALBUM
+                return self.media_url, sitesBase.TYPE_ALBUM
 
-            elif media_type == 'video':
-                self.thumb_url=post['thumbnail_url']
-                return post['video_url'], sitesBase.TYPE_VIDEO
-            elif media_type == 'audio':
-                return post['audio_url'], media_type
+        elif media_type == 'video':
+            self.thumb_url=post['thumbnail_url']
+            return post['video_url'], sitesBase.TYPE_VIDEO
+        elif media_type == 'audio':
+            return post['audio_url'], media_type
 
         return "", media_type
 
@@ -1089,33 +1087,29 @@ class ClassTumblr(sitesBase):
         #url='http://api.tumblr.com/v2/blog/boo-rad13y/posts?api_key=no0FySaKYuQHKl0EBQnAiHxX7W0HY4gKvlmUroLS2pCVSevIVy&id=146015264096'
         #log('apiurl:'+api_url)
         #log(api_url)
-        r = requests.get(api_url, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(api_url)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j=json.loads(r.text.replace('\\"', '\''))
+        j=json.loads(r.text.replace('\\"', '\''))
 
-            #log("aaaaa "+ str( j['response']['blog']['url'])   )
+        #log("aaaaa "+ str( j['response']['blog']['url'])   )
 
-            #this is only one post so no need to iterate through posts
-            #for post in j['response']['posts']:
-            post=j['response']['posts'][0]
+        #this is only one post so no need to iterate through posts
+        #for post in j['response']['posts']:
+        post=j['response']['posts'][0]
 
-            media_type=post['type']  #  text, photo, quote, link, chat, audio, video, answer
-            #log('  Tumblr media type: ' + post['type'])
+        media_type=post['type']  #  text, photo, quote, link, chat, audio, video, answer
+        #log('  Tumblr media type: ' + post['type'])
 
-            if media_type == 'photo':
-                #log('len of photos ' + str(  len(post['photos']) )  )
-                self.thumb_url=post['photos'][0]['alt_sizes'][1]['url']    #alt_sizes 0-5
+        if media_type == 'photo':
+            #log('len of photos ' + str(  len(post['photos']) )  )
+            self.thumb_url=post['photos'][0]['alt_sizes'][1]['url']    #alt_sizes 0-5
 
-                list=(        [ photo.get('caption'), photo.get('original_size').get('url'), photo['alt_sizes'][3]['url'] ]  for photo in post['photos']   )
+            list=(        [ photo.get('caption'), photo.get('original_size').get('url'), photo['alt_sizes'][3]['url'] ]  for photo in post['photos']   )
 
-                self.assemble_images_dictList( list )
+            self.assemble_images_dictList( list )
 
-            else:
-                log('      %s wrong media type: %s '  %(self.__class__.__name__ ), media_type )
         else:
-            log('    %s :ret_album_list: %s ' %(self.__class__.__name__, repr(r.status_code) ) )
-
+            log('      %s wrong media type: %s '  %(self.__class__.__name__ ), media_type )
 
         #log( pprint.pformat(self.dictList, indent=1) )
         return self.dictList
@@ -1145,7 +1139,6 @@ class ClassBlogspot(sitesBase):
     def get_playable_url(self, media_url, is_probably_a_video=True):
         #match = re.compile('^https?://.*\.blog(?:spot|ger)\..*?/(.*)?$', re.DOTALL).findall(media_url)
 
-        #content = requests.get( blog_post_request )
         content = self.ret_blog_post_request()
         if content:
             j = content.json()
@@ -1222,27 +1215,17 @@ class ClassBlogspot(sitesBase):
             log('    could not determine blog path in:' + self.media_url)
             return None
 
-
         blog_info_request='https://www.googleapis.com/blogger/v3/blogs/byurl?' + self.key_string + '&url=' + self.media_url
-        content = requests.get( blog_info_request, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get(blog_info_request)
 
-        if content.status_code==200:
-            j = content.json()
-            #log( pprint.pformat(j, indent=1) )
-            blog_id=j.get('id')
-        else:
-            log('    error: %s getting blog id : %s %s' %(self.__class__.__name__, repr( content.status_code ), blog_info_request ) )
-            return None
+        j = content.json()
+        #log( pprint.pformat(j, indent=1) )
+        blog_id=j.get('id')
 
         blog_post_request='https://www.googleapis.com/blogger/v3/blogs/%s/posts/bypath?%s&path=%s' %( blog_id, self.key_string, blog_path)
         #log( '    api request:'+blog_post_request )
-        content = requests.get( blog_post_request, timeout=REQUEST_TIMEOUT )
-        if content.status_code==200:
-            return content
-        else:
-            log('    error: %s blogs/posts/bypath: %s ' %(self.__class__.__name__, repr( content.status_code ) ) )
-            return None
-
+        content = self.requests_get(blog_post_request)
+        return content
 
     def get_thumb_url(self):
         if self.thumb_url:
@@ -1309,47 +1292,44 @@ class ClassInstagram(sitesBase):
         #the instagram api has limits and that would not work for this purpose
         #  scrape the instagram post instead.
 
-        r = requests.get(media_url, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(media_url)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
             #grab the json-like object
-            jo=re.compile('window._sharedData = ({.*});</script>').findall(r.text)
-            if jo:
+        jo=re.compile('window._sharedData = ({.*});</script>').findall(r.text)
+        if jo:
 
-                #log( pprint.pformat(jo[0], indent=1) )
-                try:
-                    j=json.loads(jo[0] )
-                    #log(str(j))
-                    if j.get('entry_data'):
-                        post_pages=j.get('entry_data').get('PostPage')
-                        #log('    post_pages %d' %len(post_pages) )
+            #log( pprint.pformat(jo[0], indent=1) )
+            try:
+                j=json.loads(jo[0] )
+                #log(str(j))
+                if j.get('entry_data'):
+                    post_pages=j.get('entry_data').get('PostPage')
+                    #log('    post_pages %d' %len(post_pages) )
 
-                        post_page=post_pages[0]
-                        media=post_page.get('media')
-                        #log(str(j['entry_data']['PostPage'][0]['media']['display_src']))
-                        display_src=media.get('display_src')
-                        is_video=media.get('is_video')
-                        self.media_w=media.get('dimensions').get('width')
-                        self.media_h=media.get('dimensions').get('height')
+                    post_page=post_pages[0]
+                    media=post_page.get('media')
+                    #log(str(j['entry_data']['PostPage'][0]['media']['display_src']))
+                    display_src=media.get('display_src')
+                    is_video=media.get('is_video')
+                    self.media_w=media.get('dimensions').get('width')
+                    self.media_h=media.get('dimensions').get('height')
 
-                        self.thumb_url=display_src
-                        self.poster_url=self.thumb_url
+                    self.thumb_url=display_src
+                    self.poster_url=self.thumb_url
 
-                        #log('      vid=%s %dx%d %s' %(is_video,self.media_w,self.media_h,display_src)  )
-                        if is_video:
-                            self.media_url=media.get('video_url')
-                            self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                            return self.media_url, sitesBase.TYPE_VIDEO
-                        else:
-                            return display_src, sitesBase.TYPE_IMAGE
+                    #log('      vid=%s %dx%d %s' %(is_video,self.media_w,self.media_h,display_src)  )
+                    if is_video:
+                        self.media_url=media.get('video_url')
+                        self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                        return self.media_url, sitesBase.TYPE_VIDEO
                     else:
-                        log("  Could not get 'entry_data' from scraping instagram [window._sharedData = ]")
+                        return display_src, sitesBase.TYPE_IMAGE
+                else:
+                    log("  Could not get 'entry_data' from scraping instagram [window._sharedData = ]")
 
-                except:
-                    log('    exception while parsing json')
-                    return '',''
-        else:
-            log('    error: %s :%s' %(self.__class__.__name__, repr( r.status_code ) ) )
+            except:
+                log('    exception while parsing json')
+                return '',''
 
         return '', ''
 
@@ -1361,42 +1341,44 @@ class ClassInstagram(sitesBase):
 class ClassGyazo(sitesBase):
     regex='(gyazo\.com)'
 
-    def get_playable_url(self, media_url, is_probably_a_video=True):
+    def get_playable_url(self, link_url, is_probably_a_video=True):
 
         #media_url='http://gyazo.com/b8c993ab1435171eafefb882d8e2d17a'
-        api_url='https://api.gyazo.com/api/oembed?url=%s' %(media_url )
+        api_url='https://api.gyazo.com/api/oembed?url=%s' %(link_url )
 
-        r = requests.get(api_url, timeout=REQUEST_TIMEOUT)
-        #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j=json.loads(r.text.replace('\\"', '\''))
+        r = self.requests_get(api_url)
+        #if 'ff27ee' in link_url: log(r.text)
+        j=json.loads(r.text.replace('\\"', '\''))
 
-            media_type=j.get('type')
-            self.media_w=j.get('width')
-            self.media_h=j.get('height')
-            media_url=j.get('url')
+        media_type=j.get('type')
+        self.media_w=j.get('width')
+        self.media_h=j.get('height')
+        media_url=j.get('url')
 
-            log('      gyazo=%s %dx%d %s' %(media_type, self.media_w,self.media_h, j.get('url'))  )
+        log('      gyazo=%s %dx%d %s' %(media_type, self.media_w,self.media_h, j.get('url'))  )
 
-            if link_url_is_playable(media_url)=='video': #catch .gif
-                media_type='video'
-
+        if ret_url_ext(link_url)=='gif':
+            self.link_action=sitesBase.DI_ACTION_PLAYABLE
+            self.media_type=sitesBase.TYPE_GIF
+            self.media_url=link_url
+        else:
             if media_type=='photo':
                 self.thumb_url=media_url
                 self.poster_url=self.thumb_url
-
+    
                 self.media_type=sitesBase.TYPE_IMAGE
                 self.media_url=media_url
             elif media_type=='video':
-                self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                #url tag missing... 3/1/2017 - discovered that there is no more url tag for video. (we can stil parse the html tag for 'src' and parse that link for the <video autoplay..src=.mp4  
+                #   but to heck with that, just send link to ytdl
+                #self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                self.link_action=sitesBase.DI_ACTION_YTDL
                 self.media_type=sitesBase.TYPE_VIDEO
-                self.media_url=media_url
+                #self.media_url=media_url
+                self.media_url=link_url
 
-            return self.media_url,self.media_type
-        else:
-            log('    error: %s :%s' %(self.__class__.__name__, repr( r.status_code ) ) )
+        return self.media_url,self.media_type
 
-        return '',''
 
     def get_thumb_url(self):
         if self.thumb_url:
@@ -1516,128 +1498,123 @@ class ClassFlickr(sitesBase):
         api_url='https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&api_key=%s&method=%s&%s' %(self.api_key,api_method,api_arg )
 
         #log('  flickr apiurl:'+api_url)
-        r = requests.get(api_url, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(api_url)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j=json.loads(r.text.replace('\\"', '\''))
+        j=json.loads(r.text.replace('\\"', '\''))
 
-            status=j.get('stat')
-            if status=='fail':
-                message=j.get('message')
-                raise Exception(message)
+        status=j.get('stat')
+        if status=='fail':
+            message=j.get('message')
+            raise Exception(message)
 
-            if self.fmedia_type in [self.fTYPE_ALBUM, self.fTYPE_GROUP, self.fTYPE_GALLERY ]:   #for  #photosets, galleries, pools? panda?
-                self.media_type=sitesBase.TYPE_ALBUM
+        if self.fmedia_type in [self.fTYPE_ALBUM, self.fTYPE_GROUP, self.fTYPE_GALLERY ]:   #for  #photosets, galleries, pools? panda?
+            self.media_type=sitesBase.TYPE_ALBUM
 
-                if self.fmedia_type==self.fTYPE_ALBUM:
-                    photos=j['photoset']['photo']
-                    owner=j.get('photoset').get('ownername')
-                else:
-                    #elif self.media_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
-                    photos=j['photos']['photo']
+            if self.fmedia_type==self.fTYPE_ALBUM:
+                photos=j['photoset']['photo']
+                owner=j.get('photoset').get('ownername')
+            else:
+                #elif self.media_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
+                photos=j['photos']['photo']
 
-                '''
-                You can construct the source URL to a photo once you know its ID, server ID, farm ID and secret, as returned by many API methods.
-                The URL takes the following format:
-                https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}.jpg
-                https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}_[mstzb].jpg
-                https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{o-secret}_o.(jpg|gif|png)
-                    The letter suffixes are as follows:
-                    s    small square 75x75
-                    q    large square 150x150
-                    t    thumbnail, 100 on longest side
-                    m    small, 240 on longest side
-                    n    small, 320 on longest side
-                    -    medium, 500 on longest side
-                    z    medium 640, 640 on longest side
-                    c    medium 800, 800 on longest side†
-                    b    large, 1024 on longest side*
-                    h    large 1600, 1600 on longest side†
-                    k    large 2048, 2048 on longest side†
-                    o    original image, either a jpg, gif or png, depending on source format
-                '''
-                dictList=[]
-                for i, p in enumerate( photos ):
-                    ownerstring=''
-                    if self.fmedia_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
-                        owner=p.get('ownername')
-                        if owner:
-                            ownerstring ='by %s'%(owner)
+            '''
+            You can construct the source URL to a photo once you know its ID, server ID, farm ID and secret, as returned by many API methods.
+            The URL takes the following format:
+            https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}.jpg
+            https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}_[mstzb].jpg
+            https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{o-secret}_o.(jpg|gif|png)
+                The letter suffixes are as follows:
+                s    small square 75x75
+                q    large square 150x150
+                t    thumbnail, 100 on longest side
+                m    small, 240 on longest side
+                n    small, 320 on longest side
+                -    medium, 500 on longest side
+                z    medium 640, 640 on longest side
+                c    medium 800, 800 on longest side†
+                b    large, 1024 on longest side*
+                h    large 1600, 1600 on longest side†
+                k    large 2048, 2048 on longest side†
+                o    original image, either a jpg, gif or png, depending on source format
+            '''
+            dictList=[]
+            for i, p in enumerate( photos ):
+                ownerstring=''
+                if self.fmedia_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
+                    owner=p.get('ownername')
+                    if owner:
+                        ownerstring ='by %s'%(owner)
 
-                    photo_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'b' )
-                    thumb_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'n' )
-                    poster_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'z' )
-                    #log(" %d  %s" %(i,photo_url ))
-                    #log(" %d  %s" %(i,thumb_url ))
+                photo_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'b' )
+                thumb_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'n' )
+                poster_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'z' )
+                #log(" %d  %s" %(i,photo_url ))
+                #log(" %d  %s" %(i,thumb_url ))
 
-                    infoLabels={ "Title": p['title'], "plot": ownerstring , "director": p.get('ownername'), "exif:exifcomment": '',  }
+                infoLabels={ "Title": p['title'], "plot": ownerstring , "director": p.get('ownername'), "exif:exifcomment": '',  }
 
-                    e=[ p['title'] if p['title'] else str(i+1)             #'li_label'           #  the text that will show for the list  (list label will be the caption or number if caption is blank)
-                       ,p['title']                                         #'li_label2'          #
-                       ,""                                                 #'li_iconImage'       #
-                       ,thumb_url                                          #'li_thumbnailImage'  #
-                       ,photo_url                                          #'DirectoryItem_url'  #
-                       ,False                                              #'is_folder'          #
-                       ,'pictures'                                         #'type'               # video pictures  liz.setInfo(type='pictures',
-                       ,True                                               #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
-                       ,infoLabels                                         #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
-                       ,'none'                                             #'context_menu'       # ...
-                          ]
+                e=[ p['title'] if p['title'] else str(i+1)             #'li_label'           #  the text that will show for the list  (list label will be the caption or number if caption is blank)
+                   ,p['title']                                         #'li_label2'          #
+                   ,""                                                 #'li_iconImage'       #
+                   ,thumb_url                                          #'li_thumbnailImage'  #
+                   ,photo_url                                          #'DirectoryItem_url'  #
+                   ,False                                              #'is_folder'          #
+                   ,'pictures'                                         #'type'               # video pictures  liz.setInfo(type='pictures',
+                   ,True                                               #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
+                   ,infoLabels                                         #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
+                   ,'none'                                             #'context_menu'       # ...
+                      ]
 
-                    dictList.append(dict(zip(keys, e)))
+                dictList.append(dict(zip(keys, e)))
 
-                    #use first image as thumbnail and poster
-                    if i==0:
-                        self.thumb_url=thumb_url
-                        self.poster_url=poster_url
+                #use first image as thumbnail and poster
+                if i==0:
+                    self.thumb_url=thumb_url
+                    self.poster_url=poster_url
 
-                return dictList
+            return dictList
 
-            elif self.fmedia_type==self.fTYPE_PHOTO:
+        elif self.fmedia_type==self.fTYPE_PHOTO:
 
-                sizes=j['sizes']
-                #log('    sizes' + str(sizes))
-                #Square, Large Square, Thumbnail, Small, Small 320, Medium, Medium 640, Medium 800, Large, Large 1600, Large 2048, Original
-                for s in sizes['size']:
-                    #log('    images size %s url=%s' %( s['label'], s['source']  ) )
-                    if s['label'] == 'Medium 640':
-                        self.poster_url=s['source']
+            sizes=j['sizes']
+            #log('    sizes' + str(sizes))
+            #Square, Large Square, Thumbnail, Small, Small 320, Medium, Medium 640, Medium 800, Large, Large 1600, Large 2048, Original
+            for s in sizes['size']:
+                #log('    images size %s url=%s' %( s['label'], s['source']  ) )
+                if s['label'] == 'Medium 640':
+                    self.poster_url=s['source']
 
-                    #if s['label'] == 'Medium 800':
-                    #    self.poster_url=s['source']
+                #if s['label'] == 'Medium 800':
+                #    self.poster_url=s['source']
 
-                    if s['label'] == 'Thumbnail':
-                        self.thumb_url=s['source']
+                if s['label'] == 'Thumbnail':
+                    self.thumb_url=s['source']
 
-                    if s['label'] == 'Small':
-                        self.thumb_url=s['source']
+                if s['label'] == 'Small':
+                    self.thumb_url=s['source']
 
-                    #sometimes large is not available we just brute force the list starting from lowest that we'll take
-                    if s['label'] == 'Medium':
-                        ret_url=s['source']
-                        #media_type=s['media']   #'photo'
+                #sometimes large is not available we just brute force the list starting from lowest that we'll take
+                if s['label'] == 'Medium':
+                    ret_url=s['source']
+                    #media_type=s['media']   #'photo'
 
-                    if s['label'] == 'Medium 640':
-                        ret_url=s['source']
-                        #media_type=s['media']   #'photo'
+                if s['label'] == 'Medium 640':
+                    ret_url=s['source']
+                    #media_type=s['media']   #'photo'
 
-                    if s['label'] == 'Medium 800':
-                        ret_url=s['source']
-                        #media_type=s['media']   #'photo'
+                if s['label'] == 'Medium 800':
+                    ret_url=s['source']
+                    #media_type=s['media']   #'photo'
 
-                    if s['label'] == 'Large':
-                        ret_url=s['source']
-                        #media_type=s['media']
+                if s['label'] == 'Large':
+                    ret_url=s['source']
+                    #media_type=s['media']
 
-                    if s['label'] == 'Large 1600':
-                        ret_url=s['source']
-                        #media_type=s['media']
+                if s['label'] == 'Large 1600':
+                    ret_url=s['source']
+                    #media_type=s['media']
 
-            return ret_url, self.TYPE_IMAGE
-        else:
-            log('    error: %s :%s' %(self.__class__.__name__, repr( r.status_code ) ) )
-
-        return '',''
+        return ret_url, self.TYPE_IMAGE
 
     def is_an_album(self,media_url):
         #returns true if link is a bunch of images
@@ -1696,84 +1673,79 @@ class ClassFlickr(sitesBase):
         api_url='https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&api_key=%s&method=%s&%s' %(self.api_key,api_method,api_arg )
 
         #log('  flickr apiurl:'+api_url)
-        r = requests.get(api_url, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(api_url)
         #log(r.text)
-        if r.status_code == 200:   #http status code 200 is success
-            j=json.loads(r.text.replace('\\"', '\''))
+        j=json.loads(r.text.replace('\\"', '\''))
 
-            status=j.get('stat')
-            if status=='fail':
-                message=j.get('message')
-                raise Exception(message)
+        status=j.get('stat')
+        if status=='fail':
+            message=j.get('message')
+            raise Exception(message)
 
-            if self.fmedia_type in [self.fTYPE_ALBUM, self.fTYPE_GROUP, self.fTYPE_GALLERY ]:   #for  #photosets, galleries, pools? panda?
-                self.media_type=sitesBase.TYPE_ALBUM
+        if self.fmedia_type in [self.fTYPE_ALBUM, self.fTYPE_GROUP, self.fTYPE_GALLERY ]:   #for  #photosets, galleries, pools? panda?
+            self.media_type=sitesBase.TYPE_ALBUM
 
-                if self.fmedia_type==self.fTYPE_ALBUM:
-                    photos=j['photoset']['photo']
-                    owner=j.get('photoset').get('ownername')
-                else:
-                    #elif self.media_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
-                    photos=j['photos']['photo']
-
-                '''
-                You can construct the source URL to a photo once you know its ID, server ID, farm ID and secret, as returned by many API methods.
-                The URL takes the following format:
-                https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}.jpg
-                https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}_[mstzb].jpg
-                https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{o-secret}_o.(jpg|gif|png)
-                    The letter suffixes are as follows:
-                    s    small square 75x75
-                    q    large square 150x150
-                    t    thumbnail, 100 on longest side
-                    m    small, 240 on longest side
-                    n    small, 320 on longest side
-                    -    medium, 500 on longest side
-                    z    medium 640, 640 on longest side
-                    c    medium 800, 800 on longest side†
-                    b    large, 1024 on longest side*
-                    h    large 1600, 1600 on longest side†
-                    k    large 2048, 2048 on longest side†
-                    o    original image, either a jpg, gif or png, depending on source format
-                '''
-                dictList=[]
-                for i, p in enumerate( photos ):
-                    ownerstring=''
-                    if self.fmedia_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
-                        owner=p.get('ownername')
-                        if owner:
-                            ownerstring ='by %s'%(owner)
-
-                    photo_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'b' )
-                    thumb_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'n' )
-                    poster_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'z' )
-                    #log(" %d  %s" %(i,photo_url ))
-                    #log(" %d  %s" %(i,thumb_url ))
-
-                    infoLabels={ "Title": p['title'], "plot": ownerstring , "director": p.get('ownername'), "exif:exifcomment": '',  }
-
-                    e=[ p['title'] if p['title'] else str(i+1)             #'li_label'           #  the text that will show for the list  (list label will be the caption or number if caption is blank)
-                       ,p['title']                                         #'li_label2'          #
-                       ,""                                                 #'li_iconImage'       #
-                       ,thumb_url                                          #'li_thumbnailImage'  #
-                       ,photo_url                                          #'DirectoryItem_url'  #
-                       ,False                                              #'is_folder'          #
-                       ,'pictures'                                         #'type'               # video pictures  liz.setInfo(type='pictures',
-                       ,True                                               #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
-                       ,infoLabels                                         #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
-                       ,'none'                                             #'context_menu'       # ...
-                          ]
-
-                    dictList.append(dict(zip(keys, e)))
-
-                return dictList
-
+            if self.fmedia_type==self.fTYPE_ALBUM:
+                photos=j['photoset']['photo']
+                owner=j.get('photoset').get('ownername')
             else:
-                log('    NOT AN ALBUM: unexpected flickr media type ' + self.fmedia_type )
-        else:
-            log('    error: %s :%s' %(self.__class__.__name__, repr( r.status_code ) ) )
+                #elif self.media_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
+                photos=j['photos']['photo']
 
-        return ''
+            '''
+            You can construct the source URL to a photo once you know its ID, server ID, farm ID and secret, as returned by many API methods.
+            The URL takes the following format:
+            https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}.jpg
+            https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}_[mstzb].jpg
+            https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{o-secret}_o.(jpg|gif|png)
+                The letter suffixes are as follows:
+                s    small square 75x75
+                q    large square 150x150
+                t    thumbnail, 100 on longest side
+                m    small, 240 on longest side
+                n    small, 320 on longest side
+                -    medium, 500 on longest side
+                z    medium 640, 640 on longest side
+                c    medium 800, 800 on longest side†
+                b    large, 1024 on longest side*
+                h    large 1600, 1600 on longest side†
+                k    large 2048, 2048 on longest side†
+                o    original image, either a jpg, gif or png, depending on source format
+            '''
+            dictList=[]
+            for i, p in enumerate( photos ):
+                ownerstring=''
+                if self.fmedia_type in [self.fTYPE_GROUP, self.fTYPE_GALLERY]:
+                    owner=p.get('ownername')
+                    if owner:
+                        ownerstring ='by %s'%(owner)
+
+                photo_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'b' )
+                thumb_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'n' )
+                poster_url='https://farm%s.staticflickr.com/%s/%s_%s_%c.jpg' %(p['farm'],p['server'],p['id'],p['secret'],'z' )
+                #log(" %d  %s" %(i,photo_url ))
+                #log(" %d  %s" %(i,thumb_url ))
+
+                infoLabels={ "Title": p['title'], "plot": ownerstring , "director": p.get('ownername'), "exif:exifcomment": '',  }
+
+                e=[ p['title'] if p['title'] else str(i+1)             #'li_label'           #  the text that will show for the list  (list label will be the caption or number if caption is blank)
+                   ,p['title']                                         #'li_label2'          #
+                   ,""                                                 #'li_iconImage'       #
+                   ,thumb_url                                          #'li_thumbnailImage'  #
+                   ,photo_url                                          #'DirectoryItem_url'  #
+                   ,False                                              #'is_folder'          #
+                   ,'pictures'                                         #'type'               # video pictures  liz.setInfo(type='pictures',
+                   ,True                                               #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
+                   ,infoLabels                                         #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
+                   ,'none'                                             #'context_menu'       # ...
+                      ]
+
+                dictList.append(dict(zip(keys, e)))
+
+            return dictList
+
+        else:
+            log('    NOT AN ALBUM: unexpected flickr media type ' + self.fmedia_type )
 
 class ClassGifsCom(sitesBase):
     regex='(gifs\.com)'
@@ -1781,7 +1753,7 @@ class ClassGifsCom(sitesBase):
 
     api_key='gifs577da09e94ee1'   #gifs577da0485bf2a'
     headers = { 'Gifs-API-Key': api_key, 'Content-Type': "application/json" }
-    #request_url="https://api.gifs.com"   r=requests.get(request_url, headers=ClassGifsCom.headers)
+    #request_url="https://api.gifs.com"  
 
     def get_playable(self, media_url='', is_probably_a_video=False ):
         media_type=self.TYPE_VIDEO
@@ -1860,36 +1832,33 @@ class ClassGfycat(sitesBase):
             #log('    video id:' + repr(self.video_id) )
             request_url="https://gfycat.com/cajax/get/" + self.video_id
 
-            content = requests.get(request_url, timeout=REQUEST_TIMEOUT )
+            content = self.requests_get(request_url)
             #content = opener.open("http://gfycat.com/cajax/get/"+id).read()
             #log('gfycat response:'+ content)
-            if content.status_code==200:
-                content = content.json()
+            content = content.json()
 
-                gfyItem=content.get('gfyItem')
-                if gfyItem:
-                    self.media_w=safe_cast(gfyItem.get('width'),int,0)
-                    self.media_h=safe_cast(gfyItem.get('height'),int,0)
-                    webmSize=safe_cast(gfyItem.get('webmSize'),int,0)
-                    mp4Size =safe_cast(gfyItem.get('mp4Size'),int,0)
+            gfyItem=content.get('gfyItem')
+            if gfyItem:
+                self.media_w=safe_cast(gfyItem.get('width'),int,0)
+                self.media_h=safe_cast(gfyItem.get('height'),int,0)
+                webmSize=safe_cast(gfyItem.get('webmSize'),int,0)
+                mp4Size =safe_cast(gfyItem.get('mp4Size'),int,0)
 
-                    self.thumb_url =gfyItem.get('posterUrl')  #thumb100PosterUrl
-                    self.poster_url=gfyItem.get('posterUrl')
+                self.thumb_url =gfyItem.get('posterUrl')  #thumb100PosterUrl
+                self.poster_url=gfyItem.get('posterUrl')
 
-                    #pick the smaller of the streams
-                    if mp4Size > webmSize:
-                        #log('      using webm  wm(%d) m4(%d)' %(webmSize,mp4Size) )
-                        stream_url=gfyItem.get('webmUrl') if gfyItem.get('webmUrl') else gfyItem.get('mp4Url')
-                    else:
-                        #log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
-                        stream_url=gfyItem.get('mp4Url') if gfyItem.get('mp4Url') else gfyItem.get('webmUrl')
+                #pick the smaller of the streams
+                if mp4Size > webmSize:
+                    #log('      using webm  wm(%d) m4(%d)' %(webmSize,mp4Size) )
+                    stream_url=gfyItem.get('webmUrl') if gfyItem.get('webmUrl') else gfyItem.get('mp4Url')
+                else:
+                    #log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
+                    stream_url=gfyItem.get('mp4Url') if gfyItem.get('mp4Url') else gfyItem.get('webmUrl')
 
-                    log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
+                log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
 
-                    self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                    return stream_url, self.TYPE_GIF #sitesBase.TYPE_VIDEO
-            else:
-                log('    error: %s :%s' %(self.__class__.__name__, repr( content.status_code ) ) )
+                self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                return stream_url, self.TYPE_GIF #sitesBase.TYPE_VIDEO
         else:
             log("cannot get gfycat id")
 
@@ -1914,134 +1883,128 @@ class ClassEroshare(sitesBase):
 
     def get_playable_url(self, link_url, is_probably_a_video=True ):
 
-        content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( link_url )
         #if 'pnnh' in media_url:
         #    log('      retrieved:'+ str(content) )
 
-        if content.status_code==200:
-            match = re.compile('var album\s=\s(.*)\;').findall(content.text)
-            #log('********* ' + match[0])
-            if match:
-                j = json.loads(match[0])
-                items = j.get('items')
-                #log( '      %d item(s)' % len(items) )
+        match = re.compile('var album\s=\s(.*)\;').findall(content.text)
+        #log('********* ' + match[0])
+        if match:
+            j = json.loads(match[0])
+            items = j.get('items')
+            #log( '      %d item(s)' % len(items) )
 
-                self.media_type, playable_url, self.poster_url, self.thumb_url=self.get_media(items[0])
-                if len(items) == 1:
-                    #item=items[0]
-                    #log('      single %s %s' %( self.media_type, playable_url ))
-                    #self.media_type=item.get('type')
-                    #self.media_type, playable_url, self.poster_url, self.thumb_url=self.get_media(item)
-                    if self.media_type==sitesBase.TYPE_VIDEO:
-                        self.link_action=sitesBase.DI_ACTION_PLAYABLE
+            self.media_type, playable_url, self.poster_url, self.thumb_url=self.get_media(items[0])
+            if len(items) == 1:
+                #item=items[0]
+                #log('      single %s %s' %( self.media_type, playable_url ))
+                #self.media_type=item.get('type')
+                #self.media_type, playable_url, self.poster_url, self.thumb_url=self.get_media(item)
+                if self.media_type==sitesBase.TYPE_VIDEO:
+                    self.link_action=sitesBase.DI_ACTION_PLAYABLE
 
-                    return playable_url, self.media_type
+                return playable_url, self.media_type
 
-                else:
-                    #check if all items are video or image
-                    media_types = []
-                    for item in items:
-                        #log('    multiple: %s orig=%s ' %( item.get('type').lower(), item.get('url_orig') ))
-                        media_types.append( item.get('type').lower() )
-
-                    if self.all_same(media_types):
-                        if media_types[0]==self.TYPE_IMAGE:
-                            log('    eroshare link has all images %d' %len(items) )
-                            self.media_type=self.TYPE_ALBUM
-
-                        elif media_types[0]==self.TYPE_VIDEO:
-                            log('    eroshare link has all video %d' %len(items) )
-                            self.link_action=sitesBase.DI_ACTION_YTDL
-                            self.media_type=self.TYPE_VIDS
-
-                        return link_url, self.media_type
-
-                    else: #video and images
-                        log('    eroshare link has mixed video and images %d' %len(items) )
-                        #self.link_action=sitesBase.DI_ACTION_YTDL
-                        self.media_type=self.TYPE_ALBUM
-                        return link_url, self.media_type
             else:
-                #try an alternate method
-                log('      var album string not found. trying alternate method ')
+                #check if all items are video or image
+                media_types = []
+                for item in items:
+                    #log('    multiple: %s orig=%s ' %( item.get('type').lower(), item.get('url_orig') ))
+                    media_types.append( item.get('type').lower() )
 
-                div_item_list = parseDOM(content.text, "div", attrs = { "class": "item-list" })
-                #log('div_item_list=' + repr(div_item_list))
-                poster = parseDOM(div_item_list, "video", ret = "poster")
-                #log('    poster=' + repr(poster))
-                if poster:
-                    #assume video if there is poster
-                    self.poster_url='http:' + poster[0]
+                if self.all_same(media_types):
+                    if media_types[0]==self.TYPE_IMAGE:
+                        log('    eroshare link has all images %d' %len(items) )
+                        self.media_type=self.TYPE_ALBUM
 
-                    playable_url = parseDOM(div_item_list, "source", ret = "src")
-                    #log('playable_url=' + repr(playable_url))
-                    if playable_url:
-                        self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                        return playable_url[0], self.TYPE_VIDEO
-                else:
-                    #assume image if can't get poster
-                    image=parseDOM(div_item_list, "img", ret = "src")
-                    if image:
-                        self.poster_url='http:' + image[0]
-                        return self.poster_url, self.TYPE_IMAGE
+                    elif media_types[0]==self.TYPE_VIDEO:
+                        log('    eroshare link has all video %d' %len(items) )
+                        self.link_action=sitesBase.DI_ACTION_YTDL
+                        self.media_type=self.TYPE_VIDS
+
+                    return link_url, self.media_type
+
+                else: #video and images
+                    log('    eroshare link has mixed video and images %d' %len(items) )
+                    #self.link_action=sitesBase.DI_ACTION_YTDL
+                    self.media_type=self.TYPE_ALBUM
+                    return link_url, self.media_type
         else:
-            log('    error: eroshare get_playable_url:' + str( content.status_code ) )
+            #try an alternate method
+            log('      var album string not found. trying alternate method ')
+
+            div_item_list = parseDOM(content.text, "div", attrs = { "class": "item-list" })
+            #log('div_item_list=' + repr(div_item_list))
+            poster = parseDOM(div_item_list, "video", ret = "poster")
+            #log('    poster=' + repr(poster))
+            if poster:
+                #assume video if there is poster
+                self.poster_url='http:' + poster[0]
+
+                playable_url = parseDOM(div_item_list, "source", ret = "src")
+                #log('playable_url=' + repr(playable_url))
+                if playable_url:
+                    self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                    return playable_url[0], self.TYPE_VIDEO
+            else:
+                #assume image if can't get poster
+                image=parseDOM(div_item_list, "img", ret = "src")
+                if image:
+                    self.poster_url='http:' + image[0]
+                    return self.poster_url, self.TYPE_IMAGE
 
         return '', ''
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         #returns an object (list of dicts) that contain info for the calling function to create the listitem/addDirectoryItem
         images=[]
-        content = requests.get( album_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( album_url)
 
-        if content.status_code==200:
-            match = re.compile('var album\s=\s(.*)\;').findall(content.text)
-            #log('********* ' + match[0])
-            if match:
-                j = json.loads(match[0])
+        match = re.compile('var album\s=\s(.*)\;').findall(content.text)
+        #log('********* ' + match[0])
+        if match:
+            j = json.loads(match[0])
 
-                reddit_submission=j.get('reddit_submission')
-                if reddit_submission:
-                    reddit_submission_title=reddit_submission.get('title')
+            reddit_submission=j.get('reddit_submission')
+            if reddit_submission:
+                reddit_submission_title=reddit_submission.get('title')
 
-                title=j.get('title') if j.get('title') else reddit_submission_title
-                items=j.get('items')
-                log( '      %d item(s)' % len(items) )
-                prefix='https:'
-                for s in items:
-                    media_type=s.get('type').lower()
-                    description=s.get('description') if s.get('description') else title  #use title if description is blank
-                    #media_url=prefix+s.get('url_orig')   #this size too big...
-                    media_url=prefix+s.get('url_full')
-                    width=s.get('width')
-                    height=s.get('height')
-                    thumb=prefix+s.get('url_thumb')
-                    if media_type==self.TYPE_VIDEO:
-                        self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                        images.append( {
-                                        'isPlayable':True,
-                                        'thumb':thumb,
-                                        'type': 'video',
-                                        'description': description,
-                                        'url': s.get('url_mp4'),
-                                        'width': width,
-                                        'height': height,
-                                        }  )
-                    else:
-                        images.append( {
-                                        'thumb':thumb,
-                                        'description': description,
-                                        'url': media_url,
-                                        'width': width,
-                                        'height': height,
-                                        }  )
-                self.assemble_images_dictList(images)
-                #self.assemble_images_dictList(   ( [ s.get('description'), prefix+s.get('url_full')] for s in items)    )
+            title=j.get('title') if j.get('title') else reddit_submission_title
+            items=j.get('items')
+            log( '      %d item(s)' % len(items) )
+            prefix='https:'
+            for s in items:
+                media_type=s.get('type').lower()
+                description=s.get('description') if s.get('description') else title  #use title if description is blank
+                #media_url=prefix+s.get('url_orig')   #this size too big...
+                media_url=prefix+s.get('url_full')
+                width=s.get('width')
+                height=s.get('height')
+                thumb=prefix+s.get('url_thumb')
+                if media_type==self.TYPE_VIDEO:
+                    self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                    images.append( {
+                                    'isPlayable':True,
+                                    'thumb':thumb,
+                                    'type': 'video',
+                                    'description': description,
+                                    'url': s.get('url_mp4'),
+                                    'width': width,
+                                    'height': height,
+                                    }  )
+                else:
+                    images.append( {
+                                    'thumb':thumb,
+                                    'description': description,
+                                    'url': media_url,
+                                    'width': width,
+                                    'height': height,
+                                    }  )
+            self.assemble_images_dictList(images)
+            #self.assemble_images_dictList(   ( [ s.get('description'), prefix+s.get('url_full')] for s in items)    )
 
-            else:
-                log('      eroshare:ret_album_list: var album string not found. ')
         else:
-            log('    eroshare:ret_album_list: ' + str( content.status_code ) )
+            log('      eroshare:ret_album_list: var album string not found. ')
 
         return self.dictList
 
@@ -2081,54 +2044,46 @@ class ClassVidble(sitesBase):
 
         #note: image can be got by just adding .jpg at end of url
 
-        content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( link_url)
         #if 'pnnh' in media_url:
         #    log('      retrieved:'+ str(content) )
 
-        if content.status_code==200:
-            #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
-            thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
-            #log('    thumb='+repr(thumb))
-            if thumb:
-                self.thumb_url=thumb[0]
+        #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
+        thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
+        #log('    thumb='+repr(thumb))
+        if thumb:
+            self.thumb_url=thumb[0]
 
-            div_item_list = parseDOM(content.text, "div", attrs = { "id": "ContentPlaceHolder1_divContent" })
-            #log('    div_item_list=' + repr(div_item_list))
-            if div_item_list:
-                images = parseDOM(div_item_list, "img", ret = "src")
-                #for idx, item in enumerate(images):
-                #    log('    %d %s' %(idx, item))
-                if images[0]:
-                    self.poster_url = 'http://www.vidble.com' + images[0]
+        div_item_list = parseDOM(content.text, "div", attrs = { "id": "ContentPlaceHolder1_divContent" })
+        #log('    div_item_list=' + repr(div_item_list))
+        if div_item_list:
+            images = parseDOM(div_item_list, "img", ret = "src")
+            #for idx, item in enumerate(images):
+            #    log('    %d %s' %(idx, item))
+            if images[0]:
+                self.poster_url = 'http://www.vidble.com' + images[0]
 
-                    return self.poster_url, self.TYPE_IMAGE
-        else:
-            log('    error: vidble get_playable_url:' + str( content.status_code ) )
-
-        return '', ''
+                return self.poster_url, self.TYPE_IMAGE
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         #returns an object (list of dicts) that contain info for the calling function to create the listitem/addDirectoryItem
-        content = requests.get( album_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get(album_url)
 
-        if content.status_code==200:
-            #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
-            #thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
-            #log('    thumb='+repr(thumb))
+        #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
+        #thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
+        #log('    thumb='+repr(thumb))
 
-            div_item_list = parseDOM(content.text, "div", attrs = { "id": "ContentPlaceHolder1_divContent" })
-            #log('      div_item_list=' + repr(div_item_list))
+        div_item_list = parseDOM(content.text, "div", attrs = { "id": "ContentPlaceHolder1_divContent" })
+        #log('      div_item_list=' + repr(div_item_list))
 
-            if div_item_list:
-                images = parseDOM(div_item_list, "img", ret = "src")
-                prefix = 'http://www.vidble.com'
+        if div_item_list:
+            images = parseDOM(div_item_list, "img", ret = "src")
+            prefix = 'http://www.vidble.com'
 
-                self.assemble_images_dictList(   (prefix + s for s in images)    )
+            self.assemble_images_dictList(   (prefix + s for s in images)    )
 
-            else:
-                log('      vidble: no div_item_list:  ')
         else:
-            log('    vidble:ret_album_list: ' + str( content.status_code ) )
+            log('      vidble: no div_item_list:  ')
 
         #log( pprint.pformat(self.dictList, indent=1) )
         return self.dictList
@@ -2161,66 +2116,57 @@ class ClassImgbox(sitesBase):
             return media_url, sitesBase.TYPE_ALBUM
 
         log('  scraping:'+ media_url )
-        content = requests.get( media_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( media_url)
 
-        if content.status_code==200:
-            #https://github.com/downthemall/anticontainer/blob/master/plugins/imgbox.com.json
-            match = re.compile("id=\"img\".+?src=\"(.+?)\" title=\"(.+?)\"", re.DOTALL).findall(content.text)
-            #log('    match:' + repr(match))
-            if match:
-                #log('      match' + match[0][0])
-                self.poster_url=match[0][0]
-                self.thumb_url=self.poster_url
-                return self.poster_url, self.TYPE_IMAGE
-            else:
-                log("    %s can't scrape image " %(self.__class__.__name__ ) )
+        #https://github.com/downthemall/anticontainer/blob/master/plugins/imgbox.com.json
+        match = re.compile("id=\"img\".+?src=\"(.+?)\" title=\"(.+?)\"", re.DOTALL).findall(content.text)
+        #log('    match:' + repr(match))
+        if match:
+            #log('      match' + match[0][0])
+            self.poster_url=match[0][0]
+            self.thumb_url=self.poster_url
+            return self.poster_url, self.TYPE_IMAGE
         else:
-            log('    error: %s get_playable_url: %s' %(self.__class__.__name__, repr( content.status_code ) ) )
-
-        return '', ''
+            log("    %s can't scrape image " %(self.__class__.__name__ ) )
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         #returns an object (list of dicts) that contain info for the calling function to create the listitem/addDirectoryItem
 
-        content = requests.get( album_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( album_url)
 
-        if content.status_code==200:
-            div_item_list=parseDOM(content.text, "div", attrs = { "id": "gallery-view-content" })
-            #log('    div_item_list='+repr(div_item_list))
+        div_item_list=parseDOM(content.text, "div", attrs = { "id": "gallery-view-content" })
+        #log('    div_item_list='+repr(div_item_list))
 
-            #<a href="/fbDGR5kF"><img alt="Fbdgr5kf" src="http://1.s.imgbox.com/fbDGR5kF.jpg" /></a>
-            #<a href="/3f2FGZBl"><img alt="3f2fgzbl" src="http://4.s.imgbox.com/3f2FGZBl.jpg" /></a>
-            #<a href="/qnUS37TF"><img alt="Qnus37tf" src="http://6.s.imgbox.com/qnUS37TF.jpg" /></a>
-            #<a href="/PgEHrpIy"><img alt="Pgehrpiy" src="http://9.s.imgbox.com/PgEHrpIy.jpg" /></a>
-            #<a href="/W2sv8pFp"><img alt="W2sv8pfp" src="http://3.s.imgbox.com/W2sv8pFp.jpg" /></a>
+        #<a href="/fbDGR5kF"><img alt="Fbdgr5kf" src="http://1.s.imgbox.com/fbDGR5kF.jpg" /></a>
+        #<a href="/3f2FGZBl"><img alt="3f2fgzbl" src="http://4.s.imgbox.com/3f2FGZBl.jpg" /></a>
+        #<a href="/qnUS37TF"><img alt="Qnus37tf" src="http://6.s.imgbox.com/qnUS37TF.jpg" /></a>
+        #<a href="/PgEHrpIy"><img alt="Pgehrpiy" src="http://9.s.imgbox.com/PgEHrpIy.jpg" /></a>
+        #<a href="/W2sv8pFp"><img alt="W2sv8pfp" src="http://3.s.imgbox.com/W2sv8pFp.jpg" /></a>
 
-            if div_item_list:
-                thumbs = parseDOM(div_item_list, "img", ret = "src" )
-                href   = parseDOM(div_item_list,   "a", ret = "href" )
+        if div_item_list:
+            thumbs = parseDOM(div_item_list, "img", ret = "src" )
+            href   = parseDOM(div_item_list,   "a", ret = "href" )
 
-                #reassemble href into the image urls
-                images = ('http://i.imgbox.com%s.jpg' %s for s in href)
-                #self.assemble_images_dictList( images )
+            #reassemble href into the image urls
+            images = ('http://i.imgbox.com%s.jpg' %s for s in href)
+            #self.assemble_images_dictList( images )
 
-                #combine 2 list into 1 multidimensional list http://stackoverflow.com/questions/12624623/two-lists-into-one-multidimensional-list
-                list3= map(list,zip( images, thumbs ))
+            #combine 2 list into 1 multidimensional list http://stackoverflow.com/questions/12624623/two-lists-into-one-multidimensional-list
+            list3= map(list,zip( images, thumbs ))
 
-                #assemble_images_dictList expects the 1st item to be the image title, we don't have one
-                #add an additional column in out multidimensional list
-                list3 = [['',i,t] for i,t in list3]
+            #assemble_images_dictList expects the 1st item to be the image title, we don't have one
+            #add an additional column in out multidimensional list
+            list3 = [['',i,t] for i,t in list3]
 
-                #for i in list3:
-                #    log('    ' + repr(i))
+            #for i in list3:
+            #    log('    ' + repr(i))
 
-                #for i in images:
-                #    log('    ' + i)
+            #for i in images:
+            #    log('    ' + i)
 
-                self.assemble_images_dictList( list3 )
-            else:
-                log('      %s: cant find <div ... id="gallery-view-content"> '  %(self.__class__.__name__ ) )
+            self.assemble_images_dictList( list3 )
         else:
-            log('    %s :ret_album_list: %s ' %(self.__class__.__name__, repr(content.status_code) ) )
-
+            log('      %s: cant find <div ... id="gallery-view-content"> '  %(self.__class__.__name__ ) )
 
         #log( pprint.pformat(self.dictList, indent=1) )
         return self.dictList
@@ -2263,21 +2209,18 @@ class ClassReddit(sitesBase):
             req='https://www.reddit.com/r/%s/about.json' %self.video_id
             #log( req )
             #log('headers:' + repr(headers))
-            r = requests.get( req, headers=headers, timeout=REQUEST_TIMEOUT )
-            if r.status_code == requests.codes.ok:
-                j=r.json()
-                j=j.get('data')
-                #log( pprint.pformat(j, indent=1) )
-                icon_img=j.get('icon_img')
-                banner_img=j.get('banner_img')
-                header_img=j.get('header_img')   #not used? usually similar to with header_img
-                #header_img=j.get('icon_img')
-                #banner_img=j.get('banner_img')
-                self.thumb_url=icon_img
-                self.poster_url=banner_img
-                #log( repr(self.thumb_url) )
-            else:
-                log( '    getting subreddit info:%s' %r.status_code )
+            r = self.requests_get( req, headers=headers)
+            j=r.json()
+            j=j.get('data')
+            #log( pprint.pformat(j, indent=1) )
+            icon_img=j.get('icon_img')
+            banner_img=j.get('banner_img')
+            header_img=j.get('header_img')   #not used? usually similar to with header_img
+            #header_img=j.get('icon_img')
+            #banner_img=j.get('banner_img')
+            self.thumb_url=icon_img
+            self.poster_url=banner_img
+            #log( repr(self.thumb_url) )
 
 class ClassKindgirls(sitesBase):
     regex='(kindgirls.com)'
@@ -2295,70 +2238,76 @@ class ClassKindgirls(sitesBase):
             self.media_type = sitesBase.TYPE_ALBUM
             return link_url, self.media_type
 
-        content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( link_url)
 
-        if content.status_code==200:
-            #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
-            thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
-            #log('    thumb='+repr(thumb))
-            if thumb:
-                self.thumb_url=thumb[0]
+        #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
+        thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
+        #log('    thumb='+repr(thumb))
+        if thumb:
+            self.thumb_url=thumb[0]
 
-            div_item_list = parseDOM(content.text, "div", attrs = { "id": "photo" })
+        div_item_list = parseDOM(content.text, "div", attrs = { "id": "photo" })
 
-            #log('    div_item_list=' + repr(div_item_list))
-            if div_item_list:
-                images = parseDOM(div_item_list, "img", ret = "src")
-                #for idx, item in enumerate(images):
-                #    log('    %d %s' %(idx, item))
-                if images[0]:
-                    self.thumb_url = images[0]
-                    self.poster_url= images[0]
+        #log('    div_item_list=' + repr(div_item_list))
+        if div_item_list:
+            images = parseDOM(div_item_list, "img", ret = "src")
+            #for idx, item in enumerate(images):
+            #    log('    %d %s' %(idx, item))
+            if images[0]:
+                self.thumb_url = images[0]
+                self.poster_url= images[0]
 
-                    return self.poster_url, self.TYPE_IMAGE
-        else:
-            self.clog(content.status_code ,'get_playable_url')
+                return self.poster_url, self.TYPE_IMAGE
 
-        return '', ''
+        #try parsing for video
+        div_video = parseDOM(content.text, "div", attrs = { "id": "cuerpo" })
+
+        #log('    div_video=' + repr(div_video))
+        if div_video:
+            vid_thumb = parseDOM(div_video, "video", ret = "poster")
+            #log('    vid=' + repr(vid_thumb))
+            if vid_thumb:
+                self.thumb_url='http://www.kindgirls.com'+vid_thumb[0]
+                self.poster_url=self.thumb_url
+            #determined that link leads to video. could parse it but we'll just send to ytdl
+            self.link_action=sitesBase.DI_ACTION_YTDL
+            self.media_type=sitesBase.TYPE_VIDEO
+            return link_url, self.media_type
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         #returns an object (list of dicts) that contain info for the calling function to create the listitem/addDirectoryItem
-        content = requests.get( album_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get(album_url)
         images=[]
-        if content.status_code==200:
+        div_item_list = parseDOM(content.text, "div", attrs = { "id": "cuerpo" })
+        #log('      div_item_list=' + repr(div_item_list))
 
-            div_item_list = parseDOM(content.text, "div", attrs = { "id": "cuerpo" })
-            #log('      div_item_list=' + repr(div_item_list))
+        if div_item_list:
+            thumb_div=parseDOM(div_item_list, "div", attrs = { "id": "up_der" })
+            #log( repr( thumb_div) )
+            if thumb_div:
+                #log('    thumb div')
+                thumb = parseDOM(thumb_div,"a", ret="href")[0]
+                if thumb:
+                    self.thumb_url=thumb
+                    self.poster_url=self.thumb_url
+                    #log('    thumb:' + thumb )
 
-            if div_item_list:
-                thumb_div=parseDOM(div_item_list, "div", attrs = { "id": "up_der" })
-                #log( repr( thumb_div) )
-                if thumb_div:
-                    #log('    thumb div')
-                    thumb = parseDOM(thumb_div,"a", ret="href")[0]
-                    if thumb:
-                        self.thumb_url=thumb
-                        self.poster_url=self.thumb_url
-                        #log('    thumb:' + thumb )
+            img_divs=parseDOM(div_item_list, "div", attrs = { "class": "gal_list" })
 
-                img_divs=parseDOM(div_item_list, "div", attrs = { "class": "gal_list" })
+            if img_divs:
+                for div in img_divs:
+                    image_p     = parseDOM(div,"img", ret="src")[0]
+                    image_title = parseDOM(div,"img", ret="title")[0]
+                    image_o     = parseDOM(div,"a", attrs={ "target":"_blank"}, ret="href")[0]
 
-                if img_divs:
-                    for div in img_divs:
-                        image_p     = parseDOM(div,"img", ret="src")[0]
-                        image_title = parseDOM(div,"img", ret="title")[0]
-                        image_o     = parseDOM(div,"a", attrs={ "target":"_blank"}, ret="href")[0]
+                    images.append( [image_title, image_o, image_p]  )
 
-                        images.append( [image_title, image_o, image_p]  )
+            #for i in images: log( repr(i) )
+            self.assemble_images_dictList( images )
+            #log( pprint.pformat(self.dictList, indent=1) )
 
-                #for i in images: log( repr(i) )
-                self.assemble_images_dictList( images )
-                #log( pprint.pformat(self.dictList, indent=1) )
-
-            else:
-                log("      can't find div id cuerpo")
         else:
-            self.clog(content.status_code ,album_url)
+            log("      can't find div id cuerpo")
 
         #log( pprint.pformat(self.dictList, indent=1) )
         return self.dictList
@@ -2406,23 +2355,20 @@ class Class500px(sitesBase):
             #image_size — Numerical size of the image to link to, 1 being the smallest and 4 being the largest.
             api_url= 'https://api.500px.com/v1/photos/%s?image_size=6&%s' %(self.video_id, self.key_string)
             #log( '    ' + api_url )
-            r = requests.get(api_url, timeout=REQUEST_TIMEOUT )
+            r = self.requests_get(api_url)
             #log(r.text)
 
-            if r.status_code == 200:   #http status code 200 is success
-                j=json.loads(r.text)   #.replace('\\"', '\'')
-                j=j.get('photo')
+            j=json.loads(r.text)   #.replace('\\"', '\'')
+            j=j.get('photo')
 
-                title=j.get('name')
-                self.poster_url=j.get('image_url')
-                self.media_w=j.get('width')  #width and height not accurate unless image size 6  (not sure if applies to all)
-                self.media_h=j.get('height')
-                self.media_url=self.poster_url
+            title=j.get('name')
+            self.poster_url=j.get('image_url')
+            self.media_w=j.get('width')  #width and height not accurate unless image size 6  (not sure if applies to all)
+            self.media_h=j.get('height')
+            self.media_url=self.poster_url
 
-                #log('      %s %dx%d %s' %(title, self.media_w,self.media_h, self.poster_url )  )
-                #return self.poster_url, sitesBase.TYPE_IMAGE
-            else:
-                self.clog(r.status_code ,api_url)
+            #log('      %s %dx%d %s' %(title, self.media_w,self.media_h, self.poster_url )  )
+            #return self.poster_url, sitesBase.TYPE_IMAGE
         else:
             log("    %s cannot get videoID %s" %( self.__class__.__name__, self.original_url) )
 
@@ -2464,47 +2410,40 @@ class Class500px(sitesBase):
 
         api_call='https://api.500px.com/v1/users/show?username=%s&%s' %(username, self.key_string)
         log('    req='+api_call)
-        r = requests.get(api_call, timeout=REQUEST_TIMEOUT)
-        if r.status_code == requests.codes.ok:
-            j=r.json()
-            user_id=j.get('user').get('id')
-        else:
-            log( '    error getting user ID:%s [%s]' %(r.status_code, api_call)  )
-            return
+        r = self.requests_get(api_call)
+
+        j=r.json()
+        user_id=j.get('user').get('id')
 
         if user_id:
             #         https://api.500px.com/v1/users/777395/galleries/outdoor-portraits/items?consumer_key=aKLU1q5GKofJ2RDsNVEJScLy98aLKNmm7lADwOSB
             api_call='https://api.500px.com/v1/users/%s/%s/items?image_size=6&rpp=100&%s' %(user_id, album_name, self.key_string)
             log('    req='+api_call)
-            r = requests.get(api_call, timeout=REQUEST_TIMEOUT)
+            r = self.requests_get(api_call)
             #log( r.text )
-            if r.status_code == requests.codes.ok:
-                images=[]
-                j=r.json()
-                j=j.get('photos')
-                for photo in j:
-                    title=photo.get('name')
-                    description=photo.get('description')
-                    image=photo.get('image_url')
-                    width=photo.get('width')
-                    height=photo.get('height')
-                    #combined=self.combine_title_and_description(title, description)
+            images=[]
+            j=r.json()
+            j=j.get('photos')
+            for photo in j:
+                title=photo.get('name')
+                description=photo.get('description')
+                image=photo.get('image_url')
+                width=photo.get('width')
+                height=photo.get('height')
+                #combined=self.combine_title_and_description(title, description)
 
-                    #images.append( [combined, image ]  )
-                    images.append( {'title': title,
-                                    'description': description,
-                                    'url': image,
-                                    'width': width,
-                                    'height': height,
-                                    }  )
+                #images.append( [combined, image ]  )
+                images.append( {'title': title,
+                                'description': description,
+                                'url': image,
+                                'width': width,
+                                'height': height,
+                                }  )
 
 
-                #for i in images: log( repr(i) )
-                self.assemble_images_dictList( images )
-                #log( pprint.pformat(self.dictList, indent=1) )
-            else:
-                log( '    error getting user ID:%s [%s]' %(r.status_code, api_call)  )
-                return
+            #for i in images: log( repr(i) )
+            self.assemble_images_dictList( images )
+            #log( pprint.pformat(self.dictList, indent=1) )
         else:
             log("    can't get user id")
             return
@@ -2533,34 +2472,28 @@ class ClassSlimg(sitesBase):
 
         api_req='https://api.sli.mg/media/' + self.video_id
         #log('  ' + api_req )
-        r = requests.get(api_req, headers=self.header, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(api_req, headers=self.header)
 
-        #log('  ' + r.text)
-        if r.status_code == requests.codes.ok:
-            j=r.json()
-            j=j.get('data')
-            self.media_url=j.get('url_direct')
-            self.thumb_url=self.media_url
-            self.poster_url=self.media_url
+        j=r.json()
+        j=j.get('data')
+        self.media_url=j.get('url_direct')
+        self.thumb_url=self.media_url
+        self.poster_url=self.media_url
 
-            self.media_w=j.get('width')
-            self.media_h=j.get('height')
+        self.media_w=j.get('width')
+        self.media_h=j.get('height')
 
-            if j.get('webm'):  #use webm if available.
-                self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                self.media_type=sitesBase.TYPE_VIDEO
-                self.media_url=j.get('url_webm')
-            else:  #we're assuming that all items without a webm is image
-                self.media_type=sitesBase.TYPE_IMAGE
+        if j.get('webm'):  #use webm if available.
+            self.link_action=sitesBase.DI_ACTION_PLAYABLE
+            self.media_type=sitesBase.TYPE_VIDEO
+            self.media_url=j.get('url_webm')
+        else:  #we're assuming that all items without a webm is image
+            self.media_type=sitesBase.TYPE_IMAGE
 
-            #if 'gif' in j.get('mimetype'):
-            #    self.media_url=j.get('url_mp4')   #url_webm is also available
+        #if 'gif' in j.get('mimetype'):
+        #    self.media_url=j.get('url_mp4')   #url_webm is also available
 
-            return self.media_url, self.media_type
-
-        else:
-            self.clog(r.status_code ,api_req)
-
+        return self.media_url, self.media_type
 
     def get_video_id(self):
         #looks like the filename is also the video id
@@ -2580,39 +2513,35 @@ class ClassSlimg(sitesBase):
 
         api_req='https://api.sli.mg/album/%s/media' % self.video_id
         #log('  ' + api_req )
-        r = requests.get(api_req, headers=self.header, timeout=REQUEST_TIMEOUT)
+        r = self.requests_get(api_req, headers=self.header)
 
-        #log('  ' + r.text)
-        if r.status_code == requests.codes.ok:
-            j=r.json()
-            j=j.get('data')
+        j=r.json()
+        j=j.get('data')
 
-            media_count=j.get('media_count')
-            images=[]
-            for i in j.get('media'):
+        media_count=j.get('media_count')
+        images=[]
+        for i in j.get('media'):
 
-                title=i.get('title')
-                description=i.get('description')
-                media_url=i.get('url_direct')
-                media_w=i.get('width')
-                media_h=i.get('height')
-                #combined='[B]%s[/B]\n%s' % (title, description)
+            title=i.get('title')
+            description=i.get('description')
+            media_url=i.get('url_direct')
+            media_w=i.get('width')
+            media_h=i.get('height')
+            #combined='[B]%s[/B]\n%s' % (title, description)
 
-                #combined= self.combine_title_and_description(title,description)
+            #combined= self.combine_title_and_description(title,description)
 
-                if i.get('webm'):  #we don't support video in album but still avoid gif video  if possible.
-                    media_url=j.get('url_webm')
+            if i.get('webm'):  #we don't support video in album but still avoid gif video  if possible.
+                media_url=j.get('url_webm')
 
-                images.append( {'title': title,
-                                'description': description,
-                                'url': media_url,
-                                'width': media_w,
-                                'height': media_h,
-                                }  )
+            images.append( {'title': title,
+                            'description': description,
+                            'url': media_url,
+                            'width': media_w,
+                            'height': media_h,
+                            }  )
 
-            self.assemble_images_dictList(images)
-        else:
-            self.clog(r.status_code ,api_req)
+        self.assemble_images_dictList(images)
 
         return self.dictList
 
@@ -2644,39 +2573,33 @@ class ClassImgTrex(sitesBase):
         return self.get_playable_url(self.media_url, is_probably_a_video=False )
 
     def get_playable_url(self, media_url, is_probably_a_video=False ):
-        content = requests.get( media_url, timeout=REQUEST_TIMEOUT )
+        content = self.requests_get( media_url)
 
-        if content.status_code==200:
-            #is_album=parseDOM(content.text, name='img', attrs = { "class": "pic" }, ret='galleryimg' )  #this should return "no" but does not
-            #log( '  isalbum:' + pprint.pformat(is_album, indent=1) )
-            #add album checking code here. i think the galleryimg property in the img tag holds a clue but can't find gallery sample
+        #is_album=parseDOM(content.text, name='img', attrs = { "class": "pic" }, ret='galleryimg' )  #this should return "no" but does not
+        #log( '  isalbum:' + pprint.pformat(is_album, indent=1) )
+        #add album checking code here. i think the galleryimg property in the img tag holds a clue but can't find gallery sample
 
-            image=parseDOM(content.text, name='img', attrs = { "class": "pic" }, ret="src")[0]
-            #log( '  ' + repr(image ) )
+        image=parseDOM(content.text, name='img', attrs = { "class": "pic" }, ret="src")[0]
+        #log( '  ' + repr(image ) )
 
-            #super(ClassImgTrex, self).get_playable(image)
-            filename,ext=parse_filename_and_ext_from_url(image)
-            if self.include_gif_in_get_playable:
-                if ext in ["mp4","webm","gif"]:
-                    if ext=='gif':
-                        self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                        self.thumb_url=image
-                        self.poster_url=self.thumb_url
-                    return image,self.TYPE_VIDEO
-            else:
-                if ext in ["mp4","webm"]:
-                    self.link_action=self.DI_ACTION_PLAYABLE
-                    return image,self.TYPE_VIDEO
-
-            if ext in image_exts:  #excludes .gif     ***** there were instances where imgtrex returned image extension as .jpg but it is actually .gif.    we can't do anything about this.
-                self.thumb_url=image
-                self.poster_url=self.thumb_url
-                return image,self.TYPE_IMAGE
-
+        #super(ClassImgTrex, self).get_playable(image)
+        filename,ext=parse_filename_and_ext_from_url(image)
+        if self.include_gif_in_get_playable:
+            if ext in ["mp4","webm","gif"]:
+                if ext=='gif':
+                    self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                    self.thumb_url=image
+                    self.poster_url=self.thumb_url
+                return image,self.TYPE_GIF
         else:
-            log('    error: %s get_playable_url: %s' %(self.__class__.__name__, repr( content.status_code ) ) )
+            if ext in ["mp4","webm"]:
+                self.link_action=self.DI_ACTION_PLAYABLE
+                return image,self.TYPE_VIDEO
 
-        return '', ''
+        if ext in image_exts:  #excludes .gif     ***** there were instances where imgtrex returned image extension as .jpg but it is actually .gif.    we can't do anything about this.
+            self.thumb_url=image
+            self.poster_url=self.thumb_url
+            return image,self.TYPE_IMAGE
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         return None
@@ -2690,28 +2613,24 @@ class ClassImgFlip(sitesBase):
     include_gif_in_get_playable=True
 
     def get_playable_url(self, link_url, is_probably_a_video=False ):
-        content = requests.get( link_url, timeout=REQUEST_TIMEOUT )
-        if content.status_code==200:
-            #log(repr(content.headers))
-            i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
-            iw=parseDOM(content.text, "meta", attrs = { "property": "og:image:width" }, ret="content" )
-            ih=parseDOM(content.text, "meta", attrs = { "property": "og:image:height" }, ret="content" )
-            if i[0]:
-                image=i[0]
-                if self.is_gif_extension(image):
-                    media_type=self.TYPE_GIF
-                else:
-                    media_type=self.TYPE_IMAGE
-
-                self.thumb_url=image
-                self.media_w=iw[0]
-                self.media_h=ih[0]
-                self.poster_url=self.thumb_url
-                return image,media_type
+        content = self.requests_get(link_url)
+        i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
+        iw=parseDOM(content.text, "meta", attrs = { "property": "og:image:width" }, ret="content" )
+        ih=parseDOM(content.text, "meta", attrs = { "property": "og:image:height" }, ret="content" )
+        if i[0]:
+            image=i[0]
+            if self.is_gif_extension(image):
+                self.media_type=self.TYPE_GIF
             else:
-                log('      %s: cant find <meta property'  %(self.__class__.__name__ ) )
+                self.media_type=self.TYPE_IMAGE
+
+            self.thumb_url=image
+            self.media_w=iw[0]
+            self.media_h=ih[0]
+            self.poster_url=self.thumb_url
+            return image,self.media_type
         else:
-            log('    %s :get_playable_url: %s ' %(self.__class__.__name__, repr(content.status_code) ) )
+            log('      %s: cant find <meta property'  %(self.__class__.__name__ ) )
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         return None
@@ -2917,6 +2836,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
 
             if needs_preview:
                 thumb=hoster.get_thumb_url()
+                #log('thumb:' + thumb)
                 #poster=hoster.poster_url
                 #log('      poster_url:'+poster)
             if not hoster.link_action:
@@ -2956,7 +2876,9 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
                     return ld
 
     except Exception as e:
-        log("  EXCEPTION parse_reddit_link "+ str( sys.exc_info()[0]) + "  " + str(e) )
+        log("  EXCEPTION parse_reddit_link "+ str( sys.exc_info()[0]) + " - " + str(e) )
+        ld=LinkDetails('', sitesBase.DI_ACTION_ERROR, str(e) )
+        return ld
 
 
 #    if ytdl_sites:  pass
@@ -3314,7 +3236,8 @@ def viewTallImage(image_url, width, height):
         log("  EXCEPTION viewTallImage:="+ str( sys.exc_info()[0]) + "  " + str(e) )
 
 def playURLRVideo(url, name, type):
-
+#NOT USED, we will try to play the link using ytdl then try urlresolver. 
+#this is done because doing an include for urlresolver slows down addon startup time.
     from urlparse import urlparse
     parsed_uri = urlparse( url )
     domain = '{uri.netloc}'.format(uri=parsed_uri)
@@ -3357,6 +3280,13 @@ def loopedPlayback(url, name, type):
 
     #pl.add(url, xbmcgui.ListItem(name))
     xbmc.Player().play(pl, windowed=False)
+
+def error_message(message, name, type):
+    if name:
+        sub_msg=name
+    else:
+        sub_msg=translation(30021) #Parsing error
+    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( message, sub_msg  ) )
 
 def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='', script_to_call="", on_autoplay=False, img_w=0, img_h=0):
     setProperty_IsPlayable='false'  #recorded in vieoxxx.db if set to 'true'
@@ -3413,6 +3343,10 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
             #    setProperty_IsPlayable='true'
             #    isFolder=False
             #log('  %s:%s'%(ld.link_action,ld.playable_url))
+        elif ld.media_type=='' or ld.media_type==None:  #ld.link_action=sitesBase.DI_ACTION_ERROR
+#            #when there is an error resolving the post link
+            setProperty_IsPlayable='false'
+            isFolder=False
 
         if ld.link_action == sitesBase.DI_ACTION_PLAYABLE:
             setProperty_IsPlayable='true'

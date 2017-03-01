@@ -256,4 +256,9 @@
  - remove urlresolver parsing during subreddit listing
  - add gallery parsing for designyoutrust.com
  - add giphy.com short url support
+ 3.2.3 (2017-03-01)
+ - removed vine.co parsing
+ - add video parsing to some domain
+ - error notification when link is 404 or has error in parsing
+ 
   

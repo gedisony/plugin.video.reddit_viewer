@@ -655,21 +655,23 @@ def parse_filename_and_ext_from_url(url=""):
     return "", ""
 
 def link_url_is_playable(url):
-    url=url.split('?')[0]
-    #log('        split[0]:' + url)
+    ext=ret_url_ext(url)
+    if ext in image_exts:
+        return 'image'
+    if ext in ['mp4','webm','mpg','gifv','gif']:
+        return 'video'
+            #if ext == 'gif':
+            #    return 'gif'
+    return False
+
+def ret_url_ext(url):
     if url:
-        filename,ext=parse_filename_and_ext_from_url(url)
-        #log('        [%s][%s]' %(filename,ext) )
-        if ext in image_exts:
-            #log('        is image:' + url)
-            return 'image'
-
-        if ext in ['mp4','webm','mpg','gifv','gif']:
-            return 'video'
-
-        #if ext == 'gif':
-        #    return 'gif'
-
+        url=url.split('?')[0]
+        #log('        split[0]:' + url)
+        if url:
+            filename,ext=parse_filename_and_ext_from_url(url)
+            #log('        [%s][%s]' %(filename,ext) )
+            return ext
     return False
 
 #remove duplicates.  http://stackoverflow.com/questions/7961363/removing-duplicates-in-lists
