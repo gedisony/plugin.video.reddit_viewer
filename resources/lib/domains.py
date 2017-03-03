@@ -726,7 +726,6 @@ class ClassVimeo(sitesBase):
             self.link_action=sitesBase.DI_ACTION_YTDL
             return media_url, self.TYPE_VIDEO
 
-
     def get_video_id(self):
 #         match = re.compile('vimeo.com/(.*)', re.DOTALL).findall(self.media_url)
 #         if match:
@@ -736,7 +735,6 @@ class ClassVimeo(sitesBase):
         if match:
             #log('      long regex got:' + repr(match) )
             self.video_id=match[0]
-
 
     def get_thumb_url(self, quality0123=1):
         #http://stackoverflow.com/questions/1361149/get-img-thumbnails-from-vimeo
