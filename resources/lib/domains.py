@@ -401,8 +401,7 @@ class ClassImgur(sitesBase):
         #log("  ask_imgur_for_link: "+media_url )
 
         media_url=media_url.split('?')[0] #get rid of the query string
-        img_id =media_url.split("com/",1)[1]  #.... just get whatever is after "imgur.com/"   hope nothing is beyond the id
-
+        img_id=media_url.split("com/",1)[1]  #.... just get whatever is after "imgur.com/"   hope nothing is beyond the id
         #log("    ask_imgur_for_link: "+img_id )
 
         #6/30/2016: noticed a link like this: http://imgur.com/topic/Aww/FErKmLG
@@ -412,14 +411,13 @@ class ClassImgur(sitesBase):
 
         if img_id:
             request_url="https://api.imgur.com/3/image/"+img_id
-            #log("  imgur check link- request_url---"+request_url )
             r = self.requests_get(request_url, headers=ClassImgur.request_header)
-            j = r.json()    #j = json.loads(r.text)
+            j=r.json() 
 
-            #log('link is ' + j['data'].get('link') )
-            return j['data'].get('link')
-
-        return ''
+            if j['data'].get('mp4'):
+                return j['data'].get('mp4')
+            else:
+                return j['data'].get('link')
 
     def get_thumb_url(self, link_url='', thumbnail_type='b'):
         #return the thumbnail url given the image url
@@ -543,14 +541,11 @@ class ClassImgur(sitesBase):
         pass
 
     def get_playable_url(self, media_url, is_probably_a_video): #is_probably_a_video means put video extension on it if media_url has no ext
-
         webm_or_mp4='.mp4'  #6/18/2016  using ".webm" has stopped working
         media_url=media_url.split('?')[0] #get rid of the query string?
 
         is_album=self.is_an_album(media_url)
-        #log('  imgur says is_an_album:'+str(is_album))
         if is_album:
-            #log('    imgur link is an album '+ media_url)
             return media_url, sitesBase.TYPE_ALBUM
         else:
             if '/gallery/' in media_url:
@@ -565,10 +560,7 @@ class ClassImgur(sitesBase):
 
         filename,ext=parse_filename_and_ext_from_url(media_url)
 
-        #if is_probably_a_video=='yes': #is_a_video accdg. to the reddit json.
-        #log('    ext[%s]' %ext)
         if ext == "":
-            #ask imgur for the media link
             media_url=self.ask_imgur_for_link(media_url)
             filename,ext=parse_filename_and_ext_from_url(media_url)
             #below is a faster alternative but not as accurate.
@@ -579,7 +571,7 @@ class ClassImgur(sitesBase):
             #    media_url=media_url+".jpg"
             #    is_video=False
 
-        if ext in ['gif', 'gifv'] :
+        if ext in ['gif', 'gifv', 'mp4'] :   #NOTE: we're treating all mp4 links as gif and set them to loop playback
             media_url=media_url.replace(".gifv",webm_or_mp4) #can also use .mp4.  crass but this method uses no additional bandwidth.  see playImgurVideo
             media_url=media_url.replace(".gif",webm_or_mp4)  #xbmc won't play gif but replacing .webm works!
             #self.media_type=sitesBase.TYPE_VIDEO
@@ -593,7 +585,6 @@ class ClassImgur(sitesBase):
             self.poster_url=self.thumb_url
 
             self.media_type=sitesBase.TYPE_IMAGE
-            #self.link_action=viewImagew'
         else:
             self.media_type=sitesBase.TYPE_VIDEO
             self.link_action=self.DI_ACTION_PLAYABLE

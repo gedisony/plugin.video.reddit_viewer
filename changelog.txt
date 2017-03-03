@@ -260,5 +260,7 @@
  - removed vine.co parsing
  - add video parsing to some domain
  - error notification when link is 404 or has error in parsing
+ 3.2.4 (2017-03-03)
+ - fix imgur parsing bug. Thanks to mac1202
  
   
