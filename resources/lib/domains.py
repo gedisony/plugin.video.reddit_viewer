@@ -1336,7 +1336,6 @@ class ClassInstagram(sitesBase):
     def get_thumb_url(self):
         if self.thumb_url:
             return self.thumb_url
-        pass
 
 class ClassGyazo(sitesBase):
     regex='(gyazo\.com)'
@@ -1383,7 +1382,6 @@ class ClassGyazo(sitesBase):
     def get_thumb_url(self):
         if self.thumb_url:
             return self.thumb_url
-        pass
 
 class ClassFlickr(sitesBase):
     regex='(flickr\.com|flic\.kr)'

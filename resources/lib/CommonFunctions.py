@@ -522,21 +522,21 @@ def makeAscii(data):
 def makeUTF8(data):
     log(repr(data), 5)
     return data
-    try:
-        return data.decode('utf8', 'xmlcharrefreplace') # was 'ignore'
-    except:
-        log("Hit except on : " + repr(data))
-        s = u""
-        for i in data:
-            try:
-                i.decode("utf8", "xmlcharrefreplace") 
-            except:
-                log("Can't convert character", 4)
-                continue
-            else:
-                s += i
-        log(repr(s), 5)
-        return s
+#    try:
+#        return data.decode('utf8', 'xmlcharrefreplace') # was 'ignore'
+#    except:
+#        log("Hit except on : " + repr(data))
+#        s = u""
+#        for i in data:
+#            try:
+#                i.decode("utf8", "xmlcharrefreplace") 
+#            except:
+#                log("Can't convert character", 4)
+#                continue
+#            else:
+#                s += i
+#        log(repr(s), 5)
+#        return s
 
 
 def openFile(filepath, options=u"r"):

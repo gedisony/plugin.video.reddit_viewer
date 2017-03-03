@@ -101,9 +101,6 @@ class cGUI(xbmcgui.WindowXML):
         if self.gui_listbox_SelectedPosition > 0:
             self.gui_listbox.selectItem( self.gui_listbox_SelectedPosition )
 
-        pass
-
-
     def onClick(self, controlID):
 
         if controlID == self.main_control_id:
@@ -201,12 +198,10 @@ class cGUI(xbmcgui.WindowXML):
             self.close()
         else:
             xbmc.executebuiltin( "Dialog.Close(busydialog)" )
-        pass
 
     def close_gui(self):
         log('  close gui via exit monitor')
         self.close()
-        pass
 
 class indexGui(cGUI):
     #this is the gui that handles the initial screen.
@@ -230,9 +225,6 @@ class indexGui(cGUI):
 
         if self.gui_listbox_SelectedPosition > 0:
             self.gui_listbox.selectItem( self.gui_listbox_SelectedPosition )
-
-        pass
-
 
     def onAction(self, action):
 
@@ -291,8 +283,6 @@ class listSubRedditGUI(cGUI):
 
         self.subreddits_listbox.addItems( self.load_subreddits_file_into_a_listitem() )
 
-        pass
-
     def onAction(self, action):
 
         try:focused_control=self.getFocusId()
@@ -342,7 +332,6 @@ class listSubRedditGUI(cGUI):
                 self.busy_execute_sleep(ACTION_manage_subreddits, 50, True)
                 #xbmc.executebuiltin( ACTION_manage_subreddits  )
                 #self.close()
-        pass
 
     def onClick(self, controlID):
         from utils import build_script, assemble_reddit_filter_string
@@ -399,7 +388,7 @@ class listSubRedditGUI(cGUI):
         elif controlID == self.SUBREDDITS_LIST:
             di_url=subreddits_selected_item.getProperty('onClick_action') #this property was created in load_subreddits_file_into_a_listitem
             self.busy_execute_sleep(di_url )
-            pass
+
         elif controlID == self.BTN_GOTO_SUBREDDIT:
             goto_subreddit_action=listbox_selected_item.getProperty('goto_subreddit_action')
             self.busy_execute_sleep(goto_subreddit_action)
@@ -407,7 +396,6 @@ class listSubRedditGUI(cGUI):
         elif controlID == self.BTN_ZOOM_N_SLIDE:
             action=listbox_selected_item.getProperty('zoom_n_slide_action')
             self.busy_execute_sleep(action, 50,False)
-            pass
 
         elif controlID == self.BTN_PLAY_ALL:
             #action='RunAddon(script.reddit.reader,mode=autoPlay&url=%s&name=&type=)' % self.reddit_query_of_this_gui
@@ -415,7 +403,6 @@ class listSubRedditGUI(cGUI):
             action=build_script('autoPlay', self.reddit_query_of_this_gui,'','')
             #log('  PLAY_ALL '+ action)
             self.busy_execute_sleep(action, 10000,False)
-            pass
 
         elif controlID == self.BTN_PLAY_FROM_HERE:
             #get the post_id before the selected item. (not the selected items post_id)
@@ -433,7 +420,6 @@ class listSubRedditGUI(cGUI):
             action=build_script('autoPlay', rq,'','')
             log('  PLAY_FROM_HERE %d %s %s' %( i, post_id_bs, list_item_bs.getLabel() ) )
             self.busy_execute_sleep(action, 10000,False)
-            pass
 
         elif controlID == self.BTN_SLIDESHOW:
             #action='RunAddon(script.reddit.reader,mode=autoPlay&url=%s&name=&type=)' % self.reddit_query_of_this_gui
@@ -441,7 +427,6 @@ class listSubRedditGUI(cGUI):
             action=build_script('autoSlideshow', self.reddit_query_of_this_gui,'','')
             log('  SLIDESHOW '+ action)
             self.busy_execute_sleep(action, 1000,False)
-            pass
 
         elif controlID == self.BTN_READ_HTML:
             #action='RunAddon(script.reddit.reader,mode=autoPlay&url=%s&name=&type=)' % self.reddit_query_of_this_gui
@@ -451,7 +436,6 @@ class listSubRedditGUI(cGUI):
             action=build_script('readHTML', link,'','')
             log('  READ_HTML '+ action)
             self.busy_execute_sleep(action, 1000,False)
-            pass
 
         elif controlID == self.BTN_COMMENTS:
             action=listbox_selected_item.getProperty('comments_action')
@@ -459,7 +443,6 @@ class listSubRedditGUI(cGUI):
             if action:
                 #if there are no comments, the comments_action property is not created for this listitem
                 self.busy_execute_sleep(action,3000,False )
-            pass
 
         elif controlID == self.BTN_SEARCH:
             from default import translation
@@ -484,7 +467,6 @@ class listSubRedditGUI(cGUI):
                     log('  BTN_SEARCH '+ action)
                     if action:
                         self.busy_execute_sleep(action,3000,False )
-            pass
 
         elif controlID == self.BTN_RELOAD:
             #log( self.reddit_query_of_this_gui)  #<-- r/random will return a random subredddit.
@@ -494,7 +476,6 @@ class listSubRedditGUI(cGUI):
             log('  BTN_RELOAD '+ action)
             if action:
                 self.busy_execute_sleep(action,3000,False )
-            pass
 
 class commentsGUI(cGUI):
 
@@ -536,8 +517,6 @@ class commentsGUI(cGUI):
         if action in [ xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK ]:
             self.close()
 
-    pass
-
     def onClick(self, controlID):
         cGUI.onClick(self, controlID)
 
@@ -575,7 +554,5 @@ class commentsGUI(cGUI):
 
 def log(message, level=xbmc.LOGNOTICE):
     xbmc.log("reddit_viewer GUI:"+message, level=level)
-
-
 
 

@@ -40,7 +40,7 @@ def create_default_subreddits():
     with open(subredditsFile, 'a') as fh:
 
         #fh.write('/user/gummywormsyum/m/videoswithsubstance\n')
-        fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(32006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
+        fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(30006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
         fh.write('Documentaries+ArtisanVideos+lectures+LearnUselessTalents\n')
         fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
         fh.write('random\n')
@@ -84,10 +84,8 @@ def create_default_subreddits_NOTUSED():
 
         elif entry_type=='multireddit':
             entry.update( {'shortcut_description':shortcut_description} )
-            pass
         elif entry_type=='domain':
             entry.update( {'shortcut_description':shortcut_description} )
-            pass
 
         if sub_info:
             entry.update( {'sub_info': sub_info} )
@@ -306,7 +304,6 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
             #else:
                 #default to front page instead of r/all
                 #url+= "/r/all"
-            #   pass
 
         site_filter=""
         if search_string:
@@ -317,7 +314,6 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
         else:
             #no more supported_sites filter OR... OR... OR...
             url+= "/.json?"
-            pass
 
     url += "&limit="+str(itemsPerPage)
     #url += "&limit=12"
@@ -546,15 +542,11 @@ def addtoFilter(to_filter, name, type_of_filter):
     if type_of_filter=='domain':
         #log( domain_filter +'+' + to_filter)
         add_to_csv_setting('domain_filter',to_filter)
-        pass
     elif type_of_filter=='subreddit':
         #log( subreddit_filter +'+' + to_filter )
         add_to_csv_setting('subreddit_filter',to_filter)
-        pass
     else:
         return
-    pass
- 
 
 def prettify_reddit_query(subreddit_entry):
     #for search queries; make the reddit query string presentable

@@ -1065,7 +1065,6 @@ def playYTDLVideo(url, name, type):
     try:
         from resources.lib.domains import ydtl_get_playable_url
         stream_url = ydtl_get_playable_url(url)
-
         if stream_url:
             dialog_progress_YTDL.update(80,'YTDL', 'Playing' )
             listitem = xbmcgui.ListItem(path=stream_url[0])   #plugins play video like this.
@@ -1218,7 +1217,7 @@ def listLinksInComment(url, name, type):
                 #    DirectoryItem_url=sys.argv[0]+"?url="+ urllib.quote_plus(link_url) +"&mode=play"
 
             if DirectoryItem_url:
-                log( 'IsPlayable:'+setProperty_IsPlayable )
+                #log( 'IsPlayable:'+setProperty_IsPlayable )
                 directory_items.append( (DirectoryItem_url, liz, isFolder,) )
                 #xbmcplugin.addDirectoryItem(handle=pluginhandle,url=DirectoryItem_url,listitem=liz,isFolder=isFolder)
             else:
@@ -1924,7 +1923,8 @@ git push origin add-on-branch-name
 
 #Open a pull request with a clear title and description.
 
-*** on browser: click on pull request
+*** on browser: go to your github xbmc/repo-plugins 
+***    click on pull request
 upper left : base fork: xbmc/repo-plugins         base:    jarvis
 upper right: head fork: gedisony/repo-plugins     compare: add-on-branch-name
 *** the clear title till be [plugin.video.reddit_viewer] 2.7.1
