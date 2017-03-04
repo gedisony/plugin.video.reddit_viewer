@@ -262,5 +262,7 @@
  - error notification when link is 404 or has error in parsing
  3.2.4 (2017-03-03)
  - fix imgur parsing bug. Thanks to mac1202
- 
+ 3.2.5
+ - add supload.com parsing
+ - reorganize parsing code
   
