@@ -9,7 +9,7 @@ from xbmcgui import ControlImage, WindowDialog, WindowXMLDialog, Window, Control
 #autoSlideshow
 
 from default import addon, log, translation, addon_path, addonID, reddit_request
-from domains import sitesManager, sitesBase, parse_reddit_link, listAlbum
+from domains import sitesManager, sitesBase, parse_reddit_link
 
 from utils import unescape, post_excluded_from, determine_if_video_media_from_reddit_json, remove_duplicates, remove_dict_duplicates
 

@@ -265,4 +265,7 @@
  3.2.5
  - add supload.com parsing
  - reorganize parsing code
+ 3.2.6
+ - update supload.com parsing(gif)
+ - reorganize code
   

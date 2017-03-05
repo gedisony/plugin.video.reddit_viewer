@@ -35,13 +35,12 @@ except:
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
 from urllib import urlencode
 
-
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-
 addon         = xbmcaddon.Addon()
-addon_path    = addon.getAddonInfo('path')
+addon_path    = addon.getAddonInfo('path')      #where the addon resides
+profile_path  = addon.getAddonInfo('profile')   #where user settings are stored
 pluginhandle  = int(sys.argv[1])
 addonID       = addon.getAddonInfo('id')  #plugin.video.reddit_viewer
 
@@ -49,15 +48,6 @@ WINDOW        = xbmcgui.Window(10000)
 #technique borrowed from LazyTV.
 #  WINDOW is like a mailbox for passing data from caller to callee.
 #    e.g.: addLink() needs to pass "image description" to playSlideshow()
-
-osWin         = xbmc.getCondVisibility('system.platform.windows')
-osOsx         = xbmc.getCondVisibility('system.platform.osx')
-osLinux       = xbmc.getCondVisibility('system.platform.linux')
-
-if osWin:
-    fd="\\"
-else:
-    fd="/"
 
 socket.setdefaulttimeout(30)
 opener = urllib2.build_opener()
@@ -70,12 +60,9 @@ reddit_redirect_uri  ='http://localhost:8090/'   #specified when registering for
 reddit_refresh_token =addon.getSetting("reddit_refresh_token")
 reddit_access_token  =addon.getSetting("reddit_access_token") #1hour token
 
-#test1 line
-
 opener.addheaders = [('User-Agent', reddit_userAgent)]
 #API requests with a bearer token should be made to https://oauth.reddit.com, NOT www.reddit.com.
 urlMain = "https://www.reddit.com"
-
 
 #filter           = addon.getSetting("filter") == "true"
 #filterRating     = int(addon.getSetting("filterRating"))
@@ -140,6 +127,9 @@ cxm_show_open_browser     = addon.getSetting("cxm_show_open_browser") == "true"
 addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
 subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
 subredditsPickle    = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits.pickle")  #new type of saving the settings
+
+#last slash at the end is important
+ytdl_core_path=xbmc.translatePath(  addon_path+"/resources/lib/youtube_dl/" )
 
 REQUEST_TIMEOUT=5 #requests.get timeout in seconds
 
@@ -217,142 +207,6 @@ def getPlayCount(url):
 #    log(repr(results))
 
 #MODE addSubreddit      - name, type not used
-def addSubreddit(subreddit, name, type):
-    from resources.lib.utils import this_is_a_multireddit, format_multihub, colored_subreddit
-    alreadyIn = False
-    fh = open(subredditsFile, 'r')
-    content = fh.readlines()
-    fh.close()
-    if subreddit:
-        for line in content:
-            if line.lower()==subreddit.lower():
-                alreadyIn = True
-        if not alreadyIn:
-            with open(subredditsFile, 'a') as fh:
-                fh.write(subreddit+'\n')
-
-            get_subreddit_entry_info(subreddit)
-        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( colored_subreddit(subreddit), translation(30019)  ) )
-    else:
-        #dialog = xbmcgui.Dialog()
-        #ok = dialog.ok('Add subreddit', 'Add a subreddit (videos)','or  Multiple subreddits (music+listentothis)','or  Multireddit (/user/.../m/video)')
-        #would be great to have some sort of help to show first time user here
-
-        keyboard = xbmc.Keyboard('', translation(30001))
-        keyboard.doModal()
-        if keyboard.isConfirmed() and keyboard.getText():
-            subreddit = keyboard.getText()
-
-            #cleanup user input. make sure /user/ and /m/ is lowercase
-            if this_is_a_multireddit(subreddit):
-                subreddit = format_multihub(subreddit)
-            else:
-                get_subreddit_entry_info(subreddit)
-
-            for line in content:
-                if line.lower()==subreddit.lower()+"\n":
-                    alreadyIn = True
-
-            if not alreadyIn:
-                fh = open(subredditsFile, 'a')
-                fh.write(subreddit+'\n')
-                fh.close()
-        xbmc.executebuiltin("Container.Refresh")
-
-def get_subreddit_entry_info(subreddit):
-    #from resources.lib.utils import get_subreddit_info, parse_subreddit_entry, create_default_subreddits, load_dict
-    if subreddit.lower() in ['all','random','randnsfw']:
-        return
-    s=[]
-    if '/' in subreddit:  #we want to get diy from diy/top or diy/new
-        subreddit=subreddit.split('/')[0]
-
-    if '+' in subreddit:
-        s.extend(subreddit.split('+'))
-    else:
-        s.append(subreddit)
-
-    t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
-    #threads.append(t)
-    #log('****starting... '+repr(t))
-    t.start()
-
-def get_subreddit_entry_info_thread(sub_list):
-    from resources.lib.utils import get_subreddit_info, load_dict, save_dict
-
-    subreddits_dlist=[]
-    #log('**** thread running')
-    if os.path.exists(subredditsPickle):
-        #log('****file exists ' + repr( subredditsPickle ))
-        subreddits_dlist=load_dict(subredditsPickle)
-        #for e in subreddits_dlist: log(e.get('entry_name'))
-        #log( pprint.pformat(subreddits_dlist, indent=1) )
-
-    #log('****------before for -------- ' + repr(sub_list ))
-    for subreddit in sub_list:
-        #remove old instance of subreddit
-        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
-
-        #for e in subreddits_dlist: log(e.get('entry_name'))
-
-        #log('****getting sub_info ' )
-
-        sub_info=get_subreddit_info(subreddit)
-
-        log('****sub_info ' + repr( sub_info ))
-
-        if sub_info:
-            #log('****if sub_info ')
-            subreddits_dlist.append(sub_info)
-            save_dict(subreddits_dlist, subredditsPickle)
-            #log('****saved ')
-
-#MODE removeSubreddit      - name, type not used
-def removeSubreddit(subreddit, name, type):
-    #note: calling code in addDirR()
-    fh = open(subredditsFile, 'r')
-    content = fh.readlines()
-    fh.close()
-    contentNew = ""
-    for line in content:
-        if line!=subreddit+'\n':
-            #log('line='+line+'toremove='+subreddit)
-            contentNew+=line
-    fh = open(subredditsFile, 'w')
-    fh.write(contentNew)
-    fh.close()
-    xbmc.executebuiltin("Container.Refresh")
-
-def editSubreddit(subreddit, name, type):
-    from resources.lib.utils import this_is_a_multireddit, format_multihub
-    #note: calling code in addDirR()
-    fh = open(subredditsFile, 'r')
-    content = fh.readlines()
-    fh.close()
-    contentNew = ""
-
-    keyboard = xbmc.Keyboard(subreddit, translation(30003))
-    keyboard.doModal()
-    if keyboard.isConfirmed() and keyboard.getText():
-        newsubreddit = keyboard.getText()
-        #cleanup user input. make sure /user/ and /m/ is lowercase
-        if this_is_a_multireddit(newsubreddit):
-            newsubreddit = format_multihub(newsubreddit)
-        else:
-            get_subreddit_entry_info(newsubreddit)
-
-        for line in content:
-            if line.strip()==subreddit.strip() :      #if matches the old subreddit,
-                #log("adding: %s  %s  %s" %(line, subreddit, newsubreddit)  )
-                contentNew+=newsubreddit+'\n'
-            else:
-                contentNew+=line
-
-        fh = open(subredditsFile, 'w')
-        fh.write(contentNew)
-        fh.close()
-
-        xbmc.executebuiltin("Container.Refresh")
 
 def index(url,name,type):
     from resources.lib.utils import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string,xstr, ret_sub_info, samealphabetic, hassamealphabetic
@@ -1817,9 +1671,9 @@ if __name__ == '__main__':
 #    log("pluginhandle:" + str(pluginhandle) )
 #    log("-----------------------")
 
-    from resources.lib.domains import viewImage, listAlbum, viewTallImage, playURLRVideo, loopedPlayback,error_message
     from resources.lib.slideshow import autoSlideshow
     from resources.lib.utils import addtoFilter,open_web_browser
+    from resources.lib.actions import addSubreddit,editSubreddit,removeSubreddit,viewImage,viewTallImage,listAlbum,playURLRVideo, loopedPlayback,error_message
     
 
     if mode=='':mode='index'  #default mode is to list start page (index)
