@@ -8,7 +8,6 @@ import re
 import os
 import json
 import sqlite3
-import random
 import datetime
 import time
 import xbmc
@@ -16,21 +15,17 @@ import xbmcplugin
 import xbmcgui
 import xbmcaddon
 import urlparse
-import pprint
-
-#import SimpleDownloader
-import requests
 
 import threading
 
 #this import for the youtube_dl AND urlresolver addons causes our addon to start slower. we'll import it when we need to playYTDLVideo
-modes_that_use_ytdl=['mode=playYTDLVideo','mode=play']
-try:
-    if any(mode in sys.argv[2] for mode in modes_that_use_ytdl):   ##if 'mode=playYTDLVideo' in sys.argv[2] :
-        import YDStreamExtractor      #note: you can't just add this import in code, you need to re-install the addon with <import addon="script.module.youtube.dl"        version="16.521.0"/> in addon.xml
-        import urlresolver
-except:
-    pass
+#modes_that_use_ytdl=['mode=playYTDLVideo','mode=play']
+#try:
+#    if any(mode in sys.argv[2] for mode in modes_that_use_ytdl):   ##if 'mode=playYTDLVideo' in sys.argv[2] :
+#        import YDStreamExtractor      #note: you can't just add this import in code, you need to re-install the addon with <import addon="script.module.youtube.dl"        version="16.521.0"/> in addon.xml
+#        import urlresolver
+#except:
+#    pass
 
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
 from urllib import urlencode
@@ -700,7 +695,7 @@ def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subredd
         entries.append( ( translation(30055)+" %s" %colored_subreddit_short ,
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
 
-    if cxm_show_add_shortcuts: 
+    if cxm_show_add_shortcuts:
         if not subreddit_in_favorites(subreddit):
             #add selected subreddit to shortcuts
             entries.append( ( translation(30056) %colored_subreddit_short ,
@@ -831,12 +826,80 @@ def playVideo(url, name, type):
     if url :
         #url='http://i.imgur.com/ARdeL4F.mp4'
         #url='plugin://plugin.video.reddit_viewer/?mode=comments_gui'
-        listitem = xbmcgui.ListItem(path=url)
+        listitem = xbmcgui.ListItem(label=name,path=url)
         xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
     else:
         log("playVideo(url) url is blank")
 
 def playYTDLVideo(url, name, type):
+    from resources.lib.utils import link_url_is_playable
+    #if link_url_is_playable(url)=='video':
+    #    playVideo(url,name,'')
+    #    return
+
+    from resources.lib.YoutubeDLWrapper import YoutubeDLWrapper, _selectVideoQuality
+    import pprint
+
+    pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+    pl.clear()
+
+    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
+    dialog_progress_YTDL.create('Youtube_dl' )
+    dialog_progress_YTDL.update(10,'Youtube_dl',translation(32012)  )
+
+    #use YoutubeDLWrapper by ruuk to avoid  bad file error
+    ytdl=YoutubeDLWrapper()
+    try:
+        ydl_info=ytdl.extract_info(url, download=False)
+        #in youtube_dl utils.py def unified_timestamp(date_str, day_first=True):
+        # there was an error playing https://vimeo.com/14652586
+        #   on line 1195:
+        # change          except ValueError:
+        #     to          except:    (remove ValueError)
+
+        #log( "YoutubeDL extract_info:\n" + pprint.pformat(ydl_info, indent=1) )
+        video_infos=_selectVideoQuality(ydl_info, quality=1, disable_dash=True)
+        log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=2) )
+        dialog_progress_YTDL.update(80,'Youtube_dl',translation(32013)  )
+
+        if len(video_infos)>1:
+            log('    ***ytdl link resolved to multple streams. playing only the first stream')
+
+        video_info=video_infos[0]
+        url=video_info.get('xbmc_url')
+        title=video_info.get('title') or name
+        playVideo(url,title,'')
+
+#        #we are only playing the first stream because this is a plugin and it expects to play links via setResolvedUrl()
+#        #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
+#        for video_info in video_infos:
+#            url=video_info.get('xbmc_url')  #there is also  video_info.get('url')  url without the |useragent...
+#            title=video_info.get('title') or name
+#            ytdl_format=video_info.get('ytdl_format')
+#            if ytdl_format:
+#                description=ytdl_format.get('description')
+#            li=xbmcgui.ListItem(label=title,
+#                                label2='',
+#                                iconImage=video_info.get('thumbnail'),
+#                                thumbnailImage=video_info.get('thumbnail'),
+#                                path=url)
+#            li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
+#            pl.add(url, li)
+#        xbmc.Player().play(pl, windowed=False)
+    except Exception as e:
+        err_msg=str(e)+';'  #ERROR: No video formats found; please report this issue on https://yt-dl.org/bug . Make sure you are using the latest vers....
+        short_err=err_msg.split(';')[0]
+        log( "playYTDLVideo Exception:" + str( sys.exc_info()[0]) + "  " + str(e) )
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( "Youtube_dl", short_err )  )
+
+        #try urlresolver
+        log('   trying urlresolver...')
+        playURLRVideo(url, name, type)
+#    finally:
+    dialog_progress_YTDL.update(100,'Youtube_dl' ) #not sure if necessary to set to 100 before closing dialogprogressbg
+    dialog_progress_YTDL.close()
+
+def playYTDLVideoOLD(url, name, type):
     #url = "http://www.youtube.com/watch?v=_yVv9dx88x0"   #a youtube ID will work as well and of course you could pass the url of another site
 
     #url='https://www.youtube.com/shared?ci=W8n3GMW5RCY'
@@ -1203,8 +1266,6 @@ def parse_url_and_play(url, name, type):
 
     DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, url)
 
-
-
     if setProperty_IsPlayable=='true':
         log( '---------IsPlayable---------->'+ DirectoryItem_url)
         playVideo(DirectoryItem_url,'','')
@@ -1280,20 +1341,6 @@ def queueVideo(url, name, type):
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     listitem = xbmcgui.ListItem(name)
     playlist.add(url, listitem)
-
-#searchReddits      --url, name, type not used
-def searchReddits(url, name, type):
-    keyboard = xbmc.Keyboard('sort=new&t=week&q=', translation(30005))
-    keyboard.doModal()
-    if keyboard.isConfirmed() and keyboard.getText():
-
-        #search_string = urllib.quote_plus(keyboard.getText().replace(" ", "+"))
-        search_string = keyboard.getText().replace(" ", "+")
-
-        url = urlMain +"/search.json?" +search_string    #+ '+' + nsfw  # + sites_filter skip the sites filter
-
-        listSubReddit(url, name, "")
-
 
 def translation(id):
     return addon.getLocalizedString(id).encode('utf-8')
@@ -1673,8 +1720,8 @@ if __name__ == '__main__':
 
     from resources.lib.slideshow import autoSlideshow
     from resources.lib.utils import addtoFilter,open_web_browser
-    from resources.lib.actions import addSubreddit,editSubreddit,removeSubreddit,viewImage,viewTallImage,listAlbum,playURLRVideo, loopedPlayback,error_message
-    
+    from resources.lib.actions import addSubreddit,editSubreddit,removeSubreddit,viewImage,viewTallImage,listAlbum,playURLRVideo, loopedPlayback,error_message,update_youtube_dl_core,searchReddits
+
 
     if mode=='':mode='index'  #default mode is to list start page (index)
     #plugin_modes holds the mode string and the function that will be called given the mode
@@ -1693,13 +1740,13 @@ if __name__ == '__main__':
 #                    ,'queueVideo'           : queueVideo
 #                    ,'addToFavs'            : addToFavs
 #                    ,'removeFromFavs'       : removeFromFavs
-#                    ,'searchReddits'        : searchReddits
-#                    ,'openSettings'         : openSettings
+                    ,'searchReddits'        : searchReddits
                     ,'listLinksInComment'   : listLinksInComment
                     ,'playYTDLVideo'        : playYTDLVideo
                     ,'playURLRVideo'        : playURLRVideo
                     ,'loopedPlayback'       : loopedPlayback
                     ,'error_message'        : error_message
+                    ,'update_youtube_dl_core':update_youtube_dl_core
                     ,'get_refresh_token'    : reddit_get_refresh_token
                     ,'get_access_token'     : reddit_get_access_token
                     ,'revoke_refresh_token' : reddit_revoke_refresh_token
@@ -1777,7 +1824,7 @@ git push origin add-on-branch-name
 
 #Open a pull request with a clear title and description.
 
-*** on browser: go to your github xbmc/repo-plugins 
+*** on browser: go to your github xbmc/repo-plugins
 ***    click on pull request
 upper left : base fork: xbmc/repo-plugins         base:    jarvis
 upper right: head fork: gedisony/repo-plugins     compare: add-on-branch-name

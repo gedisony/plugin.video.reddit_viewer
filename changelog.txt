@@ -268,4 +268,8 @@
  3.2.6
  - update supload.com parsing(gif)
  - reorganize code
-  
+ 3.2.7 (2017-03-11)
+ - use ruuk's youtubedl wrapper directly
+ - add acidcow.com album parsing
+ - codacity recommended cleanups
+ - ability to update youtube-dl in settings

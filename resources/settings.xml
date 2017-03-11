@@ -54,8 +54,10 @@
         <setting type="lsep"                                label="30601" enable="true" />
         <setting type="lsep"                                label="30602" enable="true" />
         <setting id="custom_link_command"       type="text" label=""      default=""/>
+        <setting type="lsep"                                label="30610" enable="true" />
+        <setting id="ytdl_btn_check_version"  type="action"      label="30611"  action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=update_youtube_dl_core&type=checkversion)"/>
+        <setting id="ytdl_btn_download"       type="action"      label="30612"  action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=update_youtube_dl_core&type=download)"/>
     </category>
-
 
     <!-- category label="30150">
         <setting                  type="action"      label="30151" action="RunPlugin(plugin://plugin.video.reddit_tv/?mode=openSettings&url=youtube)"/>

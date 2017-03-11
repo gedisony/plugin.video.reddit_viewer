@@ -144,6 +144,19 @@ def editSubreddit(subreddit, name, type):
 
         xbmc.executebuiltin("Container.Refresh")
 
+def searchReddits(url, name, type):
+    from default import urlMain, listSubReddit
+    keyboard = xbmc.Keyboard('sort=new&t=week&q=', translation(30005))
+    keyboard.doModal()
+    if keyboard.isConfirmed() and keyboard.getText():
+
+        #search_string = urllib.quote_plus(keyboard.getText().replace(" ", "+"))
+        search_string = keyboard.getText().replace(" ", "+")
+
+        url = urlMain +"/search.json?" +search_string    #+ '+' + nsfw  # + sites_filter skip the sites filter
+
+        listSubReddit(url, name, "")
+
 def setting_gif_repeat_count():
     srepeat_gif_video= addon.getSetting("repeat_gif_video")
     try: repeat_gif_video = int(srepeat_gif_video)
@@ -371,7 +384,7 @@ def display_album_from(dictlist, album_name):
         xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )
         xbmcplugin.endOfDirectory(pluginhandle)
 
-def listAlbum(album_url, name, type):
+def listAlbum(album_url, name, type_):
     from slideshow import slideshowAlbum
     from domains import sitesManager
 
@@ -381,7 +394,7 @@ def listAlbum(album_url, name, type):
     if hoster:
         dictlist=hoster.ret_album_list(album_url)
 
-        if type=='return_dictlist':  #used in autoSlideshow
+        if type_=='return_dictlist':  #used in autoSlideshow
             return dictlist
 
         if not dictlist:
@@ -398,13 +411,7 @@ def playURLRVideo(url, name, type):
     from urlparse import urlparse
     parsed_uri = urlparse( url )
     domain = '{uri.netloc}'.format(uri=parsed_uri)
-    #log( '-----------------'+ domain +'---------------------- play url resolver  ' + repr(url ))
-
-    #ytdl seems better than urlresolver for getting the playable url...
-
     #hmf = urlresolver.HostedMediaFile(url)
-    #log( ' --------------valid_url-----' + repr( hmf.valid_url() )  )
-
     try:
         media_url = urlresolver.resolve(url)
         if media_url:
@@ -413,6 +420,7 @@ def playURLRVideo(url, name, type):
             listitem = xbmcgui.ListItem(path=media_url)
             xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
         else:
+            log( "  Can't URL Resolve:" + repr(url))
             xbmc.executebuiltin('XBMC.Notification("%s", "%s (URLresolver" )'  %( translation(30192), domain )  )
     except Exception as e:
         xbmc.executebuiltin('XBMC.Notification("%s","%s (URLresolver)")' %(  str(e), domain )  )
@@ -437,6 +445,113 @@ def error_message(message, name, type):
     xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( message, sub_msg  ) )
 
 
+
+
+
+
+
+YTDL_VERSION_URL = 'https://yt-dl.org/latest/version'
+YTDL_LATEST_URL_TEMPLATE = 'https://yt-dl.org/latest/youtube-dl-{}.tar.gz'
+
+def ytdl_get_version_info(which_one='latest'):
+    import urllib2
+    if which_one=='latest':
+        try:
+            newVersion = urllib2.urlopen(YTDL_VERSION_URL).read().strip()
+            return newVersion
+        except:
+            return "0.0"
+    else:
+        try:
+            #*** it seems like the script.module.youtube_dl version gets imported if the one from resources.lib is missing
+            from youtube_dl.version import __version__
+            return __version__
+        except Exception as e:
+            log('error getting ytdl local version:'+str(e))
+            return "0.0"
+
+def update_youtube_dl_core(url,name,action_type):
+#credit to ruuk for most of the download code
+    import os, urllib, urllib2
+    import tarfile
+    import shutil
+
+    if action_type=='download':
+        newVersion=note_ytdl_versions()
+        LATEST_URL=YTDL_LATEST_URL_TEMPLATE.format(newVersion)
+
+        profile = xbmc.translatePath(profile_path)  #xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
+        archivePath = os.path.join(profile,'youtube_dl.tar.gz')
+        extractedPath = os.path.join(profile,'youtube-dl')
+        extracted_core_path=os.path.join(extractedPath,'youtube_dl')
+        #ytdl_core_path  xbmc.translatePath(  addon_path+"/resources/lib/youtube_dl/" )
+
+        try:
+            if os.path.exists(extractedPath):
+                shutil.rmtree(extractedPath, ignore_errors=True)
+                update_dl_status('temp files removed')
+
+            update_dl_status('Downloading {0} ...'.format(newVersion))
+            log('  From: {0}'.format(LATEST_URL))
+            log('    to: {0}'.format(archivePath))
+            urllib.urlretrieve(LATEST_URL,filename=archivePath)
+
+            if os.path.exists(archivePath):
+                update_dl_status('Extracting ...')
+
+                with tarfile.open(archivePath,mode='r:gz') as tf:
+                    members = [m for m in tf.getmembers() if m.name.startswith('youtube-dl/youtube_dl')] #get just the files from the youtube_dl source directory
+                    tf.extractall(path=profile,members=members)
+            else:
+                update_dl_status('Download failed')
+        except Exception as e:
+            update_dl_status('Error:' + str(e))
+
+        update_dl_status('Updating...')
+
+
+        if os.path.exists(extracted_core_path):
+            log( '  extracted dir exists:'+extracted_core_path)
+
+            if os.path.exists(ytdl_core_path):
+                log( '  destination dir exists:'+ytdl_core_path)
+                shutil.rmtree(ytdl_core_path, ignore_errors=True)
+                update_dl_status('    Old ytdl core removed')
+                xbmc.sleep(1000)
+            try:
+                shutil.move(extracted_core_path, ytdl_core_path)
+                update_dl_status('Update complete')
+                xbmc.sleep(1000)
+                ourVersion=ytdl_get_version_info('local')
+                setSetting('ytdl_btn_check_version', "{0}".format(ourVersion))
+
+            except Exception as e:
+                update_dl_status('Failed...')
+                log( 'move failed:'+str(e))
+
+    elif action_type=='checkversion':
+        note_ytdl_versions()
+
+
+def note_ytdl_versions():
+    #display ytdl versions and return latest version
+    setSetting('ytdl_btn_check_version', "checking...")
+    ourVersion=ytdl_get_version_info('local')
+    setSetting('ytdl_btn_check_version', "{0}".format(ourVersion))
+
+    setSetting('ytdl_btn_download', "checking...")
+    newVersion=ytdl_get_version_info('latest')
+    setSetting('ytdl_btn_download',      "latest {0}".format(newVersion))
+
+    return newVersion
+
+
+def update_dl_status(message):
+    log(message)
+    setSetting('ytdl_btn_download', message)
+
+def setSetting(setting_id, value):
+    addon.setSetting(setting_id, value)
 
 
 if __name__ == '__main__':

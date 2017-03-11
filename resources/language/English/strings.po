@@ -499,3 +499,15 @@ msgstr ""
 msgctxt "#30602"
 msgid "{url} is replaced with the actual link"
 msgstr ""
+
+msgctxt "#30610"
+msgid "youtube-dl"
+msgstr ""
+
+msgctxt "#30611"
+msgid "[Check local version]"
+msgstr ""
+
+msgctxt "#30612"
+msgid "[Update youtube-dl core]"
+msgstr ""
