@@ -29,6 +29,7 @@ import threading
 
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
 from urllib import urlencode
+from decimal import DivisionByZero
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -879,7 +880,7 @@ def playYTDLVideo(url, name, type):
                 start_time=ytdl_format.get('start_time',0)   #int(float(ytdl_format.get('start_time')))
                 duration=ytdl_format.get('duration',0)
                 StartPercent=(float(start_time)/duration)*100
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, ZeroDivisionError):
                 StartPercent=0
 
             li=xbmcgui.ListItem(label=title,
