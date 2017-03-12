@@ -273,3 +273,8 @@
  - add acidcow.com album parsing
  - codacity recommended cleanups
  - ability to update youtube-dl in settings
+ 3.2.8
+ - recognize youtube timeskip tags  
+ - add custom patch to ytdl update routine
+ 
+ 

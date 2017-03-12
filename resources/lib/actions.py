@@ -4,6 +4,7 @@ import xbmcgui
 import xbmcplugin
 #import xbmcvfs
 import sys
+import shutil
 
 from default import pluginhandle, log, translation, xbmc_busy, subredditsFile, addon, addon_path, profile_path, ytdl_core_path, subredditsPickle
 import threading
@@ -520,6 +521,10 @@ def update_youtube_dl_core(url,name,action_type):
                 xbmc.sleep(1000)
             try:
                 shutil.move(extracted_core_path, ytdl_core_path)
+                update_dl_status('    New core copied')
+                xbmc.sleep(1000)
+                ytdl_apply_additional_patch()
+                xbmc.sleep(1000)
                 update_dl_status('Update complete')
                 xbmc.sleep(1000)
                 ourVersion=ytdl_get_version_info('local')
@@ -531,6 +536,13 @@ def update_youtube_dl_core(url,name,action_type):
 
     elif action_type=='checkversion':
         note_ytdl_versions()
+
+def ytdl_apply_additional_patch():
+    #utils.py in youtube_dl have errors on certain video links. I think this is kodi specific. apply custom fix
+    patchfile_1=xbmc.translatePath(addon_path+"/resources/ytdl_patch_utils.py" )
+    patchdest_1=xbmc.translatePath(addon_path+"/resources/lib/youtube_dl/utils.py" )
+    update_dl_status('Applying patch')
+    shutil.copy(patchfile_1, patchdest_1)
 
 
 def note_ytdl_versions():

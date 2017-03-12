@@ -260,14 +260,20 @@ class ClassYoutube(sitesBase):
         if not media_url:
             media_url=self.media_url
 
-        addtl_param=''
         self.get_video_id()
         #log('      youtube video id:' + self.video_id )
 
+        #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
         if self.video_id:
             if use_ytdl_for_yt:
                 self.link_action='playYTDLVideo'
-                return "http://youtube.com/v/" + self.video_id, self.TYPE_VIDEO
+
+                #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
+                #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43 
+                if 't=' in media_url:
+                    return media_url, self.TYPE_VIDEO
+                else:
+                    return "http://youtube.com/v/{0}".format(self.video_id), self.TYPE_VIDEO
             else:
                 self.link_action=self.DI_ACTION_PLAYABLE
                 return "plugin://plugin.video.youtube/play/?video_id=" + self.video_id, self.TYPE_VIDEO
@@ -280,24 +286,6 @@ class ClassYoutube(sitesBase):
         match = re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL).findall(self.media_url)
         if match:
             self.video_id=match[0]
-
-    def get_time_skip_code(self):
-        try:
-            # Python 3
-            from urllib.parse import urlparse, parse_qs
-        except ImportError:
-            # Python 2
-            from urlparse import urlparse, parse_qs
-
-        o = urlparse(self.media_url)
-        query = parse_qs(o.query)
-        # extract the URL without query parameters
-        #log( repr(query) )
-        if 't' in query:
-            #youtube time skip is present in url
-            try: t=int(query['t'][0])
-            except:t=None
-            return t
 
     def get_thumb_url(self):
         """
@@ -667,8 +655,7 @@ class ClassVidme(sitesBase):
         #for attribute, value in j.iteritems():
         #    log(  str(attribute) + '==' + str(value))
         status = vid_info.get( 'state' )
-
-        log( "    vidme video state: " + status ) #success / suspended / deleted
+        #log( "    vidme video state: " + status ) #success / suspended / deleted
         if status != 'success':
             raise Exception( "vidme video: " +vid_info.get('state'))
 

@@ -859,33 +859,41 @@ def playYTDLVideo(url, name, type):
 
         #log( "YoutubeDL extract_info:\n" + pprint.pformat(ydl_info, indent=1) )
         video_infos=_selectVideoQuality(ydl_info, quality=1, disable_dash=True)
-        log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=2) )
+        log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=3) )
         dialog_progress_YTDL.update(80,'Youtube_dl',translation(32013)  )
 
         if len(video_infos)>1:
             log('    ***ytdl link resolved to multple streams. playing only the first stream')
 
+#        #we are only playing the first stream because this is a plugin and it expects to play links via setResolvedUrl()
+#        #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
         video_info=video_infos[0]
         url=video_info.get('xbmc_url')
         title=video_info.get('title') or name
-        playVideo(url,title,'')
 
-#        #we are only playing the first stream because this is a plugin and it expects to play links via setResolvedUrl()
-#        #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
-#        for video_info in video_infos:
-#            url=video_info.get('xbmc_url')  #there is also  video_info.get('url')  url without the |useragent...
-#            title=video_info.get('title') or name
-#            ytdl_format=video_info.get('ytdl_format')
-#            if ytdl_format:
-#                description=ytdl_format.get('description')
-#            li=xbmcgui.ListItem(label=title,
-#                                label2='',
-#                                iconImage=video_info.get('thumbnail'),
-#                                thumbnailImage=video_info.get('thumbnail'),
-#                                path=url)
-#            li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
-#            pl.add(url, li)
-#        xbmc.Player().play(pl, windowed=False)
+        ytdl_format=video_info.get('ytdl_format')
+        if ytdl_format:
+            description=ytdl_format.get('description')
+            #check if there is a time skip code
+            try:
+                start_time=ytdl_format.get('start_time',0)   #int(float(ytdl_format.get('start_time')))
+                duration=ytdl_format.get('duration',0)
+                StartPercent=(float(start_time)/duration)*100
+            except (ValueError, TypeError):
+                StartPercent=0
+
+            li=xbmcgui.ListItem(label=title,
+                                label2='',
+                                iconImage=video_info.get('thumbnail'),
+                                thumbnailImage=video_info.get('thumbnail'),
+                                path=url)
+            li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
+
+            #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
+            #    we need to use StartPercent. 
+            li.setProperty('StartPercent', str(StartPercent))
+            xbmcplugin.setResolvedUrl(pluginhandle, True, li)
+
     except Exception as e:
         err_msg=str(e)+';'  #ERROR: No video formats found; please report this issue on https://yt-dl.org/bug . Make sure you are using the latest vers....
         short_err=err_msg.split(';')[0]
