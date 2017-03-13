@@ -1265,7 +1265,7 @@ def r_linkHunter(json_node,d=0):
 # videoUrl = "plugin://script.reddit.reader/?mode=play&url=" + URLEncoder.encode(videoUri.toString(), "UTF-8");
 def parse_url_and_play(url, name, type):
     from resources.lib.domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
-    from resources.lib.domains import viewImage
+    from resources.lib.actions import viewImage
     isFolder=False
 
     log('parse_url_and_play url='+url)
