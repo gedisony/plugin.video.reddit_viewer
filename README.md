@@ -2,7 +2,7 @@
 Reddit is a social news and entertainment website. It is organized into areas of interest called "subreddits" where users share, vote and talk about content they find funny, interesting and/or relevant to the subreddit at hand.
 
 ## Kodi addon for reddit.com
-This is a video addon for viewing reddit content on Kodi. See also my program addon version, [__reddit_reader__](https://github.com/gedisony/script.reddit.reader) 
+This is a video addon for viewing reddit content on Kodi. See also my program addon version, [__reddit_reader__](https://github.com/gedisony/script.reddit.reader).   
 This addon is inspired by the original [reddit addon](https://github.com/rasjani/plugin.video.reddit_tv) by AddonscriptorDE and maintained by rasjani.
 
 - Create shortcuts to your favorite subreddits or filter posts by domain
