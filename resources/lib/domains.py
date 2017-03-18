@@ -269,7 +269,7 @@ class ClassYoutube(sitesBase):
                 self.link_action='playYTDLVideo'
 
                 #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
-                #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43 
+                #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43
                 if 't=' in media_url:
                     return media_url, self.TYPE_VIDEO
                 else:
@@ -1998,7 +1998,7 @@ class ClassEroshare(sitesBase):
                     images.append( {
                                     'isPlayable':True,
                                     'thumb':thumb,
-                                    'type': 'video',
+                                    'type': self.TYPE_VIDEO,
                                     'description': description,
                                     'url': s.get('url_mp4'),
                                     'width': width,
@@ -2197,14 +2197,16 @@ class ClassReddit(sitesBase):
 
         self.media_type=sitesBase.TYPE_REDDIT
 
-        if self.video_id:   #link_url is in the form of "r/subreddit". this type of link is found in comments
-            self.link_action='listSubReddit'
-            reddit_url=assemble_reddit_filter_string('',self.video_id)
-            return reddit_url, self.media_type
-        else:               #link_url is in the form of https://np.reddit.com/r/teslamotors/comments/50bc6a/tesla_bumped_dying_man_up_the_production_queue_so/d72vfbg?context=2
-            if '/comments/' in link_url:
-                self.link_action='listLinksInComment'
-                return link_url, self.media_type
+        #if link_url is in the form of https://np.reddit.com/r/teslamotors/comments/50bc6a/tesla_bumped_dying_man_up_the_production_queue_so/d72vfbg?context=2
+        if '/comments/' in link_url:
+            self.link_action='listLinksInComment'
+            return link_url, self.media_type
+        else:
+            #link_url is in the form of "r/subreddit". this type of link is found in comments
+            if self.video_id:
+                self.link_action='listSubReddit'
+                reddit_url=assemble_reddit_filter_string('',self.video_id)
+                return reddit_url, self.media_type
 
         return '',''
 
@@ -2214,7 +2216,7 @@ class ClassReddit(sitesBase):
         #returns an array of tuples
         if match:
             for m in match[0]:
-                if m: #just use the first non-empty match 
+                if m: #just use the first non-empty match
                     self.video_id=m
                     return
 
@@ -2231,10 +2233,11 @@ class ClassReddit(sitesBase):
             #log( pprint.pformat(j, indent=1) )
             icon_img=j.get('icon_img')
             banner_img=j.get('banner_img')
-            header_img=j.get('header_img')   #not used? usually similar to with header_img
-            #header_img=j.get('icon_img')
-            #banner_img=j.get('banner_img')
-            self.thumb_url=icon_img
+            header_img=j.get('header_img')
+
+            icon=next((item for item in [icon_img,banner_img,header_img] if item ), '')
+
+            self.thumb_url=icon
             self.poster_url=banner_img
 
 class ClassKindgirls(sitesBase):
