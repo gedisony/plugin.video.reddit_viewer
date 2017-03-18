@@ -15,7 +15,7 @@ This addon is inspired by the original [reddit addon](https://github.com/rasjani
 - Download zip
 - [Install from zip file](http://kodi.wiki/view/HOW-TO:Install_add-ons_from_zip_files)
 
-## Remote support (Feature needs to be implemented by kore) 
+### Remote support (Feature needs to be implemented by kore) 
 reddit_viewer can receive links from your android phone and play.
 - Watch media supported by reddit viewer
 - No longer limited to youtube and vimeo
