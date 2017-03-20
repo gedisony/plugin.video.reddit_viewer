@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+#################################################################################
+#
+#   This file is part of the awesome youtube-dl addon by ruuk
+#
+#################################################################################
 import sys
 import time
 import datetime
@@ -9,6 +14,7 @@ import xbmc
 #updater.updateCore()
 
 #updater.set_youtube_dl_importPath()
+
 
 from youtube_dl.utils import std_headers, DownloadError  # noqa E402
 
@@ -37,24 +43,17 @@ coreVersion = youtube_dl.version.__version__
 ###############################################################################
 # FIXES: datetime.datetime.strptime evaluating as None?
 ###############################################################################
-_utils_unified_strdate = youtube_dl.utils.unified_strdate
-_utils_date_from_str = youtube_dl.utils.date_from_str
+try:
+    datetime.datetime.strptime('0', '%H')
+except TypeError:
+    # Fix for datetime issues with XBMC/Kodi
+    class new_datetime(datetime.datetime):
+        @classmethod
+        def strptime(cls, dstring, dformat):
+            return datetime.datetime(*(time.strptime(dstring, dformat)[0:6]))
 
+    datetime.datetime = new_datetime
 
-def _unified_strdate_wrap(date_str):
-    try:
-        return _utils_unified_strdate(date_str)
-    except:
-        return '00000000'
-youtube_dl.utils.unified_strdate = _unified_strdate_wrap
-
-
-def _date_from_str_wrap(date_str):
-    try:
-        return _utils_date_from_str(date_str)
-    except:
-        return datetime.datetime.now().date()
-youtube_dl.utils.date_from_str = _date_from_str_wrap
 ###############################################################################
 
 _YTDL = None
@@ -247,12 +246,12 @@ class YoutubeDLWrapper(youtube_dl.YoutubeDL):
         if ie.IE_NAME in _BLACKLIST:
             return
         # Fix ##################################################################
-        module = sys.modules.get(ie.__module__)
-        if module:
-            if hasattr(module, 'unified_strdate'):
-                module.unified_strdate = _unified_strdate_wrap
-            if hasattr(module, 'date_from_str'):
-                module.date_from_str = _date_from_str_wrap
+#        module = sys.modules.get(ie.__module__)
+#        if module:
+#            if hasattr(module, 'unified_strdate'):
+#                module.unified_strdate = _unified_strdate_wrap
+#            if hasattr(module, 'date_from_str'):
+#                module.date_from_str = _date_from_str_wrap
         ########################################################################
         youtube_dl.YoutubeDL.add_info_extractor(self, ie)
 
@@ -366,9 +365,12 @@ def _getQualityLimits(quality):
         maxHeight = 720
     return minHeight, maxHeight
 
+from utils import log
+import pprint
 
 def _selectVideoQuality(r, quality=1, disable_dash=True):
         import urllib
+        import difflib
         #if quality is None:
         #    quality = util.getSetting('video_quality', 1)
         #disable_dash = util.getSetting('disable_dash_video', True)
@@ -395,13 +397,41 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
                 index[formats[i]['format_id']] = i
 
             keys = sorted(index.keys())
+
             fallback = formats[index[keys[0]]]
+            fallback_format_id=fallback.get('format_id','')
+            fallback_protocol=fallback.get('protocol','')
+
+            #log( repr(keys) )
+            #log( "fallback format:"+repr(fallback_format_id) )
+            #log( "fallback_protocol:"+repr(fallback_protocol) )
+
+            #kodi can't play this protocol   from:https://www.zdf.de/familienfieber-100.html
+            banned_protocols=['f4m']
+
+            if fallback_protocol in banned_protocols:
+                alternate_formats=difflib.get_close_matches(fallback_format_id, keys)
+
+                for a in alternate_formats:
+                    #log( "alternate_format:"+repr(a) )
+                    #log( "        protocol:"+repr(formats[index[a]].get('protocol','')) )
+                    alt_protocol=formats[index[a]].get('protocol','')
+                    if alt_protocol not in banned_protocols:
+                        fallback = formats[index[a]]
+                        #log('picked alt format:' + a )
+                        break
+
             for fmt in keys:
                 fdata = formats[index[fmt]]
+                #log( 'Available format:\n' + pprint.pformat(fdata, indent=1, depth=1) )
                 if 'height' not in fdata:
                     continue
                 if disable_dash and 'dash' in fdata.get('format_note', '').lower():
                     continue
+                if 'protocol' in fdata and fdata.get('protocol') in banned_protocols:
+                    #log('skipped format:' + pprint.pformat(fdata, indent=1, depth=1))
+                    continue
+
                 h = fdata['height']
                 p = fdata.get('preference', 1)
                 if h >= minHeight and h <= maxHeight:
@@ -423,9 +453,13 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             else:
                 info = fallback
                 logBase = '[{3}] Using Fallback Format: {0} ({1}x{2})'
+
             url = info['url']
             formatID = info['format_id']
-            #util.LOG(logBase.format(formatID, info.get('width', '?'), info.get('height', '?'), entry.get('title', '').encode('ascii', 'replace')), debug=True)
+            format_desc=info['format']
+            #log(logBase.format(format_desc, info.get('width', '?'), info.get('height', '?'), entry.get('title', '').encode('ascii', 'replace')))
+
+            #log('********************************************************************************************')
             if url.find("rtmp") == -1:
                 url += '|' + urllib.urlencode({'User-Agent': entry.get('user_agent') or std_headers['User-Agent']})
             else:
@@ -445,3 +479,6 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             )
             idx += 1
         return urls
+
+if __name__ == '__main__':
+    pass

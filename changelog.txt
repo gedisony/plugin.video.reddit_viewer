@@ -276,5 +276,8 @@
  3.2.8
  - recognize youtube timeskip tags  
  - add custom patch to ytdl update routine
+ 3.3.0 (2017-03-19)
+ - add ruuk's patch to youtubedl wrapper
+ - major code reorganize
  
  

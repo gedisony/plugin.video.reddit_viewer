@@ -1,0 +1,611 @@
+# -*- coding: utf-8 -*-
+import xbmc
+import xbmcgui
+import sys
+import urllib2, urllib
+import re
+import os
+
+from default import addon, subredditsFile, urlMain, itemsPerPage,subredditsPickle,REQUEST_TIMEOUT
+from utils import log, translation
+from default import reddit_clientID, reddit_userAgent, reddit_redirect_uri
+
+
+reddit_refresh_token =addon.getSetting("reddit_refresh_token")
+reddit_access_token  =addon.getSetting("reddit_access_token") #1hour token
+
+def reddit_request( url ):
+    #this function replaces     content = opener.open(url).read()
+    #  for calls to reddit
+
+    #if there is a refresh_token, we use oauth.reddit.com instead of www.reddit.com
+    if reddit_refresh_token:
+        url=url.replace('www.reddit.com','oauth.reddit.com' )
+        url=url.replace( 'np.reddit.com','oauth.reddit.com' )
+        url=url.replace(       'http://',        'https://' )
+        log( "  replaced reqst." + url + " + access token=" + reddit_access_token)
+
+    req = urllib2.Request(url)
+
+    #req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.14) Gecko/20080404 Firefox/2.0.0.14')
+    req.add_header('User-Agent', reddit_userAgent)   #userAgent = "XBMC:"+addonID+":v"+addon.getAddonInfo('version')+" (by /u/gsonide)"
+
+    #if there is a refresh_token, add the access token to the header
+    if reddit_refresh_token:
+        req.add_header('Authorization','bearer '+ reddit_access_token )
+
+    try:
+        page = urllib2.urlopen(req)
+        response=page.read();page.close()
+        #log( response )
+        return response
+
+    except urllib2.HTTPError, err:
+        if err.code in [403,401]:  #401 Unauthorized, 403 forbidden. access tokens expire in 1 hour. maybe we just need to refresh it
+            log("    attempting to get new access token")
+            if reddit_get_access_token():
+                log("      Success: new access token "+ reddit_access_token)
+                req.add_header('Authorization','bearer '+ reddit_access_token )
+                try:
+
+                    log("      2nd attempt:"+ url)
+                    page = urllib2.urlopen(req)   #it has to be https:// not http://
+                    response=page.read();page.close()
+                    return response
+
+                except urllib2.HTTPError, err:
+                    xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
+                    log( err.reason )
+                except urllib2.URLError, err:
+                    log( err.reason )
+            else:
+                log( "*** failed to get new access token - don't know what to do " )
+
+
+        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
+        log( err.reason )
+    except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.reason, url)  )
+        log( str(err.reason) )
+
+
+def reddit_get_refresh_token(url, name, type_):
+    #this function gets a refresh_token from reddit and keep it in our addon. this refresh_token is used to get 1-hour access tokens.
+    #  getting a refresh_token is a one-time step
+
+    #1st: use any webbrowser to
+    #  https://www.reddit.com/api/v1/authorize?client_id=hXEx62LGqxLj8w&response_type=code&state=RS&redirect_uri=http://localhost:8090/&duration=permanent&scope=read,mysubreddits
+    #2nd: click allow and copy the code provided after reddit redirects the user
+    #  save this code in add-on settings.  A one-time use code that may be exchanged for a bearer token.
+    code = addon.getSetting("reddit_code")
+    #log("  user refresh token:"+reddit_refresh_token)
+    #log("  user          code:"+code)
+
+    if reddit_refresh_token and code:
+        #log("  user already have refresh token:"+reddit_refresh_token)
+        dialog = xbmcgui.Dialog()
+        if dialog.yesno(translation(32411), translation(32412), translation(32413), translation(32414) ):
+            pass
+        else:
+            return
+
+    try:
+        log( "Requesting a reddit permanent token with code=" + code )
+
+        req = urllib2.Request('https://www.reddit.com/api/v1/access_token')
+
+        #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
+        data = urllib.urlencode({'grant_type'  : 'authorization_code'
+                                ,'code'        : code                     #'woX9CDSuw7XBg1MiDUnTXXQd0e4'
+                                ,'redirect_uri': reddit_redirect_uri})    #http://localhost:8090/
+
+        #http://stackoverflow.com/questions/2407126/python-urllib2-basic-auth-problem
+        import base64
+        base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')
+        req.add_header('Authorization',"Basic %s" % base64string)
+        req.add_header('User-Agent', reddit_userAgent)
+
+        page = urllib2.urlopen(req, data=data)
+        response=page.read();page.close()
+        log( response )
+
+        #response='{"access_token": "xmOMpbJc9RWqjPS46FPcgyD_CKc", "token_type": "bearer", "expires_in": 3600, "refresh_token": "56706164-ZZiEqtAhahg9BkpINvrBPQJhZL4", "scope": "identity read"}'
+        status=reddit_set_addon_setting_from_response(response)
+
+        if status=='ok':
+            r1="Click 'OK' when done"
+            r2="Settings will not be saved"
+            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( r1, r2)  )
+        else:
+            r2="Requesting a reddit permanent token"
+            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( status, r2)  )
+
+
+#    This is a 2nd option reddit oauth. user needs to request access token every hour
+#         #user enters this on their webbrowser. note that there is no duration=permanent response_type=token instead of code
+#         request_url='https://www.reddit.com/api/v1/authorize?client_id=hXEx62LGqxLj8w&response_type=token&state=RS&redirect_uri=http://localhost:8090/&scope=read,identity'
+#         #click on "Allow"
+#         #copy the redirect url code    #enters it on settings. e.g.: LVQu8vitbEXfMPcK1sGlVVQZEpM
+#
+#         #u='https://oauth.reddit.com/new.json'
+#         u='https://oauth.reddit.com//api/v1/me.json'
+#
+#         req = urllib2.Request(u)
+#         #req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.14) Gecko/20080404 Firefox/2.0.0.14')
+#         req.add_header('User-Agent', reddit_userAgent)
+#         req.add_header('Authorization','bearer LVQu8vitbEXfMPcK1sGlVVQZEpM')
+#         page = read,identity.urlopen(req)
+#         response=page.read();page.close()
+
+    except urllib2.HTTPError, err:
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.code, err.msg)  )
+        log( err.reason )
+    except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
+        log( err.reason )
+
+def reddit_get_access_token(url="", name="", type_=""):
+    try:
+        log( "Requesting a reddit 1-hour token" )
+
+        req = urllib2.Request('https://www.reddit.com/api/v1/access_token')
+
+        #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
+        data = urllib.urlencode({'grant_type'    : 'refresh_token'
+                                ,'refresh_token' : reddit_refresh_token })                    #'woX9CDSuw7XBg1MiDUnTXXQd0e4'
+
+        #http://stackoverflow.com/questions/2407126/python-urllib2-basic-auth-problem
+        import base64
+        base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')
+        req.add_header('Authorization',"Basic %s" % base64string)
+        req.add_header('User-Agent', reddit_userAgent)
+
+        page = urllib2.urlopen(req, data=data)
+        response=page.read();page.close()
+        #log( response )
+
+        #response='{"access_token": "lZN8p1QABSr7iJlfPjIW0-4vBLM", "token_type": "bearer", "device_id": "None", "expires_in": 3600, "scope": "identity read"}'
+        status=reddit_set_addon_setting_from_response(response)
+
+        if status=='ok':
+            #log( '    ok new access token '+ reddit_access_token )
+            #r1="Click 'OK' when done"
+            #r2="Settings will not be saved"
+            #xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( r1, r2)  )
+            return True
+        else:
+            r2="Requesting 1-hour token"
+            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( status, r2)  )
+
+    except urllib2.HTTPError, err:
+        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, req.get_full_url())  )
+        log( err.reason )
+    except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
+        log( err.reason )
+
+    return False
+
+def reddit_set_addon_setting_from_response(response):
+    import time, json
+    from utils import convert_date
+    global reddit_access_token    #specify "global" if you wanto to change the value of a global variable
+    global reddit_refresh_token
+    try:
+        response = json.loads(response.replace('\\"', '\''))
+        log( json.dumps(response, indent=4) )
+
+        if 'error' in response:
+            #Error                      Cause                                                                Resolution
+            #401 response               Client credentials sent as HTTP Basic Authorization were invalid     Verify that you are properly sending HTTP Basic Authorization headers and that your credentials are correct
+            #unsupported_grant_type     grant_type parameter was invalid or Http Content type was not set correctly     Verify that the grant_type sent is supported and make sure the content type of the http message is set to application/x-www-form-urlencoded
+            #NO_TEXT for field code     You didn't include the code parameter                                Include the code parameter in the POST data
+            #invalid_grant              The code has expired or already been used                            Ensure that you are not attempting to re-use old codes - they are one time use.
+            return response['error']
+        else:
+            if 'refresh_token' in response:  #refresh_token only returned when getting reddit_get_refresh_token. it is a one-time step
+                reddit_refresh_token = response['refresh_token']
+                addon.setSetting('reddit_refresh_token', reddit_refresh_token)
+
+            reddit_access_token = response['access_token']
+            addon.setSetting('reddit_access_token', reddit_access_token)
+            #log( '    new access token '+ reddit_access_token )
+
+            addon.setSetting('reddit_access_token_scope', response['scope'])
+
+            unix_time_now = int(time.time())
+            unix_time_now += int( response['expires_in'] )
+            addon.setSetting('reddit_access_token_expires', convert_date(unix_time_now))
+
+    except Exception as e:
+        log("  parsing reddit token response EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
+        return str(e)
+
+    return "ok"
+
+def reddit_revoke_refresh_token(url, name, type_):
+    global reddit_access_token    #specify "global" if you wanto to change the value of a global variable
+    global reddit_refresh_token
+    try:
+        log( "Revoking refresh token " )
+
+        req = urllib2.Request('https://www.reddit.com/api/v1/revoke_token')
+
+        data = urllib.urlencode({'token'          : reddit_refresh_token
+                                ,'token_type_hint': 'refresh_token'       })
+
+        import base64
+        base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')
+        req.add_header('Authorization',"Basic %s" % base64string)
+        req.add_header('User-Agent', reddit_userAgent)
+
+        page = urllib2.urlopen(req, data=data)
+        response=page.read();page.close()
+
+        #no response for success.
+        log( "response:" + response )
+
+        #response = json.loads(response.replace('\\"', '\''))
+        #log( json.dumps(response, indent=4) )
+
+        addon.setSetting('reddit_refresh_token', "")
+        addon.setSetting('reddit_access_token', "")
+        addon.setSetting('reddit_access_token_scope', "")
+        addon.setSetting('reddit_access_token_expires', "")
+        reddit_refresh_token=""
+        reddit_access_token=""
+
+        r2="Revoking refresh token"
+        xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( 'Token revoked', r2)  )
+
+    except urllib2.HTTPError, err:
+        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, req.get_full_url() )  )
+        log( "http error:" + err.reason )
+    except Exception as e:
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( str(e), 'Revoking refresh token' )  )
+        log("  Revoking refresh token EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
+
+
+def create_default_subreddits():
+    #create a default file and sites
+    with open(subredditsFile, 'a') as fh:
+
+        #fh.write('/user/gummywormsyum/m/videoswithsubstance\n')
+        fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(32006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
+        fh.write('Documentaries+ArtisanVideos+lectures+LearnUselessTalents\n')
+        fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
+        fh.write('random\n')
+        #fh.write('randnsfw\n')
+        fh.write('[Frontpage]\n')
+        fh.write('popular\n')
+        fh.write('gametrailers+tvtrailers+trailers\n')
+        fh.write('music+listentothis+musicvideos\n')
+        fh.write('site:youtube.com\n')
+        fh.write('videos\n')
+        #fh.write('videos/new\n')
+        fh.write('woahdude+interestingasfuck+shittyrobots\n')
+
+def format_multihub(multihub):
+#properly format a multihub string
+#make sure input is a valid multihub
+    t = multihub
+    #t='User/sallyyy19/M/video'
+    ls = t.split('/')
+
+    for idx, word in enumerate(ls):
+        if word.lower()=='user':ls[idx]='user'
+        if word.lower()=='m'   :ls[idx]='m'
+    #xbmc.log ("/".join(ls))
+    return "/".join(ls)
+
+
+def this_is_a_multireddit(subreddit):
+    #subreddits and multihub are stored in the same file
+    #i think we can get away with just testing for user/ to determine multihub
+    if subreddit.lower().startswith('user/') or subreddit.lower().startswith('/user/'): #user can enter multihub with or without the / in the beginning
+        return True
+    else:
+        return False
+
+def parse_subreddit_entry(subreddit_entry_from_file):
+    #returns subreddit, [alias] and description. also populates WINDOW mailbox for custom view id of subreddit
+    #  description= a friendly description of the 'subreddit shortcut' on the first page of addon
+    #    used for skins that display them
+
+    subreddit, alias, viewid = subreddit_alias( subreddit_entry_from_file )
+
+    entry_type='subreddit'
+
+    description=subreddit
+    #check for domain filter
+    a=[':','/domain/']
+    if any(x in subreddit for x in a):  #search for ':' or '/domain/'
+        entry_type='domain'
+        #log("domain "+ subreddit)
+        domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
+        description=translation(30008) % domain            #"Show %s links"
+
+    #describe combined subreddits
+    if '+' in subreddit:
+        entry_type='combined'
+        description=subreddit.replace('+','[CR]')
+
+    #describe multireddit or multihub
+    if this_is_a_multireddit(subreddit):
+        entry_type='multireddit'
+        description=translation(30007)  #"Custom Multireddit"
+
+    #save that view id in our global mailbox (retrieved by listSubReddit)
+    #WINDOW.setProperty('viewid-'+subreddit, viewid)
+
+    return entry_type, subreddit, alias, description
+
+def subreddit_alias( subreddit_entry_from_file ):
+    #users can specify an alias for the subredit and it is stored in the file as a regular string  e.g. diy[do it yourself]
+    #this function returns the subreddit without the alias identifier and alias if any or alias=subreddit if none
+    ## in addition, users can specify custom viewID for a subreddit by encapsulating the viewid in ()'s
+
+    a=re.compile(r"(\[[^\]]*\])") #this regex only catches the []
+    #a=re.compile(r"(\[[^\]]*\])?(\(\d+\))?") #this regex catches the [] and ()'s
+    alias=""
+    viewid=""
+    #return the subreddit without the alias. but (viewid), if present, is still there
+    subreddit = a.sub("",subreddit_entry_from_file).strip()
+    #log( "  re:" +  subreddit )
+
+    #get the viewID
+    try:viewid= subreddit[subreddit.index("(") + 1:subreddit.rindex(")")]
+    except:viewid=""
+    #log( "viewID=%s for r/%s" %( viewid, subreddit ) )
+
+    if viewid:
+        #remove the (viewID) string from subreddit
+        subreddit=subreddit.replace( "(%s)"%viewid, "" )
+
+    #get the [alias]
+    a= a.findall(subreddit_entry_from_file)
+    if a:
+        alias=a[0]
+        #log( "      alias:" + alias )
+    else:
+        alias = subreddit
+
+    return subreddit, alias, viewid
+
+
+def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters="", domain="" ):
+    #skip_site_filters -not adding a search query makes your results more like the reddit website
+    #search_string will not be used anymore, replaced by domain. leaving it here for now.
+    #    using search string to filter by domain returns the same result everyday
+
+    url = urlMain      # global variable urlMain = "http://www.reddit.com"
+
+    if subreddit.startswith('?'):
+        #special dev option
+        url+='/search.json'+subreddit
+        return url
+
+    a=[':','/domain/']
+    if any(x in subreddit for x in a):  #search for ':' or '/domain/'
+        #log("domain "+ subreddit)
+        domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
+        #log("domain "+ str(domain))
+
+    if domain:
+        # put '/?' at the end. looks ugly but works fine.
+        #https://www.reddit.com/domain/vimeo.com/?&limit=5
+        url+= "/domain/%s/.json?" %(domain)   #/domain doesn't work with /search?q=
+    else:
+        if this_is_a_multireddit(subreddit):
+            #e.g: https://www.reddit.com/user/sallyyy19/m/video/search?q=multihub&restrict_sr=on&sort=relevance&t=all
+            #https://www.reddit.com/user/sallyyy19/m/video
+            #url+='/user/sallyyy19/m/video'
+            #format_multihub(subreddit)
+            if subreddit.startswith('/'):
+                #log("startswith/")
+                url+=subreddit  #user can enter multihub with or without the / in the beginning
+            else: url+='/'+subreddit
+        else:
+            if subreddit:
+                url+= "/r/"+subreddit
+            #else:
+                #default to front page instead of r/all
+                #url+= "/r/all"
+
+        site_filter=""
+        if search_string:
+            search_string = urllib.unquote_plus(search_string)
+            url+= "/search.json?q=" + urllib.quote_plus(search_string)
+        elif skip_site_filters:
+            url+= "/.json?"
+        else:
+            #no more supported_sites filter OR... OR... OR...
+            url+= "/.json?"
+
+    url += "&limit="+str(itemsPerPage)
+    #url += "&limit=12"
+    #log("assemble_reddit_filter_string="+url)
+    return url
+
+
+def has_multiple_subreddits(content_data_children):
+    #check if content['data']['children'] returned by reddit contains a single subreddit or not
+    s=""
+    #compare the first subreddit with the rest of the list.
+    for entry in content_data_children:
+        if s:
+            if s!=entry['data']['subreddit'].encode('utf-8'):
+                #log("  multiple subreddit")
+                return True
+        else:
+            s=entry['data']['subreddit'].encode('utf-8')
+
+    #log("  single subreddit")
+    return False
+
+def collect_thumbs( entry ):
+    #collect the thumbs from reddit json (not used)
+    dictList = []
+    keys=['thumb','width','height']
+    e=[]
+
+    try:
+        e=[ entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8')
+           ,entry['data']['media']['oembed']['thumbnail_width']
+           ,entry['data']['media']['oembed']['thumbnail_height']
+           ]
+        #log('  got 1')
+        dictList.append(dict(zip(keys, e)))
+    except Exception as e:
+        #log( "zz   " + str(e) )
+        pass
+
+    try:
+        e=[ entry['data']['preview']['images'][0]['source']['url'].encode('utf-8')
+           ,entry['data']['preview']['images'][0]['source']['width']
+           ,entry['data']['preview']['images'][0]['source']['height']
+           ]
+        #log('  got 2')
+        dictList.append(dict(zip(keys, e)))
+    except: pass
+
+    try:
+        e=[ entry['data']['thumbnail'].encode('utf-8')        #thumbnail is always in 140px wide (?)
+           ,140
+           ,0
+           ]
+        #log('  got 3')
+        dictList.append(dict(zip(keys, e)))
+    except:
+        pass
+    #log( json.dumps(dictList, indent=4)  )
+    #log( str(dictList)  )
+    return
+
+def determine_if_video_media_from_reddit_json( entry ):
+    #reads the reddit json and determines if link is a video
+    is_a_video=False
+
+    try:
+        media_url = entry['data']['media']['oembed']['url']   #+'"'
+    except:
+        media_url = entry['data']['url']   #+'"'
+
+
+    # also check  "post_hint" : "rich:video"
+
+    media_url=media_url.split('?')[0] #get rid of the query string
+    try:
+        zzz = entry['data']['media']['oembed']['type']
+        #log("    zzz"+str(idx)+"="+str(zzz))
+        if zzz == None:   #usually, entry['data']['media'] is null for not videos but it is also null for gifv especially nsfw
+            if ".gifv" in media_url.lower():  #special case for imgur
+                is_a_video=True
+            else:
+                is_a_video=False
+        elif zzz == 'video':
+            is_a_video=True
+        else:
+            is_a_video=False
+    except:
+        is_a_video=False
+
+    return is_a_video
+
+def get_subreddit_info( subreddit ):
+    import requests
+    subs_dict={}
+
+    headers = {'User-Agent': reddit_userAgent}
+    req='https://www.reddit.com/r/%s/about.json' %subreddit
+    #log('headers:' + repr(headers))
+    r = requests.get( req, headers=headers, timeout=REQUEST_TIMEOUT )
+    if r.status_code == requests.codes.ok:
+        j=r.json()
+        j=j.get('data')
+        #log( pprint.pformat(j, indent=1) )
+
+        subs_dict.update( {'entry_name':subreddit.lower(),
+                           'display_name':j.get('display_name'),
+                           'banner_img': j.get('banner_img'),
+                           'icon_img': j.get('icon_img'),
+                           'header_img': j.get('header_img'), #not used? usually similar to with icon_img
+                           'title':j.get('title'),
+                           'header_title':j.get('header_title'),
+                           'public_description':j.get('public_description'),
+                           'subreddit_type':j.get('subreddit_type'),
+                           'subscribers':j.get('subscribers'),
+                           'created':j.get('created'),        #public, private
+                           'over18':j.get('over18'),
+                           } )
+
+        #log( pprint.pformat(subs_dict, indent=1) )
+        return subs_dict
+        #log( repr(self.thumb_url) )
+    else:
+        log( '    getting subreddit (%s) info:%s' %(subreddit, r.status_code) )
+
+subreddits_dlist=[]
+def ret_sub_info( subreddit_entry ):
+    #search subreddits_dlist for subreddit_entry and return info about it
+    #randomly pick one if there are multiple subreddits e.g.: gifs+funny
+    import random
+    from utils import load_dict
+    global subreddits_dlist #we make sure we only load the subredditsPickle file once for this instance
+    try:
+        if not subreddits_dlist:
+            if os.path.exists(subredditsPickle):
+                subreddits_dlist=load_dict(subredditsPickle)
+
+        subreddit_search=subreddit_entry.lower()
+        if '/' in subreddit_search:
+            subreddit_search=subreddit_search.split('/')[0]
+
+        if '+' in subreddit_search:
+            subreddit_search=random.choice(subreddit_search.split('+'))
+
+        for sd in subreddits_dlist:
+            #we have an entry in our pickle file about the subreddit entry
+            if sd.get('entry_name')==subreddit_search:
+                return sd
+    except:
+        #sometimes we get a race condition when the save thread is saving and the index function is listing
+        #hopefully the 'global' line up above minimizes this
+        pass
+
+def ret_sub_icon(subreddit):
+    sub_info=ret_sub_info(subreddit)
+
+    if sub_info:
+        #return the first item that isn't blank.
+        return next((item for item in [sub_info.get('icon_img'),sub_info.get('banner_img'),sub_info.get('header_img')] if item ), '')
+        #return sub_info.get('icon_img')
+
+subredditsFile_entries=[]
+def load_subredditsFile():
+    global subredditsFile_entries
+    if not subredditsFile_entries:
+        if os.path.exists(subredditsFile):  #....\Kodi\userdata\addon_data\plugin.video.reddit_viewer\subreddits
+            with open(subredditsFile, 'r') as fh:
+                content = fh.read()
+            spl = content.split('\n')
+
+            for i in range(0, len(spl), 1):
+                if spl[i]:
+                    subreddit = spl[i].strip()
+
+                    subredditsFile_entries.append(subreddit )
+    return subredditsFile_entries
+
+def subreddit_in_favorites( subreddit ):
+    sub_favorites=load_subredditsFile()
+    for entry in sub_favorites:
+        if subreddit.lower() == entry.lower():
+            return True
+        if '+' in entry:
+            spl=entry.split('+')
+            for s in spl:
+                if subreddit.lower() == s.lower():
+                    return True
+
+
+if __name__ == '__main__':
+    pass

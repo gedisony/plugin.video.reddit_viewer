@@ -13,9 +13,9 @@ import xbmcplugin
 #sys.setdefaultencoding("utf-8")
 
 from default import addon, addonID, streamable_quality   #,addon_path,pluginhandle,addonID
-from default import log, translation
+from utils import log, translation
 
-from default import playVideo, addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
+from default import addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
 from utils import build_script, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast
 
 use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
@@ -133,10 +133,12 @@ class sitesBase(object):
             #if m_type=='image': return link_url
             return link_url #will a video link resolve to a preview image?
         else:
+            #headers = {"Range": "bytes=0-1000"} content = self.requests_get(link_url, headers)
             content = self.requests_get(link_url)
             i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
-            if i[0]:
-                return i[0]
+            if i:
+                try: return i[0]
+                except IndexError: pass
             else:
                 log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
 
@@ -2191,7 +2193,7 @@ class ClassReddit(sitesBase):
     regex='^\/r\/(.+)(?:\/|$)|(reddit.com)'
 
     def get_playable_url(self, link_url, is_probably_a_video):
-        from utils import assemble_reddit_filter_string
+        from reddit import assemble_reddit_filter_string
         self.get_video_id()
         #log('    **get_playable_url subreddit=' + self.video_id )
 

@@ -6,10 +6,11 @@ import xbmcplugin
 import sys
 import shutil
 
-from default import pluginhandle, log, translation, xbmc_busy, subredditsFile, addon, addon_path, profile_path, ytdl_core_path, subredditsPickle
+from default import subredditsFile, addon, addon_path, profile_path, ytdl_core_path, pluginhandle, subredditsPickle
+from utils import xbmc_busy, log, translation
 import threading
 
-def addSubreddit(subreddit, name, type):
+def addSubreddit(subreddit, name, type_):
     from utils import this_is_a_multireddit, format_multihub, colored_subreddit
     alreadyIn = False
     fh = open(subredditsFile, 'r')
@@ -99,7 +100,7 @@ def get_subreddit_entry_info_thread(sub_list):
             subreddits_dlist.append(sub_info)
             save_dict(subreddits_dlist, subredditsPickle)
             #log('****saved ')
-def removeSubreddit(subreddit, name, type):
+def removeSubreddit(subreddit, name, type_):
     #note: calling code in addDirR()
     fh = open(subredditsFile, 'r')
     content = fh.readlines()
@@ -114,7 +115,7 @@ def removeSubreddit(subreddit, name, type):
     fh.close()
     xbmc.executebuiltin("Container.Refresh")
 
-def editSubreddit(subreddit, name, type):
+def editSubreddit(subreddit, name, type_):
     from utils import this_is_a_multireddit, format_multihub
     #note: calling code in addDirR()
     fh = open(subredditsFile, 'r')
@@ -145,7 +146,7 @@ def editSubreddit(subreddit, name, type):
 
         xbmc.executebuiltin("Container.Refresh")
 
-def searchReddits(url, name, type):
+def searchReddits(url, name, type_):
     from default import urlMain, listSubReddit
     keyboard = xbmc.Keyboard('sort=new&t=week&q=', translation(30005))
     keyboard.doModal()
@@ -161,7 +162,7 @@ def searchReddits(url, name, type):
 def setting_gif_repeat_count():
     srepeat_gif_video= addon.getSetting("repeat_gif_video")
     try: repeat_gif_video = int(srepeat_gif_video)
-    except: repeat_gif_video = 0
+    except ValueError: repeat_gif_video = 0
     #repeat_gif_video          = [0, 1, 3, 10, 100][repeat_gif_video]
     return [0, 1, 3, 10, 100][repeat_gif_video]
 
@@ -388,6 +389,7 @@ def display_album_from(dictlist, album_name):
 def listAlbum(album_url, name, type_):
     from slideshow import slideshowAlbum
     from domains import sitesManager
+    log("    listAlbum:"+album_url)
 
     hoster = sitesManager( album_url )
     #log( '  %s %s ' %(hoster.__class__.__name__, album_url ) )
@@ -407,7 +409,7 @@ def listAlbum(album_url, name, type_):
         else:
             display_album_from( dictlist, name )
 
-def playURLRVideo(url, name, type):
+def playURLRVideo(url, name, type_):
     import urlresolver
     from urlparse import urlparse
     parsed_uri = urlparse( url )
@@ -426,25 +428,304 @@ def playURLRVideo(url, name, type):
     except Exception as e:
         xbmc.executebuiltin('XBMC.Notification("%s","%s (URLresolver)")' %(  str(e), domain )  )
 
-def loopedPlayback(url, name, type):
+def loopedPlayback(url, name, type_):
     #for gifs
-    log('loopedplayback ' + url)
+    #log('*******************loopedplayback ' + url)
     pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     pl.clear()
     pl.add(url, xbmcgui.ListItem(name))
-    for x in range( 0, setting_gif_repeat_count() ):
+    for _ in range( 0, setting_gif_repeat_count() ):
         pl.add(url, xbmcgui.ListItem(name))
 
     #pl.add(url, xbmcgui.ListItem(name))
     xbmc.Player().play(pl, windowed=False)
 
-def error_message(message, name, type):
+def error_message(message, name, type_):
     if name:
         sub_msg=name
     else:
         sub_msg=translation(30021) #Parsing error
     xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( message, sub_msg  ) )
 
+def playVideo(url, name, type_):
+    if url :
+        #url='http://i.imgur.com/ARdeL4F.mp4'
+        #url='plugin://plugin.video.reddit_viewer/?mode=comments_gui'
+        listitem = xbmcgui.ListItem(label=name,path=url)
+        xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+    else:
+        log("playVideo(url) url is blank")
+
+def playYTDLVideo(url, name, type_):
+    from YoutubeDLWrapper import YoutubeDLWrapper, _selectVideoQuality
+    import pprint
+
+    pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+    pl.clear()
+
+    dialog_progress_title='Youtube_dl'  #.format(ytdl_get_version_info())
+
+    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
+    dialog_progress_YTDL.create(dialog_progress_title )
+    dialog_progress_YTDL.update(10,dialog_progress_title,translation(30022)  )
+
+    #use YoutubeDLWrapper by ruuk to avoid  bad file error
+    ytdl=YoutubeDLWrapper()
+    try:
+        ydl_info=ytdl.extract_info(url, download=False)
+        #in youtube_dl utils.py def unified_timestamp(date_str, day_first=True):
+        # there was an error playing https://vimeo.com/14652586
+        #   on line 1195:
+        # change          except ValueError:
+        #     to          except (ValueError,TypeError):
+        #   this already fixed by ruuk magic. in YoutubeDLWrapper
+
+        #log( "YoutubeDL extract_info:\n" + pprint.pformat(ydl_info, indent=1) )
+        video_infos=_selectVideoQuality(ydl_info, quality=1, disable_dash=True)
+        log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=3) )
+        dialog_progress_YTDL.update(80,dialog_progress_title,translation(30023)  )
+
+        if len(video_infos)>1:
+            log('    ***ytdl link resolved to multple streams. playing only the first stream')
+
+#        #we are only playing the first stream because this is a plugin and it expects to play links via setResolvedUrl()
+#        #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
+        video_info=video_infos[0]
+        url=video_info.get('xbmc_url')
+        title=video_info.get('title') or name
+
+        ytdl_format=video_info.get('ytdl_format')
+        if ytdl_format:
+            description=ytdl_format.get('description')
+            #check if there is a time skip code
+            try:
+                start_time=ytdl_format.get('start_time',0)   #int(float(ytdl_format.get('start_time')))
+                duration=ytdl_format.get('duration',0)
+                StartPercent=(float(start_time)/duration)*100
+            except (ValueError, TypeError, ZeroDivisionError):
+                StartPercent=0
+
+            li=xbmcgui.ListItem(label=title,
+                                label2='',
+                                iconImage=video_info.get('thumbnail'),
+                                thumbnailImage=video_info.get('thumbnail'),
+                                path=url)
+            li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
+
+            #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
+            #    we need to use StartPercent. 
+            li.setProperty('StartPercent', str(StartPercent))
+            xbmcplugin.setResolvedUrl(pluginhandle, True, li)
+
+    except Exception as e:
+        err_msg=str(e)+';'  #ERROR: No video formats found; please report this issue on https://yt-dl.org/bug . Make sure you are using the latest vers....
+        short_err=err_msg.split(';')[0]
+        log( "playYTDLVideo Exception:" + str( sys.exc_info()[0]) + "  " + str(e) )
+        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( "Youtube_dl", short_err )  )
+
+        #try urlresolver
+        log('   trying urlresolver...')
+        playURLRVideo(url, name, type_)
+#    finally:
+    dialog_progress_YTDL.update(100,dialog_progress_title ) #not sure if necessary to set to 100 before closing dialogprogressbg
+    dialog_progress_YTDL.close()
+
+def playYTDLVideoOLD(url, name, type_):
+    #url = "http://www.youtube.com/watch?v=_yVv9dx88x0"   #a youtube ID will work as well and of course you could pass the url of another site
+
+    #url='https://www.youtube.com/shared?ci=W8n3GMW5RCY'
+    #url='http://burningcamel.com/video/waster-blonde-amateur-gets-fucked'
+    #url='http://www.3sat.de/mediathek/?mode=play&obj=51264'
+    #url='http://www.4tube.com/videos/209271/hurry-fuck-i-bored'
+    #url='http://www.pbs.org/newshour/rundown/cubas-elian-gonzalez-now-college-graduate/'
+
+#these checks done in around May 2016
+#does not work:  yourlust  porntube xpornvid.com porndig.com  thumbzilla.com eporner.com yuvutu.com porn.com pornerbros.com fux.com flyflv.com xstigma.com sexu.com 5min.com alphaporno.com
+# stickyxtube.com xxxbunker.com bdsmstreak.com  jizzxman.com pornwebms.com pornurl.pw porness.tv openload.online pornworms.com fapgod.com porness.tv hvdporn.com pornmax.xyz xfig.net yobt.com
+# eroshare.com kalporn.com hdvideos.porn dailygirlscute.com desianalporn.com indianxxxhd.com onlypron.com sherloxxx.com hdvideos.porn x1xporn.com pornhvd.com lxxlx.com xrhub.com shooshtime.com
+# pornvil.com lxxlx.com redclip.xyz younow.com aniboom.com  gotporn.com  virtualtaboo.com 18porn.xyz vidshort.net fapxl.com vidmega.net freudbox.com bigtits.com xfapzap.com orgasm.com
+# userporn.com hdpornstar.com moviesand.com chumleaf.com fucktube.com fookgle.com pornative.com dailee.com pornsharia.com fux.com sluttyred.com pk5.net kuntfutube.com youpunish.com
+# vidxnet.com jizzbox.com bondagetube.tv spankingtube.tv pornheed.com pornwaiter.com lubetube.com porncor.com maxjizztube.com asianxtv.com analxtv.com yteenporn.com nurglestube.com yporn.tv
+# asiantubesex.com zuzandra.com moviesguy.com bustnow.com dirtydirtyangels.com yazum.com watchersweb.com voyeurweb.com zoig.com flingtube.com yourfreeporn.us foxgay.com goshgay.com
+# player.moviefap.com(www.moviefap.com works) nosvideo.com
+
+# also does not work (non porn)
+# rutube.ru  mail.ru  afreeca.com nicovideo.jp  videos.sapo.pt(many but not all) sciencestage.com vidoosh.tv metacafe.com vzaar.com videojug.com trilulilu.ro tudou.com video.yahoo.com blinkx.com blip.tv
+# blogtv.com  brainpop.com crackle.com engagemedia.org expotv.com flickr.com fotki.com hulu.com lafango.com  mefeedia.com motionpictur.com izlesene.com sevenload.com patas.in myvideo.de
+# vbox7.com 1tv.ru 1up.com 220.ro 24video.xxx 3sat.de 56.com adultswim.com atresplayer.com techchannel.att.com v.baidu.com azubu.tv www.bbc.co.uk/iplayer bet.com biobiochile.cl biqle.com
+# bloomberg.com/news/videos bpb.de bravotv.com byutv.org cbc.ca chirbit.com cloudtime.to(almost) cloudyvideos.com cracked.com crackle.com criterion.com ctv.ca culturebox.francetvinfo.fr
+# cultureunplugged.com cwtv.com daum.net dctp.tv democracynow.org douyutv.com dumpert.nl eitb.tv ex.fm fc-zenit.ru  ikudonsubs.com akb48ma.com Flipagram.com ft.dk Formula1.com
+# fox.com/watch(few works) video.foxnews.com foxsports.com france2.fr franceculture.fr franceinter.fr francetv.fr/videos francetvinfo.fr giantbomb.com hbo.com History.com hitbox.tv
+# howcast.com HowStuffWorks.com hrt.hr iconosquare.com infoq.com  ivi.ru kamcord.com/v video.kankan.com karrierevideos.at KrasView.ru hlamer.ru kuwo.cn la7.it laola1.tv le.com
+# media.ccc.de metacritic.com mitele.es  moevideo.net,playreplay.net,videochart.net vidspot.net(might work, can't find recent post) movieclips.com mtv.de mtviggy.com muenchen.tv myspace.com
+# myvi.ru myvideo.de myvideo.ge 163.com netzkino.de nfb.ca nicovideo.jp  videohive.net normalboots.com nowness.com ntr.nl nrk.no ntv.ru/video ocw.mit.edu odnoklassniki.ru/video
+# onet.tv onionstudios.com/videos openload.co orf.at parliamentlive.tv pbs.org
+
+# news site (can't find sample to test)
+# bleacherreport.com crooksandliars.com DailyMail.com channel5.com Funimation.com gamersyde.com gamespot.com gazeta.pl helsinki.fi hotnewhiphop.com lemonde.fr mnet.com motorsport.com MSN.com
+# n-tv.de ndr.de NDTV.com NextMedia.com noz.de
+
+
+# these sites have mixed media. can handle the video in these sites:
+# 20min.ch 5min.com archive.org Allocine.fr(added) br.de bt.no  buzzfeed.com condenast.com firstpost.com gameinformer.com gputechconf.com heise.de HotStar.com(some play) lrt.lt natgeo.com
+# nbcsports.com  patreon.com
+# 9c9media.com(no posts)
+
+#ytdl plays this fine but no video?
+#coub.com
+
+#supported but is an audio only site
+#acast.com AudioBoom.com audiomack.com bandcamp.com clyp.it democracynow.org? freesound.org hark.com hearthis.at hypem.com libsyn.com mixcloud.com
+#Minhateca.com.br(direct mp3)
+
+#
+# ytdl also supports these sites:
+# myvideo.co.za  ?
+#bluegartr.com  (gif)
+# behindkink.com   (not sure)
+# facebook.com  (need to work capturing only videos)
+# features.aol.com  (inconsistent)
+# livestream.com (need to work capturing only videos)
+# mail.ru inconsistent(need to work capturing only videos)
+# miomio.tv(some play but most won't)
+# ooyala.com(some play but most won't)
+#
+
+#     extractors=[]
+#     from youtube_dl.extractor import gen_extractors
+#     for ie in gen_extractors():
+#         #extractors.append(ie.IE_NAME)
+#         try:
+#             log("[%s] %s " %(ie.IE_NAME, ie._VALID_URL) )
+#         except Exception as e:
+#             log( "zz   " + str(e) )
+
+#     extractors.sort()
+#     for n in extractors: log("'%s'," %n)
+    from urlparse import urlparse
+    parsed_uri = urlparse( url )
+    domain = '{uri.netloc}'.format(uri=parsed_uri)
+
+    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
+    dialog_progress_YTDL.create('YTDL' )
+    dialog_progress_YTDL.update(10,'YTDL','Checking link...' )
+
+    try:
+        from domains import ydtl_get_playable_url
+        stream_url = ydtl_get_playable_url(url)
+        if stream_url:
+            dialog_progress_YTDL.update(80,'YTDL', 'Playing' )
+            listitem = xbmcgui.ListItem(path=stream_url[0])   #plugins play video like this.
+            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+        else:
+            dialog_progress_YTDL.update(40,'YTDL', 'Trying URLResolver' )
+            log('YTDL Unable to get playable URL, Trying UrlResolver...' )
+
+            #ytdl seems better than urlresolver for getting the playable url...
+            media_url = urlresolver.resolve(url)
+            if media_url:
+                dialog_progress_YTDL.update(88,'YTDL', 'Playing' )
+                #log( '------------------------------------------------urlresolver stream url ' + repr(media_url ))
+                listitem = xbmcgui.ListItem(path=media_url)
+                xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+            else:
+                log('UrlResolver cannot get a playable url' )
+                xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( translation(30192), domain )  )
+
+    except Exception as e:
+        xbmc.executebuiltin('XBMC.Notification("%s(YTDL)","%s")' %(  domain, str(e))  )
+    finally:
+        dialog_progress_YTDL.update(100,'YTDL' ) #not sure if necessary to set to 100 before closing dialogprogressbg
+        dialog_progress_YTDL.close()
+
+#This handles the links sent via jsonrpc (i.e.: links sent by kore to kodi by calling)
+# videoUrl = "plugin://script.reddit.reader/?mode=play&url=" + URLEncoder.encode(videoUri.toString(), "UTF-8");
+def parse_url_and_play(url, name, type_):
+    from domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
+    #from actions import viewImage
+    isFolder=False
+
+    log('parse_url_and_play url='+url)
+    #log('pluginhandle='+str(pluginhandle) )
+    playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+    ld=parse_reddit_link(url,True, False, False  )
+
+    DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, url)
+
+    if setProperty_IsPlayable=='true':
+        log( '---------IsPlayable---------->'+ DirectoryItem_url)
+        playVideo(DirectoryItem_url,'','')
+    else:
+        if isFolder: #showing album
+            log( '---------using ActivateWindow------>'+ DirectoryItem_url)
+            xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
+        else:  #viewing image
+            log( '---------using setResolvedUrl------>'+ DirectoryItem_url)
+            #viewImage(DirectoryItem_url,'','' )
+
+            #error message after picture is displayed, kore remote will be unresponsive
+            #playVideo(DirectoryItem_url,'','')
+
+            #endless loop. picture windowxml opens after closing, opens again after closing....
+            #xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
+
+            #log( 'Container.Update(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) )  )
+            #xbmc.executebuiltin('Container.Update(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) ) )
+
+            listitem = xbmcgui.ListItem(path='')
+            listitem.setProperty('IsPlayable', 'false')
+            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+
+            #DirectoryItem_url=DirectoryItem_url.replace('plugin://', 'script://')
+            #xbmc.executebuiltin('RunScript(script.reddit.reader)' )
+            #xbmc.executebuiltin('RunScript(script.reddit.reader,mode=viewImage&url=%s)' %urllib.quote_plus(url) )
+            #xbmc.executebuiltin('RunPlugin(%s?path=%s?prl=zaza&mode=viewImage&url=%s)' % ( sys.argv[0], sys.argv[0], urllib.quote_plus(url) ) )
+            xbmc.executebuiltin('RunPlugin(%s)' % ( DirectoryItem_url ) )
+
+        #listitem = xbmcgui.ListItem(path=DirectoryItem_url)
+        #listitem.setProperty('IsPlayable', setProperty_IsPlayable)
+        #xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+
+        #xbmc.executebuiltin('RunPlugin(%s)' %DirectoryItem_url)
+        #xbmc.executebuiltin('ActivateWindow(Videos,'+ DirectoryItem_url+')')
+
+#    if ld:
+#        if setProperty_IsPlayable=='true':
+#            playVideo(DirectoryItem_url,'','')
+#        else:
+#            listitem = xbmcgui.ListItem(path=DirectoryItem_url)
+#            listitem.setProperty('IsPlayable', setProperty_IsPlayable)
+#            xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+#
+#
+#
+#    else:
+#        playable_url = ydtl_get_playable_url( url )  #<-- will return a playable_url or a list of playable urls
+#        #playable_url= '(worked)' + title.ljust(15)[:15] + '... '+ w_url
+#        #work
+#        if playable_url:
+#            if pluginhandle>0:
+#                for u in playable_url:
+#                    listitem = xbmcgui.ListItem(path=u, label=name)   #plugins play video like this.
+#                    xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+#            else:
+#                #log('pluginhandleXXXX name=')
+#                #this portion won't work with autoplay (playlist)
+#                playlist.clear()
+#                if len(playable_url)>1: log('    link has multiple videos'  )
+#
+#                for u in playable_url:
+#                    #self.queue.put( [title, u] )
+#                    queueVideo(u, name, type_)
+#                xbmc.Player().play(playlist)
+#        else:
+#            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( translation(30192), 'Youtube_dl')  )
+    pass
+
+def queueVideo(url, name, type_):
+    playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+    listitem = xbmcgui.ListItem(name)
+    playlist.add(url, listitem)
 
 
 
@@ -473,9 +754,8 @@ def ytdl_get_version_info(which_one='latest'):
 
 def update_youtube_dl_core(url,name,action_type):
 #credit to ruuk for most of the download code
-    import os, urllib, urllib2
+    import os, urllib
     import tarfile
-    import shutil
 
     if action_type=='download':
         newVersion=note_ytdl_versions()
@@ -510,7 +790,6 @@ def update_youtube_dl_core(url,name,action_type):
 
         update_dl_status('Updating...')
 
-
         if os.path.exists(extracted_core_path):
             log( '  extracted dir exists:'+extracted_core_path)
 
@@ -523,27 +802,17 @@ def update_youtube_dl_core(url,name,action_type):
                 shutil.move(extracted_core_path, ytdl_core_path)
                 update_dl_status('    New core copied')
                 xbmc.sleep(1000)
-                ytdl_apply_additional_patch()
-                xbmc.sleep(1000)
                 update_dl_status('Update complete')
-                xbmc.sleep(1000)
-                ourVersion=ytdl_get_version_info('local')
-                setSetting('ytdl_btn_check_version', "{0}".format(ourVersion))
-
+                xbmc.sleep(2000)
+                #ourVersion=ytdl_get_version_info('local')
+                setSetting('ytdl_btn_check_version', "")
+                setSetting('ytdl_btn_download', "")
             except Exception as e:
                 update_dl_status('Failed...')
                 log( 'move failed:'+str(e))
 
     elif action_type=='checkversion':
         note_ytdl_versions()
-
-def ytdl_apply_additional_patch():
-    #utils.py in youtube_dl have errors on certain video links. I think this is kodi specific. apply custom fix
-    patchfile_1=xbmc.translatePath(addon_path+"/resources/ytdl_patch_utils.py" )
-    patchdest_1=xbmc.translatePath(addon_path+"/resources/lib/youtube_dl/utils.py" )
-    update_dl_status('Applying patch')
-    shutil.copy(patchfile_1, patchdest_1)
-
 
 def note_ytdl_versions():
     #display ytdl versions and return latest version

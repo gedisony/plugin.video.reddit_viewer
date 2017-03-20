@@ -95,6 +95,15 @@ msgctxt "#30021"
 msgid "Parsing error"
 msgstr ""
 
+#YTDL dialogProgressBG message 
+msgctxt "#30022"
+msgid "Checking link.."
+msgstr ""
+
+msgctxt "#30023"
+msgid "Playing"
+msgstr ""
+
 
 #: used in context menu.  (also see "#30500")
 msgctxt "#30050"
