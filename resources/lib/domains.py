@@ -97,7 +97,7 @@ class sitesBase(object):
         if not media_url:
             media_url=self.media_url
 
-        filename,ext=parse_filename_and_ext_from_url(media_url)
+        _,ext=parse_filename_and_ext_from_url(media_url)
         if self.include_gif_in_get_playable:
             if ext in ["mp4","webm","gif"]:
                 media_type=self.TYPE_VIDEO
@@ -155,7 +155,7 @@ class sitesBase(object):
             return match[0]
 
     def set_media_type_thumb_and_action(self,media_url,default_type=TYPE_VIDEO, default_action=DI_ACTION_YTDL):
-        filename,ext=parse_filename_and_ext_from_url(media_url)
+        _,ext=parse_filename_and_ext_from_url(media_url)
         self.media_url=media_url
         if ext=='gif':
             self.media_type=self.TYPE_GIF #sitesBase.TYPE_VIDEO
@@ -587,11 +587,11 @@ class ClassImgur(sitesBase):
         if self.image_url_of_a_single_image_album:
             media_url=self.image_url_of_a_single_image_album
 
-        filename,ext=parse_filename_and_ext_from_url(media_url)
+        _,ext=parse_filename_and_ext_from_url(media_url)
 
         if ext == "":
             media_url=self.ask_imgur_for_link(media_url)
-            filename,ext=parse_filename_and_ext_from_url(media_url)
+            _,ext=parse_filename_and_ext_from_url(media_url)
             #below is a faster alternative but not as accurate.
             #if is_probably_a_video:  #reddit thinks this is a video
             #    media_url=media_url+ webm_or_mp4
@@ -2942,6 +2942,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
 
     try:
         if hoster:
+            hoster.dictList=[]  #make sure the dictlist is empty otherwise we end up appending for every post
             if get_playable_url:
                 pass
 
@@ -2949,7 +2950,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
             #log( '    %s parsed: [%s] type=%s url=%s ' % ( hoster.__class__.__name__, hoster.link_action, media_type,  prepped_media_url ) )
 
             if needs_preview:
-                thumb=hoster.get_thumb_url()
+                hoster.get_thumb_url()
                 #log('thumb:' + thumb)
                 #poster=hoster.poster_url
                 #log('      poster_url:'+poster)
