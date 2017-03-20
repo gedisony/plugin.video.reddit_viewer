@@ -11,7 +11,8 @@ from utils import xbmc_busy, log, translation
 import threading
 
 def addSubreddit(subreddit, name, type_):
-    from utils import this_is_a_multireddit, format_multihub, colored_subreddit
+    from utils import colored_subreddit
+    from reddit import this_is_a_multireddit, format_multihub
     alreadyIn = False
     fh = open(subredditsFile, 'r')
     content = fh.readlines()
@@ -72,7 +73,8 @@ def get_subreddit_entry_info(subreddit):
 
 def get_subreddit_entry_info_thread(sub_list):
     import os
-    from utils import get_subreddit_info, load_dict, save_dict
+    from utils import load_dict, save_dict
+    from reddit import get_subreddit_info
 
     subreddits_dlist=[]
     #log('**** thread running')
@@ -116,7 +118,7 @@ def removeSubreddit(subreddit, name, type_):
     xbmc.executebuiltin("Container.Refresh")
 
 def editSubreddit(subreddit, name, type_):
-    from utils import this_is_a_multireddit, format_multihub
+    from reddit import this_is_a_multireddit, format_multihub
     #note: calling code in addDirR()
     fh = open(subredditsFile, 'r')
     content = fh.readlines()
@@ -147,7 +149,8 @@ def editSubreddit(subreddit, name, type_):
         xbmc.executebuiltin("Container.Refresh")
 
 def searchReddits(url, name, type_):
-    from default import urlMain, listSubReddit
+    from default import urlMain
+    from main_listing import listSubReddit
     keyboard = xbmc.Keyboard('sort=new&t=week&q=', translation(30005))
     keyboard.doModal()
     if keyboard.isConfirmed() and keyboard.getText():

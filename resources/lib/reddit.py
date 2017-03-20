@@ -269,7 +269,7 @@ def create_default_subreddits():
     with open(subredditsFile, 'a') as fh:
 
         #fh.write('/user/gummywormsyum/m/videoswithsubstance\n')
-        fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(32006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
+        fh.write('/user/sallyyy19/m/video[%s]\n' %(translation(30006)))  # user   http://forum.kodi.tv/member.php?action=profile&uid=134499
         fh.write('Documentaries+ArtisanVideos+lectures+LearnUselessTalents\n')
         fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
         fh.write('random\n')
