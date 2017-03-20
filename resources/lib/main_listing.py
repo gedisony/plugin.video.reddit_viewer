@@ -552,8 +552,8 @@ def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subredd
 
 
 def listLinksInComment(url, name, type):
-    from resources.lib.domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
-    from resources.lib.utils import markdown_to_bbcode, unescape, ret_info_type_icon, build_script
+    from domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
+    from utils import markdown_to_bbcode, unescape, ret_info_type_icon, build_script
     #from resources.domains import make_addon_url_from
     #called from context menu
     log('listLinksInComment:%s:%s' %(type,url) )
@@ -713,7 +713,7 @@ def listLinksInComment(url, name, type):
 harvest=[]
 def r_linkHunter(json_node,d=0):
     #from resources.domains import url_is_supported
-    from resources.lib.utils import unescape
+    from utils import unescape
     #recursive function to harvest stuff from the reddit comments json reply
     prog = re.compile('<a href=[\'"]?([^\'" >]+)[\'"]>(.*?)</a>')
     for e in json_node:
