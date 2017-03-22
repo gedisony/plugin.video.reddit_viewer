@@ -2,10 +2,10 @@
 <addon
 	id="plugin.video.reddit_viewer"
 	name="Reddit Viewer"
-	version="3.3.1"
+	version="3.3.1a"
 	provider-name="gedisony">
 	<requires>
-		<import addon="xbmc.python"                     version="2.24.0"                />
+		<import addon="xbmc.python"                     version="2.14.0"                />
 		<import addon="script.module.requests"          version="1.1.0"/>
 		<import addon="script.module.youtube.dl"        version="16.521.0"/>
 		<import addon="script.module.urlresolver" />
