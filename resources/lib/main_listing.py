@@ -28,14 +28,14 @@ cxm_show_add_shortcuts    = addon.getSetting("cxm_show_add_shortcuts") == "true"
 cxm_show_filter_subreddit = addon.getSetting("cxm_show_filter_subreddit") == "true"
 cxm_show_filter_domain    = addon.getSetting("cxm_show_filter_domain") == "true"
 cxm_show_open_browser     = addon.getSetting("cxm_show_open_browser") == "true"
-
+cxm_show_reddit_save      = addon.getSetting("cxm_show_reddit_save") == "true"
 
 def index(url,name,type):
     from utils import xstr, samealphabetic, hassamealphabetic
     from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info
 
     ## this is where the main screen is created
-    content = ""
+
     if not os.path.exists(subredditsFile):  #if not os.path.exists(subredditsFile):
         create_default_subreddits()
 
@@ -122,7 +122,7 @@ def index(url,name,type):
 
 def listSubReddit(url, name, subreddit_key):
     import datetime
-    from utils import unescape, strip_emoji, pretty_datediff, post_is_filtered_out, clean_str
+    from utils import strip_emoji, pretty_datediff, post_is_filtered_out, clean_str
     from reddit import determine_if_video_media_from_reddit_json, ret_sub_icon, has_multiple_subreddits
     #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
     #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
@@ -151,6 +151,7 @@ def listSubReddit(url, name, subreddit_key):
     content = reddit_request(url)
 
     if not content:
+        dialog_progress.close() #it is important to close xbmcgui.DialogProgressBG
         return
 
     page_title="[COLOR cadetblue]%s[/COLOR]" %subreddit_key
@@ -166,6 +167,12 @@ def listSubReddit(url, name, subreddit_key):
     #content = json.loads(content.replace('\\"', '\''))
     content = json.loads(content)
 
+    #A modhash is a token that the reddit API requires to help prevent CSRF. Modhashes can be obtained via the /api/me.json call or in response data of listing endpoints.
+    #The preferred way to send a modhash is to include an X-Modhash custom HTTP header with your requests.
+    #Modhashes are not required when authenticated with OAuth.
+    modhash=content['data']['modhash']
+    #log( 'modhash='+repr(modhash) )
+    
     #log("query returned %d items " % len(content['data']['children']) )
     posts_count=len(content['data']['children'])
 
@@ -177,6 +184,7 @@ def listSubReddit(url, name, subreddit_key):
             #  in addition to saved posts, users can also save comments. we need to handle it by checking for "kind"
             kind=entry.get('kind')  #t1 for comments  t3 for posts
             data=entry.get('data')
+            post_id=data.get('name')
             if post_is_filtered_out( data ):
                 continue
 
@@ -300,7 +308,9 @@ def listSubReddit(url, name, subreddit_key):
                     num_comments=num_comments,
                     post_index=idx,
                     post_total=posts_count,
-                    many_subreddit=hms)
+                    many_subreddit=hms,
+                    post_id=post_id,
+                    subreddit_key=subreddit_key)
         except Exception as e:
             log(" EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
             pass
@@ -344,7 +354,7 @@ def listSubReddit(url, name, subreddit_key):
                               updateListing=False,   #setting this to True causes the ".." entry to quit the plugin
                               cacheToDisc=True)
 
-def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
+def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False,post_id='',subreddit_key='' ):
     from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
     post_title=title
@@ -430,7 +440,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     liz.setInfo('video', {"title": liz.getLabel(), } )
 
     liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
-    entries = build_context_menu_entries(num_comments, commentsUrl, many_subreddit, subreddit, domain, media_url) #entries for listbox for when you type 'c' or rt-click
+    entries = build_context_menu_entries(num_comments, commentsUrl, many_subreddit, subreddit, domain, media_url, post_id,subreddit_key) #entries for listbox for when you type 'c' or rt-click
 
     liz.addContextMenuItems(entries)
     #log( 'playcount=' + repr(getPlayCount(DirectoryItem_url)))
@@ -439,8 +449,8 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     return
 
-def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subreddit, domain, link_url):
-    from reddit import assemble_reddit_filter_string, subreddit_in_favorites
+def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subreddit, domain, link_url, post_id,subreddit_key):
+    from reddit import assemble_reddit_filter_string, subreddit_in_favorites, this_is_a_user_saved_list
     from utils import colored_subreddit
 
     s=(subreddit[:12] + '..') if len(subreddit) > 12 else subreddit     #crop long subreddit names in context menu
@@ -497,6 +507,19 @@ def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subredd
     if cxm_show_filter_domain:
             entries.append( ( translation(30057) %colored_domain_full ,
                               "XBMC.RunPlugin(%s?mode=addtoFilter&url=%s&type=%s)" % ( sys.argv[0], domain, 'domain' ) ) )
+
+    #only available if user gave reddit_viewer permission to interact with their account
+    #reddit_refresh_token=addon.getSetting("reddit_refresh_token")
+    from reddit import reddit_refresh_token
+    if reddit_refresh_token and cxm_show_reddit_save:
+        if this_is_a_user_saved_list(subreddit_key):
+            #only show the unsave option if viewing /user/xxxx/saved
+            entries.append( ( translation(30059) ,
+                                  "XBMC.RunPlugin(%s?mode=reddit_save&url=%s&name=%s)" % ( sys.argv[0], '/api/unsave/', post_id ) ) )
+        else:
+            entries.append( ( translation(30058) ,
+                                  "XBMC.RunPlugin(%s?mode=reddit_save&url=%s&name=%s)" % ( sys.argv[0], '/api/save/', post_id ) ) )
+
     #not working...
     #entries.append( ( translation(30054) ,
     #                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=playURLResolver&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(media_url) ) ) )

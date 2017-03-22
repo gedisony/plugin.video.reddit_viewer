@@ -910,8 +910,15 @@ class ClassLiveleak(sitesBase):
     # *** liveleak handled by ytdl
 
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
-        self.link_action=sitesBase.DI_ACTION_YTDL
-        return self.media_url, self.TYPE_VIDEO
+        use_ytdl_for_ll=True
+        if use_ytdl_for_ll:
+            self.link_action=sitesBase.DI_ACTION_YTDL
+            return self.media_url, self.TYPE_VIDEO
+
+        else:
+            self.link_action=self.DI_ACTION_PLAYABLE
+            return "plugin://plugin.video.liveleak/?mode=play&url={0}&src={0}".format(urllib.quote_plus( media_url ),''), self.TYPE_VIDEO
+
 
     def get_thumb_url(self, quality0123=1):
         log('    getting liveleak thumbnail ')

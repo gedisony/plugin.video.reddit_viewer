@@ -144,6 +144,15 @@ msgctxt "#30057"
 msgid "Hide %s posts"
 msgstr ""
 
+#: used in context menu. 
+msgctxt "#30058"
+msgid "Reddit: Save this post"
+msgstr ""
+
+msgctxt "#30059"
+msgid "Reddit: Unsave this post"
+msgstr ""
+
 #begin strings used in pretty date to indicate how long ago a post is posted (keep these strings short and similar length) 
 msgctxt "#30060"
 msgid "just now"
@@ -412,7 +421,7 @@ msgstr ""
 
 # settings category
 msgctxt "#30400"
-msgid "Reddit Oauth"
+msgid "Reddit OAuth"
 msgstr ""
 
 msgctxt "#30401"
@@ -510,6 +519,10 @@ msgstr ""
 
 msgctxt "#30509"
 msgid "Open link in browser"
+msgstr ""
+
+msgctxt "#30510"
+msgid "Save/Unsave post on Reddit (needs OAuth)"
 msgstr ""
 
 #settings category. - advanced optins

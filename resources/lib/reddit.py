@@ -7,14 +7,14 @@ import re
 import os
 
 from default import addon, subredditsFile, urlMain, itemsPerPage,subredditsPickle,REQUEST_TIMEOUT
-from utils import log, translation
+from utils import log, translation,xbmc_notify
 from default import reddit_clientID, reddit_userAgent, reddit_redirect_uri
 
 
 reddit_refresh_token =addon.getSetting("reddit_refresh_token")
 reddit_access_token  =addon.getSetting("reddit_access_token") #1hour token
 
-def reddit_request( url ):
+def reddit_request( url, data=None ):
     #this function replaces     content = opener.open(url).read()
     #  for calls to reddit
 
@@ -35,7 +35,7 @@ def reddit_request( url ):
         req.add_header('Authorization','bearer '+ reddit_access_token )
 
     try:
-        page = urllib2.urlopen(req)
+        page = urllib2.urlopen(req,data=data)
         response=page.read();page.close()
         #log( response )
         return response
@@ -263,6 +263,19 @@ def reddit_revoke_refresh_token(url, name, type_):
         xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( str(e), 'Revoking refresh token' )  )
         log("  Revoking refresh token EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
 
+def reddit_save(api_method, post_id, type_):
+    #api_method either /api/save/  or /api/unsave/ 
+    url=urlMain+api_method
+    data = urllib.urlencode({'id'  : post_id })
+
+    response=reddit_request( url,data )
+    log(repr(response))
+    if response=='{}':
+        xbmc_notify(api_method, 'Success')
+        if api_method=='/api/unsave/':
+            xbmc.executebuiltin('XBMC.Container.Refresh')
+    else:
+        xbmc_notify(api_method, response)
 
 def create_default_subreddits():
     #create a default file and sites
@@ -300,10 +313,13 @@ def format_multihub(multihub):
 def this_is_a_multireddit(subreddit):
     #subreddits and multihub are stored in the same file
     #i think we can get away with just testing for user/ to determine multihub
-    if subreddit.lower().startswith('user/') or subreddit.lower().startswith('/user/'): #user can enter multihub with or without the / in the beginning
-        return True
-    else:
-        return False
+    subreddit=subreddit.lower()
+    return subreddit.startswith(('user/','/user/')) #user can enter multihub with or without the / in the beginning 
+
+def this_is_a_user_saved_list(subreddit):
+    #user saved list looks like this "https://www.reddit.com/user/XXXXXXX/saved"  and saved as "/user/XXXXXXX/saved"  in out subreddits file
+    subreddit=subreddit.lower()
+    return (subreddit.startswith(('user/','/user/')) and subreddit.endswith('/saved') )
 
 def parse_subreddit_entry(subreddit_entry_from_file):
     #returns subreddit, [alias] and description. also populates WINDOW mailbox for custom view id of subreddit

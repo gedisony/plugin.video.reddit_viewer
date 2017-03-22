@@ -284,4 +284,6 @@
  - user can now use their reddit saved posts similar to entering a multireddit
    - provided they have given reddit_viewer permission for it 
  - copy over reddit.reader changes/cleanup
- 
+ 3.3.2 (2017-03-21)
+ - save/unsave posts on reddit account
+  

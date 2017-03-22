@@ -653,6 +653,9 @@ def json_query(query, ret):
     except:
         return {}
 
+def xbmc_notify(Line1, line2):
+    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( Line1, line2)  )
+    
 #DATEFORMAT = xbmc.getRegion('dateshort')
 #TIMEFORMAT = xbmc.getRegion('meridiem')
 

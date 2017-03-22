@@ -135,7 +135,7 @@ if __name__ == '__main__':
     from resources.lib.actions import playVideo, playYTDLVideo, parse_url_and_play #queueVideo
 
     from resources.lib.autoplay import autoPlay
-    from resources.lib.reddit import reddit_get_refresh_token, reddit_get_access_token, reddit_revoke_refresh_token
+    from resources.lib.reddit import reddit_get_refresh_token, reddit_get_access_token, reddit_revoke_refresh_token, reddit_save
     from resources.lib.main_listing import index, listSubReddit, listLinksInComment
 
 
@@ -167,6 +167,7 @@ if __name__ == '__main__':
                     ,'get_access_token'     : reddit_get_access_token
                     ,'revoke_refresh_token' : reddit_revoke_refresh_token
                     ,'play'                 : parse_url_and_play
+                    ,'reddit_save'          : reddit_save
                     }
 
     plugin_modes[mode](url,name,typez)

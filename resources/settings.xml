@@ -47,6 +47,7 @@
         <setting id="cxm_show_add_shortcuts"    type="bool" label="30505" default="true"/>
         <setting id="cxm_show_filter_subreddit" type="bool" label="30506" default="true"/>
         <setting id="cxm_show_filter_domain"    type="bool" label="30507" default="true"/>
+        <setting id="cxm_show_reddit_save"      type="bool" label="30510" default="true"/>
     </category>
 
     <category label="30600">
