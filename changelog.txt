@@ -280,4 +280,8 @@
  - add ruuk's patch to youtubedl wrapper
  - major code reorganize
  
+ 3.3.1 (2017-03-21)
+ - user can now use their reddit saved posts similar to entering a multireddit
+   - provided they have given reddit_viewer permission for it 
+ - copy over reddit.reader changes/cleanup
  

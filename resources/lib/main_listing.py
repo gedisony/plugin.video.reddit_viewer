@@ -5,9 +5,9 @@ import xbmcaddon
 import xbmcplugin
 import urllib
 import json
-import threading
+
 import re
-from Queue import Queue
+
 
 import os,sys
 
@@ -32,7 +32,7 @@ cxm_show_open_browser     = addon.getSetting("cxm_show_open_browser") == "true"
 
 def index(url,name,type):
     from utils import xstr, samealphabetic, hassamealphabetic
-    from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info 
+    from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info
 
     ## this is where the main screen is created
     content = ""
@@ -48,16 +48,6 @@ def index(url,name,type):
     #h="as asd [S]asdasd[/S] asdas "
     #log(markdown_to_bbcode(h))
     #addDir('test', "url", "next_mode", "", "subreddit" )
-
-    #link='http://mylust.com/videos/433093/this-exotic-honey-has-spent-a-lot-of-time-perfecting-her-pussy-fingering-skills/'
-    #from resources.lib.youtube_dl import YoutubeDL
-
-    #ytb = YoutubeDL({'format': 'bestvideo+bestaudio/best',\
-    #                               "quiet": True,\
-    #                               "nocheckcertificate": True})
-    #with ytb:
-    #    result = ytb.extract_info(link, download=False)
-    #    log('ytb result'+repr(result))
 
     #liz = xbmcgui.ListItem(label="test", label2="label2", iconImage="DefaultFolder.png")
     #u=sys.argv[0]+"?url=&mode=callwebviewer&type="
@@ -132,12 +122,11 @@ def index(url,name,type):
 
 def listSubReddit(url, name, subreddit_key):
     import datetime
-    from utils import unescape, strip_emoji, pretty_datediff, post_is_filtered_out
+    from utils import unescape, strip_emoji, pretty_datediff, post_is_filtered_out, clean_str
     from reddit import determine_if_video_media_from_reddit_json, ret_sub_icon, has_multiple_subreddits
     #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
     #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
 
-    #show_listVideos_debug=False
     show_listVideos_debug=True
     credate = ""
     is_a_video=False
@@ -153,7 +142,6 @@ def listSubReddit(url, name, subreddit_key):
 
     currentUrl = url
     xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
-
 
     dialog_progress = xbmcgui.DialogProgressBG()
     dialog_progress_heading='Loading'
@@ -185,74 +173,63 @@ def listSubReddit(url, name, subreddit_key):
 
     for idx, entry in enumerate(content['data']['children']):
         try:
-            if post_is_filtered_out( entry ):
+            #on 3/21/2017 we're adding a new feature that lets users view their saved posts by entering /user/username/saved as their subreddit.
+            #  in addition to saved posts, users can also save comments. we need to handle it by checking for "kind"
+            kind=entry.get('kind')  #t1 for comments  t3 for posts
+            data=entry.get('data')
+            if post_is_filtered_out( data ):
                 continue
 
-            title = unescape(entry['data']['title'].encode('utf-8'))
+            if kind=='t3':
+                title = clean_str(data,['title'])
+                description=clean_str(data,['media','oembed','description'])
+                post_selftext=clean_str(data,['selftext'])
+
+                description=post_selftext+'[CR]'+description if post_selftext else description
+            else:
+                title=clean_str(data,['link_title'])
+                description=clean_str(data,['body'])
+
             title = strip_emoji(title) #an emoji in the title was causing a KeyError  u'\ud83c'
 
-            try:    description = unescape(entry['data']['media']['oembed']['description'].encode('utf-8'))
-            except: description = ''
-            #log('    description  [%s]' %description)
-            try:    post_selftext=unescape(entry['data']['selftext'].encode('utf-8'))
-            except: post_selftext=''
-
-            description=post_selftext+'[CR]'+description if post_selftext else description
-
-            commentsUrl = urlMain+entry['data']['permalink'].encode('utf-8')
+            commentsUrl = urlMain+clean_str(data,['permalink'])
             #if show_listVideos_debug :log("commentsUrl"+str(idx)+"="+commentsUrl)
 
             try:
-                aaa = entry['data']['created_utc']
+                aaa = data.get('created_utc')
                 credate = datetime.datetime.utcfromtimestamp( aaa )
-                #log("creation_date="+str(credate))
-
-                ##from datetime import datetime
-                #now = datetime.datetime.now()
-                #log("     now_date="+str(now))
-                ##from dateutil import tz
                 now_utc = datetime.datetime.utcnow()
-                #log("     utc_date="+str(now_utc))
-                #log("  pretty_date="+pretty_datediff(now_utc, credate))
                 pretty_date=pretty_datediff(now_utc, credate)
                 credate = str(credate)
-            except:
+            except (AttributeError,TypeError,ValueError):
                 credate = ""
-                credateTime = ""
 
-            subreddit=entry['data']['subreddit'].encode('utf-8')
-            #if show_listVideos_debug :log("  SUBREDDIT"+str(idx)+"="+subreddit)
-
-            try: author = entry['data']['author'].encode('utf-8')
-            except: author = ""
-            #if show_listVideos_debug :log("     AUTHOR"+str(idx)+"="+author)
-
-            try: domain= entry['data']['domain'].encode('utf-8')
-            except: domain = ""
+            subreddit=clean_str(data,['subreddit'])
+            author=clean_str(data,['author'])
+            domain=clean_str(data,['domain'])
             #log("     DOMAIN%.2d=%s" %(idx,domain))
 
-            ups = entry['data']['score']       #downs not used anymore
-            try:num_comments = entry['data']['num_comments']
-            except:num_comments = 0
-
+            #ups = data.get('score',0)       #downs not used anymore
+            num_comments = data.get('num_comments',0)
             #description = "[COLOR blue]r/"+ subreddit + "[/COLOR]  [I]" + str(ups)+" pts  |  "+str(comments)+" cmnts  |  by "+author+"[/I]\n"+description
             #description = "[COLOR blue]r/"+ subreddit + "[/COLOR]  [I]" + str(ups)+" pts.  |  by "+author+"[/I]\n"+description
             #description = title_line2+"\n"+description
             #if show_listVideos_debug :log("DESCRIPTION"+str(idx)+"=["+description+"]")
-            try:
-                media_url = entry['data']['url'].encode('utf-8')
-            except:
-                media_url = entry['data']['media']['oembed']['url'].encode('utf-8')
+            d_url=clean_str(data,['url'])
+            link_url=clean_str(data,['link_url'])
+            media_oembed_url=clean_str(data,['media','oembed','url'])
 
-            thumb = entry['data']['thumbnail'].encode('utf-8')
+            media_url=next((item for item in [d_url,link_url,media_oembed_url] if item ), '')
+            #log("          url"+str(idx)+"="+media_url)
+
+            thumb=clean_str(data,['thumbnail'])
             #if show_listSubReddit_debug : log("       THUMB%.2d=%s" %( idx, thumb ))
 
             if thumb in ['nsfw','default','self']:  #reddit has a "default" thumbnail (alien holding camera with "?")
                 thumb=""
 
             if thumb=="":
-                try: thumb = entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8').replace('&amp;','&')
-                except: pass
+                thumb=clean_str(data,['media','oembed','thumbnail_url']).replace('&amp;','&')
 
             if thumb=="":  #use this subreddit's icon if thumb still empty
                 try: thumb=ret_sub_icon(subreddit)
@@ -260,7 +237,7 @@ def listSubReddit(url, name, subreddit_key):
 
             try:
                 #collect_thumbs(entry)
-                preview=entry['data']['preview']['images'][0]['source']['url'].encode('utf-8').replace('&amp;','&')
+                preview=data.get('preview')['images'][0]['source']['url'].encode('utf-8').replace('&amp;','&')
                 #poster = entry['data']['media']['oembed']['thumbnail_url'].encode('utf-8')
                 #t=thumb.split('?')[0]
                 #can't preview gif thumbnail on thumbnail view, use alternate provided by reddit
@@ -268,24 +245,18 @@ def listSubReddit(url, name, subreddit_key):
                     #log('  thumb ends with .gif')
                 #    thumb = entry['data']['thumbnail'].encode('utf-8')
                 try:
-                    thumb_h = float( entry['data']['preview']['images'][0]['source']['height'] )
-                    thumb_w = float( entry['data']['preview']['images'][0]['source']['width'] )
-                except:
-                    thumb_w=0
-                    thumb_h=0
+                    thumb_h = float( data.get('preview')['images'][0]['source']['height'] )
+                    thumb_w = float( data.get('preview')['images'][0]['source']['width'] )
+                except (AttributeError,TypeError,ValueError):
+                    thumb_w=0; thumb_h=0
 
             except Exception as e:
                 #log("   getting preview image EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
-                thumb_w=0
-                thumb_h=0
-                preview="" #a blank preview image will be replaced with poster_url from make_addon_url_from() for domains that support it
+                thumb_w=0; thumb_h=0; preview="" #a blank preview image will be replaced with poster_url from make_addon_url_from() for domains that support it
 
-            is_a_video = determine_if_video_media_from_reddit_json(entry)
+            is_a_video = determine_if_video_media_from_reddit_json(data)
 
-            try:
-                over_18 = entry['data']['over_18']
-            except:
-                over_18 = False
+            over_18=data.get('over_18')
 
             #setting: toggle showing 2-line title
             #log("   TitleAddtlInfo "+str(idx)+"="+str(TitleAddtlInfo))
@@ -374,19 +345,11 @@ def listSubReddit(url, name, subreddit_key):
                               cacheToDisc=True)
 
 def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False ):
-    #from resources.lib.utils import ret_info_type_icon, assemble_reddit_filter_string,build_script
     from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
-    videoID=""
     post_title=title
     il_description=""
     n=""  #will hold red nsfw asterisk string
-    h=""  #will hold bold hoster:  string
-    t_Album = translation(30073) if translation(30073) else "Album"
-    t_IMG =  translation(30074) if translation(30074) else "IMG"
-
-    ok = False
-
     isFolder=True
     thumb_url=''
 
@@ -467,7 +430,6 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     liz.setInfo('video', {"title": liz.getLabel(), } )
 
     liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
-
     entries = build_context_menu_entries(num_comments, commentsUrl, many_subreddit, subreddit, domain, media_url) #entries for listbox for when you type 'c' or rt-click
 
     liz.addContextMenuItems(entries)
@@ -475,7 +437,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     #log( 'DirectoryItem_url=' + DirectoryItem_url)
     xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
 
-    return ok
+    return
 
 def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subreddit, domain, link_url):
     from reddit import assemble_reddit_filter_string, subreddit_in_favorites
@@ -545,9 +507,6 @@ def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subredd
     #favEntry = '<favourite name="'+title+'" url="'+DirectoryItem_url+'" description="'+description+'" thumb="'+iconimage+'" date="'+credate+'" site="'+site+'" />'
     #entries.append((translation(30022), 'RunPlugin(plugin://'+addonID+'/?mode=addToFavs&url='+urllib.quote_plus(favEntry)+'&type='+urllib.quote_plus(subreddit)+')',))
     return entries
-
-
-
 
 
 

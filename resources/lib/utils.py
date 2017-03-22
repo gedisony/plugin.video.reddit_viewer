@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import urllib
 import xbmc, xbmcgui,xbmcaddon,xbmcplugin
 import re, htmlentitydefs
@@ -22,7 +23,6 @@ addon         = xbmcaddon.Addon()
 pluginhandle  = int(sys.argv[1])
 addonID       = addon.getAddonInfo('id')  #plugin.video.reddit_viewer
 #from reddit import subredditsFile, subredditsPickle
-
 
 #used to filter out image links if content_type is video (when this addon is called from pictures)
 image_exts = ['jpg','png', 'RAW', 'jpeg', 'tiff', 'tga', 'pcx', 'bmp'] #exclude 'gif' as we consider it as gifv
@@ -52,8 +52,8 @@ def xbmc_busy(busy=True):
 def log(message, level=xbmc.LOGNOTICE):
     xbmc.log("reddit_viewer:"+message, level=level)
 
-def translation(id):
-    return addon.getLocalizedString(id).encode('utf-8')
+def translation(id_):
+    return addon.getLocalizedString(id_).encode('utf-8')
 
 def compose_list_item(label,label2,iconImage,property_item_type, onClick_action, infolabels=None  ):
     #build a listitem for use in our custom gui
@@ -79,7 +79,7 @@ def compose_list_item(label,label2,iconImage,property_item_type, onClick_action,
     return liz
 
 
-def build_script( mode, url, name="", type="", script_to_call=''):
+def build_script( mode, url, name="", type_="", script_to_call=''):
     #builds the parameter for xbmc.executebuiltin   --> 'RunAddon(script.reddit.reader, ... )'
     if script_to_call: #plugin://plugin.video.reddit_viewer/
         #not used
@@ -90,12 +90,11 @@ def build_script( mode, url, name="", type="", script_to_call=''):
         #remove unicode characters in name.
         name=name.decode('unicode_escape').encode('ascii','ignore')
         script_to_call=addonID
-        return "RunAddon(%s,%s)" %(script_to_call, "mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+urllib.quote_plus(name)+"&type="+str(type) )
+        return "RunAddon(%s,%s)" %(script_to_call, "mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+urllib.quote_plus(name)+"&type="+str(type_) )
 
 def build_playable_param( mode, url, name="", type="", script_to_call=addonID):
     #builds the  di_url for  pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO); pl.clear();  pl.add(di_url, item) ; xbmc.Player().play(pl, windowed=True)
     return "plugin://" +script_to_call+"mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+str(name)+"&type="+str(type)
-
 
 def ret_info_type_icon(info_type, modecommand, domain=''):
     #returns icon for what kind of media the link is.
@@ -104,32 +103,20 @@ def ret_info_type_icon(info_type, modecommand, domain=''):
     #log( "  info_type=%s mode=%s"  %(info_type, modecommand) )
 
     from domains import sitesBase
-
-
-
-#     icon="type_unsupp.png"
-#     if info_type=='video':
-#         icon="type_video.png"
-#         if modecommand=='playYTDLVideo':
-#             icon="type_ytdl.png"
-#
-#     elif info_type=='album':
-#         icon="type_album.png"
-#     elif info_type=='pictures':
-#         icon="type_image.png"
-#     elif info_type=='reddit':
-#         icon="alienicon.png"
-
     icon="type_unsupp.png"
     if info_type==sitesBase.TYPE_VIDEO:
         icon="type_video.png"
-        if modecommand=='playYTDLVideo':
+        if modecommand==sitesBase.DI_ACTION_YTDL:
             icon="type_ytdl.png"
+        if modecommand==sitesBase.DI_ACTION_URLR:
+            icon="type_urlr.png"
         #if 'giphy.com' in domain:
         #    icon="type_giphy.gif"
 
     elif info_type==sitesBase.TYPE_ALBUM:
         icon="type_album.png"
+    elif info_type==sitesBase.TYPE_GIF:
+        icon="type_gif.png"
     elif info_type==sitesBase.TYPE_IMAGE:
         icon="type_image.png"
     elif info_type==sitesBase.TYPE_REDDIT:
@@ -187,9 +174,8 @@ def post_excluded_from( filter, str_to_check):
     return False
 
 def add_to_csv_setting(setting_id, string_to_add):
-    #adds a string to the end of a setting id in settings.xml 
+    #adds a string to the end of a setting id in settings.xml
     #this is assuming that it is a comma separated list used in filtering subreddit / domain
-    import xbmcaddon
     addon=xbmcaddon.Addon()
     csv_setting=addon.getSetting(setting_id)
     csv_list=csv_setting.split(',')
@@ -206,20 +192,21 @@ def add_to_csv_setting(setting_id, string_to_add):
 
     xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( s, translation(30020)+' '+setting_id.replace('_',' ') ) ) #translation(30020)=Added to
 
-def post_is_filtered_out( entry ):
+def post_is_filtered_out( data ):
     from default import hide_nsfw, domain_filter, subreddit_filter
 
-    domain=entry['data']['domain'].encode('utf-8')
+    #domain=entry['data']['domain'].encode('utf-8')
+    domain=clean_str(data,['domain'])
     if post_excluded_from( domain_filter, domain ):
         log( '  POST is excluded by domain_filter [%s]' %domain )
         return True
 
-    subreddit=entry['data']['subreddit'].encode('utf-8')
+    subreddit=clean_str(data,['subreddit'])
     if post_excluded_from( subreddit_filter, subreddit ):
         log( '  POST is excluded by subreddit_filter [r/%s]' %subreddit )
         return True
 
-    try:    over_18 = entry['data']['over_18']
+    try:    over_18 = data.get('over_18')
     except: over_18 = False
 
     if over_18 and hide_nsfw:
@@ -230,7 +217,7 @@ def post_is_filtered_out( entry ):
 
 def addtoFilter(to_filter, name, type_of_filter):
     #type_of_filter=domain or subreddit
-    from default import hide_nsfw, domain_filter, subreddit_filter
+    #from default import domain_filter, subreddit_filter
     if type_of_filter=='domain':
         #log( domain_filter +'+' + to_filter)
         add_to_csv_setting('domain_filter',to_filter)
@@ -266,8 +253,6 @@ def prettify_reddit_query(subreddit_entry):
 def calculate_zoom_slide(img_w, img_h):
     screen_w = 1920
     screen_h = 1080
-
-    startx=0
 
     #determine how much xbmc would shrink the image to fit screen
 
@@ -332,7 +317,6 @@ def parse_filename_and_ext_from_url(url=""):
                 ext=re.split("\?|#",ext)[0]
 
             return filename, ext.lower()
-
     except:
         pass
 
@@ -541,7 +525,7 @@ def clean_str(dict_obj, keys_list, default=''):
                 continue
         return unescape(dd.encode('utf-8'))
     except AttributeError as e:
-        log( str(e) )
+        log( 'clean_str:' + str(e) )
         return default
 
 

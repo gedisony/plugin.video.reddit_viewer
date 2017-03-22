@@ -84,7 +84,7 @@ def reddit_get_refresh_token(url, name, type_):
     if reddit_refresh_token and code:
         #log("  user already have refresh token:"+reddit_refresh_token)
         dialog = xbmcgui.Dialog()
-        if dialog.yesno(translation(32411), translation(32412), translation(32413), translation(32414) ):
+        if dialog.yesno(translation(30411), translation(30412), translation(30413), translation(30414) ):
             pass
         else:
             return
@@ -353,7 +353,7 @@ def subreddit_alias( subreddit_entry_from_file ):
 
     #get the viewID
     try:viewid= subreddit[subreddit.index("(") + 1:subreddit.rindex(")")]
-    except:viewid=""
+    except (ValueError,TypeError):viewid=""
     #log( "viewID=%s for r/%s" %( viewid, subreddit ) )
 
     if viewid:
@@ -369,7 +369,6 @@ def subreddit_alias( subreddit_entry_from_file ):
         alias = subreddit
 
     return subreddit, alias, viewid
-
 
 def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters="", domain="" ):
     #skip_site_filters -not adding a search query makes your results more like the reddit website
@@ -410,7 +409,6 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
                 #default to front page instead of r/all
                 #url+= "/r/all"
 
-        site_filter=""
         if search_string:
             search_string = urllib.unquote_plus(search_string)
             url+= "/search.json?q=" + urllib.quote_plus(search_string)
@@ -425,18 +423,20 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
     #log("assemble_reddit_filter_string="+url)
     return url
 
-
 def has_multiple_subreddits(content_data_children):
     #check if content['data']['children'] returned by reddit contains a single subreddit or not
     s=""
     #compare the first subreddit with the rest of the list.
     for entry in content_data_children:
-        if s:
-            if s!=entry['data']['subreddit'].encode('utf-8'):
-                #log("  multiple subreddit")
-                return True
-        else:
-            s=entry['data']['subreddit'].encode('utf-8')
+        try:
+            if s:
+                if s!=entry['data']['subreddit'].encode('utf-8'):
+                    #log("  multiple subreddit")
+                    return True
+            else:
+                s=entry['data']['subreddit'].encode('utf-8')
+        except KeyError:
+            continue
 
     #log("  single subreddit")
     return False
@@ -454,7 +454,7 @@ def collect_thumbs( entry ):
            ]
         #log('  got 1')
         dictList.append(dict(zip(keys, e)))
-    except Exception as e:
+    except (ValueError,TypeError,AttributeError):
         #log( "zz   " + str(e) )
         pass
 
@@ -465,7 +465,8 @@ def collect_thumbs( entry ):
            ]
         #log('  got 2')
         dictList.append(dict(zip(keys, e)))
-    except: pass
+    except(ValueError,TypeError,AttributeError):
+        pass
 
     try:
         e=[ entry['data']['thumbnail'].encode('utf-8')        #thumbnail is always in 140px wide (?)
@@ -474,27 +475,26 @@ def collect_thumbs( entry ):
            ]
         #log('  got 3')
         dictList.append(dict(zip(keys, e)))
-    except:
+    except (ValueError,TypeError,AttributeError):
         pass
     #log( json.dumps(dictList, indent=4)  )
     #log( str(dictList)  )
     return
 
-def determine_if_video_media_from_reddit_json( entry ):
+def determine_if_video_media_from_reddit_json( data ):
+    from utils import clean_str
     #reads the reddit json and determines if link is a video
     is_a_video=False
 
-    try:
-        media_url = entry['data']['media']['oembed']['url']   #+'"'
-    except:
-        media_url = entry['data']['url']   #+'"'
-
+    media_url=clean_str(data,['media','oembed','url'],'')
+    if media_url=='':
+        media_url=clean_str(data,['url'])
 
     # also check  "post_hint" : "rich:video"
 
     media_url=media_url.split('?')[0] #get rid of the query string
     try:
-        zzz = entry['data']['media']['oembed']['type']
+        zzz = data['media']['oembed']['type']
         #log("    zzz"+str(idx)+"="+str(zzz))
         if zzz == None:   #usually, entry['data']['media'] is null for not videos but it is also null for gifv especially nsfw
             if ".gifv" in media_url.lower():  #special case for imgur
@@ -505,7 +505,7 @@ def determine_if_video_media_from_reddit_json( entry ):
             is_a_video=True
         else:
             is_a_video=False
-    except:
+    except (KeyError,TypeError,AttributeError):
         is_a_video=False
 
     return is_a_video

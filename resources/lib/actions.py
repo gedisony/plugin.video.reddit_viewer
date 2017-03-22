@@ -646,7 +646,6 @@ def playYTDLVideoOLD(url, name, type_):
 def parse_url_and_play(url, name, type_):
     from domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
     #from actions import viewImage
-    isFolder=False
 
     log('parse_url_and_play url='+url)
     #log('pluginhandle='+str(pluginhandle) )

@@ -3159,10 +3159,11 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
             isFolder=False
             DirectoryItem_url=ld.playable_url
         else:
+            #sometimes we pass the title of the post on &name=. need to encode('utf-8') here otherwise we get a keyError
             DirectoryItem_url=sys.argv[0]\
             +"?url="+ urllib.quote_plus(ld.playable_url) \
             +"&mode="+urllib.quote_plus(ld.link_action) \
-            +"&name="+urllib.quote_plus(arg_name) \
+            +"&name="+urllib.quote_plus(arg_name.encode('utf-8')) \
             +"&type="+urllib.quote_plus(arg_type)
     else:
         if addon.getSetting("hide_undetermined") == "true": return
@@ -3176,7 +3177,7 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
         isFolder=False                 #isFolder=True avoids the WARNING: XFILE::CFileFactory::CreateLoader /  ERROR: InputStream: Error opening, ...
         DirectoryItem_url=sys.argv[0]\
         +"?url="+ urllib.quote_plus(url) \
-        +"&name="+urllib.quote_plus(arg_name) \
+        +"&name="+urllib.quote_plus(arg_name.encode('utf-8')) \
         +"&mode=playYTDLVideo"
 
     return DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix

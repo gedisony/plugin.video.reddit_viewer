@@ -455,6 +455,22 @@ msgctxt "#30410"
 msgid "[Click here to revoke the Refresh Token]"
 msgstr ""
 
+msgctxt "#30411"
+msgid "Replace reddit refresh token"
+msgstr ""
+
+msgctxt "#30412"
+msgid "You already have a refresh token."
+msgstr ""
+
+msgctxt "#30413"
+msgid "You only need to get this once."
+msgstr ""
+
+msgctxt "#30414"
+msgid "Are you sure you want to replace it?"
+msgstr ""
+
 #settings category. - customize context menu entries. strings here pair with strings in #30050, #30051, #30052...
 msgctxt "#30500"
 msgid "Context menu"
