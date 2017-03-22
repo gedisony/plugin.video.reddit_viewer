@@ -671,8 +671,7 @@ def listLinksInComment(url, name, type):
 
 harvest=[]
 def r_linkHunter(json_node,d=0):
-    #from resources.domains import url_is_supported
-    from utils import unescape
+    from utils import clean_str
     #recursive function to harvest stuff from the reddit comments json reply
     prog = re.compile('<a href=[\'"]?([^\'" >]+)[\'"]>(.*?)</a>')
     for e in json_node:
@@ -680,31 +679,24 @@ def r_linkHunter(json_node,d=0):
         link_http=""
         author=""
         created_utc=""
+        e_data=e.get('data')
+        score=e_data.get('score',0)
         if e['kind']=='t1':     #'t1' for comments   'more' for more comments (not supported)
-
             #log("replyid:"+str(d)+" "+e['data']['id'])
-            body=e['data']['body'].encode('utf-8')
+            #body=e['data']['body'].encode('utf-8')
 
             #log("reply:"+str(d)+" "+body.replace('\n','')[0:80])
+            try: replies=e_data.get('replies')['data']['children']
+            except (AttributeError,TypeError): replies=""
 
-            try: replies=e['data']['replies']['data']['children']
-            except: replies=""
-
-            try: score=e['data']['score']
-            except: score=0
-
-            try: post_text=unescape( e['data']['body'].encode('utf-8') )
-            except: post_text=""
+            post_text=clean_str(e_data,['body'])
             post_text=post_text.replace("\n\n","\n")
 
-            try: post_html=unescape( e['data']['body_html'].encode('utf-8') )
-            except: post_html=""
+            post_html=clean_str(e_data,['body_html'])
 
-            try: created_utc=e['data']['created_utc']
-            except: created_utc=""
+            created_utc=e_data.get('created_utc','')
 
-            try: author=e['data']['author'].encode('utf-8')
-            except: author=""
+            author=clean_str(e_data,['author'])
 
             #i initially tried to search for [link description](https:www.yhotuve.com/...) in the post_text but some posts do not follow this convention
             #prog = re.compile('\[(.*?)\]\((https?:\/\/.*?)\)')
@@ -716,8 +708,6 @@ def r_linkHunter(json_node,d=0):
                 harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )
 
                 for link_http,link_desc in result:
-                    #if url_is_supported(link_http) :
-                        #store an entry for every supported link.
                     harvest.append((score, link_desc, link_http, link_desc, post_html, d, "t1",author,created_utc,)   )
             else:
                 harvest.append((score, link_desc, link_http, post_text, post_html, d, "t1",author,created_utc,)   )
@@ -727,16 +717,8 @@ def r_linkHunter(json_node,d=0):
             d-=1
 
         if e['kind']=='t3':     #'t3' for post text (a description of the post)
-            #log(str(e))
-            #log("replyid:"+str(d)+" "+e['data']['id'])
-            try: score=e['data']['score']
-            except: score=0
-
-            try: self_text=unescape( e['data']['selftext'].encode('utf-8') )
-            except: self_text=""
-
-            try: self_text_html=unescape( e['data']['selftext_html'].encode('utf-8') )
-            except: self_text_html=""
+            self_text=clean_str(e_data,['selftext'])
+            self_text_html=clean_str(e_data,['selftext_html'])
 
             result = prog.findall(self_text_html)
             if len(result) > 0 :
