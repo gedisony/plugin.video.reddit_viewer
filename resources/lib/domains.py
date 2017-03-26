@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import urllib
-import urllib2
 import sys
 import re
 import requests
@@ -381,14 +380,13 @@ class ClassImgur(sitesBase):
         #log("    imgur:check if album- request_url---"+request_url )
         r = self.requests_get(request_url, headers=ClassImgur.request_header)
         #log(r.text)
-        j = r.json()    #j = json.loads(r.text)
+        j = r.json()
         #log(" is_album=" + str(j['data']['is_album'])    )
         #log(" in_gallery=" + str(j['data']['in_gallery'])    )
-
         #we already incurred the bandwidth asking imgur about album info. might as well use the data provided
         jdata=j.get('data')
         if jdata:
-            self.is_an_album_type= jdata.get('type')   #"image/png"
+            self.is_an_album_type= jdata.get('type')   #"image/png" , "image\/gif"
             self.is_an_album_link= jdata.get('link')
 
         #this link (https://imgur.com/gallery/VNPcuYP) returned an extra 'h' on j['data']['link']  ("http:\/\/i.imgur.com\/VNPcuYPh.gif")
@@ -397,20 +395,25 @@ class ClassImgur(sitesBase):
                 self.is_an_album_link= jdata.get('mp4')
 
         self.images_count=jdata.get('images_count')
-        #log('    imgur album images count ' + repr(self.images_count))
-        if self.images_count == 1:
-            #if there is an mp4 tag in the json, use that value.
-            #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)
-            #     so renaming by changing the .gif to .mp4 wouldn't work.
-            #        credit to mac1202 2/26/2017 for finding this bug.
-            if jdata.get('images')[0].get('mp4'):
-                self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
+        if self.images_count:
+            #log('    imgur album images count ' + repr(self.images_count))
+            if self.images_count == 1:
+                #if there is an mp4 tag in the json, use that value.
+                #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)
+                #     so renaming by changing the .gif to .mp4 wouldn't work.
+                #        credit to mac1202 2/26/2017 for finding this bug.
+                if jdata.get('images')[0].get('mp4'):
+                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
+                else:
+                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
+                #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
+                return False
             else:
-                self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
-            #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
-            return False
+                return True
         else:
-            return True
+            #sometimes we receive a single image data (no images_count)  is_album=false
+            self.image_url_of_a_single_image_album=self.is_an_album_link
+            return False
 
         #sometimes 'is_album' key is not returned, so we also check for 'in_gallery'
 #            if 'is_album' in j['data']:
@@ -420,9 +423,8 @@ class ClassImgur(sitesBase):
 #                try:in_gallery_key=jdata.get('in_gallery')
 #                except: in_gallery_key=False
 #                return in_gallery_key
-
-        #else: #status code not 200... what to do...
-        #    return True  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
+#        #else: #status code not 200... what to do...
+#        #    return True  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
 
     def ask_imgur_for_link(self, media_url):
         #sometimes, imgur links are posted without the extension(gif,jpg etc.). we ask imgur for it.
@@ -545,11 +547,15 @@ class ClassImgur(sitesBase):
             imgs=j.get('data')
 
         for _, entry in enumerate(imgs):
-            link_type =entry.get('type')         #image/jpeg
+            link_type=entry.get('type')         #image/jpeg
             if link_type=='image/gif':
                 media_url=entry.get('mp4')
+                media_type=self.TYPE_VIDEO
+                isPlayable='true'
             else:
                 media_url=entry.get('link')
+                media_type=self.TYPE_IMAGE
+                isPlayable='false'
             width    =entry.get('width')
             height   =entry.get('height')
             title    =entry.get('title')
@@ -557,11 +563,13 @@ class ClassImgur(sitesBase):
             media_thumb_url=self.get_thumb_url(media_url)
 
             images.append( {'title': title,
+                            'type': media_type,
                             'description': descrip,
                             'url': media_url,
                             'thumb': media_thumb_url,
                             'width': width,
                             'height': height,
+                            'isPlayable':isPlayable,
                             }  )
         return images
 
@@ -2197,7 +2205,8 @@ class ClassImgbox(sitesBase):
             return self.thumb_url
 
 class ClassReddit(sitesBase):
-    regex='^\/r\/(.+)(?:\/|$)|(reddit.com)'
+    #matching /r/  /u/   and reddit.com
+    regex='^\/r\/(.+)(?:\/|$)|(^\/u\/)(.+)(?:\/|$)|(reddit\.com)'
 
     def get_playable_url(self, link_url, is_probably_a_video):
         from reddit import assemble_reddit_filter_string
@@ -2216,10 +2225,16 @@ class ClassReddit(sitesBase):
                 self.link_action='listSubReddit'
                 reddit_url=assemble_reddit_filter_string('',self.video_id)
                 return reddit_url, self.media_type
-
+            if link_url.startswith('/u/'):
+                author=link_url.split('/u/')[1]
+                self.link_action='listSubReddit'
+                #show links submitted by author
+                reddit_url=assemble_reddit_filter_string("","/user/"+author+'/submitted')
+                return reddit_url, self.media_type
         return '',''
 
     def get_video_id(self):
+        #returns subreddit name
         self.video_id=''
         match = re.findall( '^\/?r\/(.+?)(?:\/|$)|https?://.+?\.reddit\.com\/r\/(.+?)(?:\/|$)' , self.media_url)
         #returns an array of tuples

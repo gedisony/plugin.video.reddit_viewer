@@ -375,8 +375,8 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         il_description = h+title+"[CR]" + "[COLOR grey]" + description + "[/COLOR]"
 
     if TitleAddtlInfo:     #put the additional info on the description if setting set to single line titles
-        log( repr(title_line2 ))
-        post_title=n+title+"[CR]"+title_line2
+        #log( repr(title_line2 ))
+        post_title=n+title+"[CR][LIGHT]"+title_line2+'[/LIGHT]'
     else:
         post_title=n+title
         il_description=title_line2+"[CR]"+il_description
