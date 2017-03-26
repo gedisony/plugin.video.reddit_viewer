@@ -12,16 +12,16 @@ import sys
 
 from urllib import urlencode
 
-#from default import addonID, subredditsFile, subredditsPickle, reddit_userAgent, REQUEST_TIMEOUT
+addon         = xbmcaddon.Addon()
+addonID       = addon.getAddonInfo('id')  #plugin.video.reddit_viewer
 
 DATEFORMAT = xbmc.getRegion('dateshort')
 TIMEFORMAT = xbmc.getRegion('meridiem')
 
-addon         = xbmcaddon.Addon()
 #addon_path    = addon.getAddonInfo('path')      #where the addon resides
 #profile_path  = addon.getAddonInfo('profile')   #where user settings are stored
 pluginhandle  = int(sys.argv[1])
-addonID       = addon.getAddonInfo('id')  #plugin.video.reddit_viewer
+
 #from reddit import subredditsFile, subredditsPickle
 
 #used to filter out image links if content_type is video (when this addon is called from pictures)
@@ -50,7 +50,9 @@ def xbmc_busy(busy=True):
         xbmc.executebuiltin( "Dialog.Close(busydialog)" )
 
 def log(message, level=xbmc.LOGNOTICE):
-    xbmc.log("reddit_viewer:"+message, level=level)
+    import threading
+    t=threading.currentThread()
+    xbmc.log("reddit_viewer {0}:{1}".format(t.name, message), level=level)
 
 def translation(id_):
     return addon.getLocalizedString(id_).encode('utf-8')
@@ -189,13 +191,12 @@ def add_to_csv_setting(setting_id, string_to_add):
         s=colored_subreddit( string_to_add, 'tan',False )
     elif setting_id=='subreddit_filter':
         s=colored_subreddit( string_to_add )
-
-    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( s, translation(30020)+' '+setting_id.replace('_',' ') ) ) #translation(30020)=Added to
+    xbmc_notify(s, translation(30020)+' '+setting_id.replace('_',' ')) #translation(30020)=Added to
+    #xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( s, translation(32020)+' '+setting_id.replace('_',' ') ) ) #translation(30020)=Added to
 
 def post_is_filtered_out( data ):
     from default import hide_nsfw, domain_filter, subreddit_filter
 
-    #domain=entry['data']['domain'].encode('utf-8')
     domain=clean_str(data,['domain'])
     if post_excluded_from( domain_filter, domain ):
         log( '  POST is excluded by domain_filter [%s]' %domain )
@@ -476,6 +477,7 @@ def markdown_to_bbcode(s):
 def convert_date(stamp):
     #http://forum.kodi.tv/showthread.php?tid=221119
     #used in settings after getting reddit token
+    import time
 
     date_time = time.localtime(stamp)
     if DATEFORMAT[1] == 'd':
@@ -547,6 +549,12 @@ def hassamealphabetic(*args):
 def colored_subreddit(subreddit,color='cadetblue', add_r=True):
     #return "[COLOR "+color+"]r/" + subreddit + "[/COLOR]"
     return "[COLOR %s]%s%s[/COLOR]" %(color,('r/' if add_r else ''),subreddit )
+
+def truncate(string, length, ellipse='...'):
+    return (string[:length] + ellipse) if len(string) > length else string
+
+def xbmc_notify(Line1, line2):
+    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( Line1, line2) )
 
 def open_web_browser(url,name,type):
     #http://forum.kodi.tv/showthread.php?tid=235733
@@ -653,11 +661,6 @@ def json_query(query, ret):
     except:
         return {}
 
-def xbmc_notify(Line1, line2):
-    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( Line1, line2)  )
-    
-#DATEFORMAT = xbmc.getRegion('dateshort')
-#TIMEFORMAT = xbmc.getRegion('meridiem')
 
 if __name__ == '__main__':
     pass

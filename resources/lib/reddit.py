@@ -35,7 +35,7 @@ def reddit_request( url, data=None ):
         req.add_header('Authorization','bearer '+ reddit_access_token )
 
     try:
-        page = urllib2.urlopen(req,data=data)
+        page = urllib2.urlopen(req,data=data, timeout=20)
         response=page.read();page.close()
         #log( response )
         return response
@@ -67,7 +67,8 @@ def reddit_request( url, data=None ):
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
         xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.reason, url)  )
         log( str(err.reason) )
-
+    except :
+        pass
 
 def reddit_get_refresh_token(url, name, type_):
     #this function gets a refresh_token from reddit and keep it in our addon. this refresh_token is used to get 1-hour access tokens.
@@ -264,7 +265,7 @@ def reddit_revoke_refresh_token(url, name, type_):
         log("  Revoking refresh token EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
 
 def reddit_save(api_method, post_id, type_):
-    #api_method either /api/save/  or /api/unsave/ 
+    #api_method either /api/save/  or /api/unsave/
     url=urlMain+api_method
     data = urllib.urlencode({'id'  : post_id })
 
@@ -314,7 +315,7 @@ def this_is_a_multireddit(subreddit):
     #subreddits and multihub are stored in the same file
     #i think we can get away with just testing for user/ to determine multihub
     subreddit=subreddit.lower()
-    return subreddit.startswith(('user/','/user/')) #user can enter multihub with or without the / in the beginning 
+    return subreddit.startswith(('user/','/user/')) #user can enter multihub with or without the / in the beginning
 
 def this_is_a_user_saved_list(subreddit):
     #user saved list looks like this "https://www.reddit.com/user/XXXXXXX/saved"  and saved as "/user/XXXXXXX/saved"  in out subreddits file
@@ -439,22 +440,19 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
     #log("assemble_reddit_filter_string="+url)
     return url
 
-def has_multiple_subreddits(content_data_children):
-    #check if content['data']['children'] returned by reddit contains a single subreddit or not
+def has_multiple(tag, content_data_children):
+    #combined has_multiple_domains, has_multiple_subreddit, has_multiple_author
+    #used to check if a returned .json from reddit is from a single subreddit, domain or author
     s=""
-    #compare the first subreddit with the rest of the list.
     for entry in content_data_children:
         try:
             if s:
-                if s!=entry['data']['subreddit'].encode('utf-8'):
-                    #log("  multiple subreddit")
+                if s!=entry['data'][tag]:
                     return True
             else:
-                s=entry['data']['subreddit'].encode('utf-8')
+                s=entry['data'][tag]
         except KeyError:
             continue
-
-    #log("  single subreddit")
     return False
 
 def collect_thumbs( entry ):

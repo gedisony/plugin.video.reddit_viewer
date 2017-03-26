@@ -286,4 +286,5 @@
  - copy over reddit.reader changes/cleanup
  3.3.2 (2017-03-21)
  - save/unsave posts on reddit account
-  
+ 3.3.3 (2017-03-26)
+ - use threads to parse each reddit post

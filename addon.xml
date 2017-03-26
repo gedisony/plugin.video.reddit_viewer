@@ -2,7 +2,7 @@
 <addon
 	id="plugin.video.reddit_viewer"
 	name="Reddit Viewer"
-	version="3.3.2"
+	version="3.3.3"
 	provider-name="gedisony">
 	<requires>
 		<import addon="xbmc.python"                     version="2.14.0"                />
@@ -26,6 +26,8 @@
 		<license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
 		<email>gediso+ny at gmail dot com</email>
 		<news>
+v3.3.3  (2017-3-26)
+    - Multi-threaded parsing of reddit posts
 v3.3.2  (2017-3-22)
     - Save/Unsave posts to your reddit account
 v3.2.0  (2017-2-25)

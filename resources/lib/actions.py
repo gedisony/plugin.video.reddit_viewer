@@ -7,7 +7,7 @@ import sys
 import shutil
 
 from default import subredditsFile, addon, addon_path, profile_path, ytdl_core_path, pluginhandle, subredditsPickle
-from utils import xbmc_busy, log, translation
+from utils import xbmc_busy, log, translation, xbmc_notify
 import threading
 
 def addSubreddit(subreddit, name, type_):
@@ -26,7 +26,7 @@ def addSubreddit(subreddit, name, type_):
                 fh.write(subreddit+'\n')
 
             get_subreddit_entry_info(subreddit)
-        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( colored_subreddit(subreddit), translation(30019)  ) )
+        xbmc_notify(colored_subreddit(subreddit), translation(30019))
     else:
         #dialog = xbmcgui.Dialog()
         #ok = dialog.ok('Add subreddit', 'Add a subreddit (videos)','or  Multiple subreddits (music+listentothis)','or  Multireddit (/user/.../m/video)')
@@ -404,7 +404,7 @@ def listAlbum(album_url, name, type_):
             return dictlist
 
         if not dictlist:
-            xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( translation(32200), translation(32055) )  )  #slideshow, no playable items
+            xbmc_notify(translation(32200),translation(32055)) #slideshow, no playable items
             return
 
         if addon.getSetting('use_slideshow_for_album') == 'true':
@@ -414,9 +414,9 @@ def listAlbum(album_url, name, type_):
 
 def playURLRVideo(url, name, type_):
     import urlresolver
-    from urlparse import urlparse
-    parsed_uri = urlparse( url )
-    domain = '{uri.netloc}'.format(uri=parsed_uri)
+    #from urlparse import urlparse
+    #parsed_uri = urlparse( url )
+    #domain = '{uri.netloc}'.format(uri=parsed_uri)
     #hmf = urlresolver.HostedMediaFile(url)
     try:
         media_url = urlresolver.resolve(url)
@@ -427,9 +427,9 @@ def playURLRVideo(url, name, type_):
             xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
         else:
             log( "  Can't URL Resolve:" + repr(url))
-            xbmc.executebuiltin('XBMC.Notification("%s", "%s (URLresolver" )'  %( translation(30192), domain )  )
+            xbmc_notify('URLresolver',translation(30192))
     except Exception as e:
-        xbmc.executebuiltin('XBMC.Notification("%s","%s (URLresolver)")' %(  str(e), domain )  )
+        xbmc_notify('URLresolver',str(e))
 
 def loopedPlayback(url, name, type_):
     #for gifs
@@ -448,7 +448,7 @@ def error_message(message, name, type_):
         sub_msg=name
     else:
         sub_msg=translation(30021) #Parsing error
-    xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( message, sub_msg  ) )
+    xbmc_notify(message,sub_msg)
 
 def playVideo(url, name, type_):
     if url :
@@ -460,17 +460,18 @@ def playVideo(url, name, type_):
         log("playVideo(url) url is blank")
 
 def playYTDLVideo(url, name, type_):
+    dialog_progress_title='Youtube_dl'  #.format(ytdl_get_version_info())
+    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
+    dialog_progress_YTDL.create(dialog_progress_title )
+    dialog_progress_YTDL.update(10,dialog_progress_title,translation(30024)  )
+
     from YoutubeDLWrapper import YoutubeDLWrapper, _selectVideoQuality
     import pprint
 
     pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     pl.clear()
 
-    dialog_progress_title='Youtube_dl'  #.format(ytdl_get_version_info())
-
-    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
-    dialog_progress_YTDL.create(dialog_progress_title )
-    dialog_progress_YTDL.update(10,dialog_progress_title,translation(30022)  )
+    dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
 
     #use YoutubeDLWrapper by ruuk to avoid  bad file error
     ytdl=YoutubeDLWrapper()
@@ -516,15 +517,16 @@ def playYTDLVideo(url, name, type_):
             li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
 
             #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
-            #    we need to use StartPercent. 
+            #    we need to use StartPercent.
             li.setProperty('StartPercent', str(StartPercent))
             xbmcplugin.setResolvedUrl(pluginhandle, True, li)
 
     except Exception as e:
+        ytdl_ver=dialog_progress_title+' v'+ytdl_get_version_info('local')
         err_msg=str(e)+';'  #ERROR: No video formats found; please report this issue on https://yt-dl.org/bug . Make sure you are using the latest vers....
         short_err=err_msg.split(';')[0]
         log( "playYTDLVideo Exception:" + str( sys.exc_info()[0]) + "  " + str(e) )
-        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( "Youtube_dl", short_err )  )
+        xbmc_notify(ytdl_ver, short_err)
 
         #try urlresolver
         log('   trying urlresolver...')
@@ -633,10 +635,10 @@ def playYTDLVideoOLD(url, name, type_):
                 xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
             else:
                 log('UrlResolver cannot get a playable url' )
-                xbmc.executebuiltin('XBMC.Notification("%s", "%s" )'  %( translation(30192), domain )  )
+                xbmc_notify(translation(30192), domain)
 
     except Exception as e:
-        xbmc.executebuiltin('XBMC.Notification("%s(YTDL)","%s")' %(  domain, str(e))  )
+        xbmc_notify("%s(YTDL)"% domain,str(e))
     finally:
         dialog_progress_YTDL.update(100,'YTDL' ) #not sure if necessary to set to 100 before closing dialogprogressbg
         dialog_progress_YTDL.close()

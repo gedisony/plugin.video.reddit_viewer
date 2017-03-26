@@ -5,9 +5,9 @@ import xbmcaddon
 import xbmcplugin
 import urllib
 import json
-
+import threading
 import re
-
+from Queue import Queue
 
 import os,sys
 
@@ -120,25 +120,17 @@ def index(url,name,type):
 
     xbmcplugin.endOfDirectory(pluginhandle)
 
+#global variables used for creating the context menu
+GCXM_hasmultiplesubreddit=False
+GCXM_hasmultipledomain=False
+GCXM_hasmultipleauthor=False
+GCXM_subreddit_key=''
+
 def listSubReddit(url, name, subreddit_key):
-    import datetime
-    from utils import strip_emoji, pretty_datediff, post_is_filtered_out, clean_str
-    from reddit import determine_if_video_media_from_reddit_json, ret_sub_icon, has_multiple_subreddits
-    #url=r'https://www.reddit.com/r/videos/search.json?q=nsfw:yes+site%3Ayoutu.be+OR+site%3Ayoutube.com+OR+site%3Avimeo.com+OR+site%3Aliveleak.com+OR+site%3Adailymotion.com+OR+site%3Agfycat.com&sort=relevance&restrict_sr=on&limit=5&t=week'
-    #url='https://www.reddit.com/search.json?q=site%3Adailymotion&restrict_sr=&sort=relevance&t=week'
-
-    show_listVideos_debug=True
-    credate = ""
-    is_a_video=False
-    title_line2=""
+    from utils import post_is_filtered_out
+    from reddit import has_multiple
+    global GCXM_hasmultiplesubreddit,GCXM_hasmultipledomain,GCXM_hasmultipleauthor,GCXM_subreddit_key
     log("listSubReddit subreddit=%s url=%s" %(subreddit_key,url) )
-    t_on = translation(30071)  #"on"
-    #t_pts = u"\U0001F4AC"  # translation(30072) #"cmnts"  comment bubble symbol. doesn't work
-    #t_pts = u"\U00002709"  # translation(30072)   envelope symbol
-    t_pts='c'
-
-    thumb_w=0
-    thumb_h=0
 
     currentUrl = url
     xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
@@ -163,31 +155,121 @@ def listSubReddit(url, name, subreddit_key):
     if autoplayAll:       addDir("[B]- "+translation(30016)+"[/B]", url, 'autoPlay', "", "ALL", info_label)
     if autoplayUnwatched: addDir("[B]- "+translation(30017)+"[/B]" , url, 'autoPlay', "", "UNWATCHED", info_label)
 
-    #7-15-2016  removed the "replace(..." statement below cause it was causing error
-    #content = json.loads(content.replace('\\"', '\''))
+    threads = []
+    q_liz = Queue()   #output queue (listitem)
+
     content = json.loads(content)
 
     #A modhash is a token that the reddit API requires to help prevent CSRF. Modhashes can be obtained via the /api/me.json call or in response data of listing endpoints.
     #The preferred way to send a modhash is to include an X-Modhash custom HTTP header with your requests.
     #Modhashes are not required when authenticated with OAuth.
-    modhash=content['data']['modhash']
+    #modhash=content['data']['modhash']
     #log( 'modhash='+repr(modhash) )
-    
     #log("query returned %d items " % len(content['data']['children']) )
     posts_count=len(content['data']['children'])
+    filtered_out_posts=0
 
-    hms = has_multiple_subreddits(content['data']['children'])
-
+    GCXM_hasmultiplesubreddit=has_multiple('subreddit', content['data']['children'])
+    GCXM_hasmultipledomain=has_multiple('domain', content['data']['children'])
+    GCXM_hasmultipleauthor=has_multiple('author', content['data']['children'])
+    GCXM_subreddit_key=subreddit_key
     for idx, entry in enumerate(content['data']['children']):
         try:
-            #on 3/21/2017 we're adding a new feature that lets users view their saved posts by entering /user/username/saved as their subreddit.
-            #  in addition to saved posts, users can also save comments. we need to handle it by checking for "kind"
-            kind=entry.get('kind')  #t1 for comments  t3 for posts
-            data=entry.get('data')
-            post_id=data.get('name')
-            if post_is_filtered_out( data ):
+            if post_is_filtered_out( entry.get('data') ):
+                filtered_out_posts+=1
                 continue
 
+            #have threads process each reddit post
+            t = threading.Thread(target=reddit_post_worker, args=(idx, entry,q_liz), name='#t%.2d'%idx)
+            threads.append(t)
+            t.start()
+
+        except Exception as e:
+            log(" EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
+            pass
+
+    #wait for all threads to finish before collecting the list items
+    for idx, t in enumerate(threads):
+        #log('    joining %s' %t.getName())
+        t.join(timeout=20)
+        loading_percentage=int((float(idx)/posts_count)*100)
+        dialog_progress.update( loading_percentage,dialog_progress_heading  )
+
+    xbmc_busy(False)
+
+    #compare the number of entries to the returned results
+    #log( "queue:%d entries:%d" %( q_liz.qsize() , len(content['data']['children'] ) ) )
+    if (q_liz.qsize()+filtered_out_posts) != len(content['data']['children']):
+        log('some threads did not return a listitem')
+
+    #liz is a tuple for addDirectoryItems
+    li=[ liz for idx,liz in sorted(q_liz.queue) ]  #list of (url, listitem[, isFolder]) as a tuple
+    #log(repr(li))
+
+    #empty the queue.
+    with q_liz.mutex:
+        q_liz.queue.clear()
+
+    xbmcplugin.addDirectoryItems(pluginhandle, li)
+
+    dialog_progress.update( 100,dialog_progress_heading  )
+    dialog_progress.close() #it is important to close xbmcgui.DialogProgressBG
+
+    try:
+        #this part makes sure that you load the next page instead of just the first
+        after=""
+        after = content['data']['after']
+        if "&after=" in currentUrl:
+            nextUrl = currentUrl[:currentUrl.find("&after=")]+"&after="+after
+        else:
+            nextUrl = currentUrl+"&after="+after
+
+        # plot shows up on estuary. etc. ( avoids the "No information available" message on description )
+        info_label={ "plot": translation(30004) + '[CR]' + page_title}
+        addDir(translation(30004), nextUrl, 'listSubReddit', "", subreddit_key,info_label)   #Next Page
+        #if show_listVideos_debug :log("NEXT PAGE="+nextUrl)
+    except:
+        pass
+
+    #the +'s got removed by url conversion
+    subreddit_key=subreddit_key.replace(' ','+')
+    viewID=WINDOW.getProperty( "viewid-"+subreddit_key )
+    #log("  custom viewid %s for %s " %(viewID,subreddit_key) )
+
+    if viewID:
+        log("  custom viewid %s for %s " %(viewID,subreddit_key) )
+        xbmc.executebuiltin('Container.SetViewMode(%s)' %viewID )
+    else:
+        if forceViewMode:
+            xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
+
+    xbmcplugin.endOfDirectory(handle=pluginhandle,
+                              succeeded=True,
+                              updateListing=False,   #setting this to True causes the ".." entry to quit the plugin
+                              cacheToDisc=True)
+
+def reddit_post_worker(idx, entry, q_out):
+    import datetime
+    from utils import strip_emoji, pretty_datediff, clean_str
+    from reddit import determine_if_video_media_from_reddit_json, ret_sub_icon
+
+    show_listVideos_debug=True
+    credate = ""
+    is_a_video=False
+    title_line2=""
+    t_on = translation(30071)  #"on"
+    #t_pts = u"\U0001F4AC"  # translation(30072) #"cmnts"  comment bubble symbol. doesn't work
+    #t_pts = u"\U00002709"  # translation(30072)   envelope symbol
+    t_pts='c'
+    thumb_w=0; thumb_h=0
+
+    try:
+        #on 3/21/2017 we're adding a new feature that lets users view their saved posts by entering /user/username/saved as their subreddit.
+        #  in addition to saved posts, users can also save comments. we need to handle it by checking for "kind"
+        kind=entry.get('kind')  #t1 for comments  t3 for posts
+        data=entry.get('data')
+        post_id=data.get('name')
+        if data:
             if kind=='t3':
                 title = clean_str(data,['title'])
                 description=clean_str(data,['media','oembed','description'])
@@ -287,10 +369,7 @@ def listSubReddit(url, name, subreddit_key):
             #log("    VIDEOID"+str(idx)+"="+videoID)
             #log( "["+description+"]1["+ str(date)+"]2["+ str( count)+"]3["+ str( commentsUrl)+"]4["+ str( subreddit)+"]5["+ video_url +"]6["+ str( over_18))+"]"
 
-            loading_percentage=int((float(idx)/posts_count)*100)
-            dialog_progress.update( loading_percentage,dialog_progress_heading, title  )
-
-            addLink(title=title,
+            tuple_for_addDirectoryItems=addLink(title=title,
                     title_line2=title_line2,
                     iconimage=thumb,
                     previewimage=preview,
@@ -307,54 +386,15 @@ def listSubReddit(url, name, subreddit_key):
                     posted_by=author,
                     num_comments=num_comments,
                     post_index=idx,
-                    post_total=posts_count,
-                    many_subreddit=hms,
-                    post_id=post_id,
-                    subreddit_key=subreddit_key)
-        except Exception as e:
-            log(" EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
-            pass
+                    post_id=post_id
+                    )
 
-    #log("**reddit query returned "+ str(idx) +" items")
-    #window = xbmcgui.Window(xbmcgui.getCurrentWindowId())
-    #log("focusid:"+str(window.getFocusId()))
-    dialog_progress.update( 100,dialog_progress_heading  )
-    dialog_progress.close() #it is important to close xbmcgui.DialogProgressBG
+            q_out.put( [idx, tuple_for_addDirectoryItems] )
+    except Exception as e:
+        log( '  #reddit_post_worker EXCEPTION:' + repr(sys.exc_info()) +'--'+ str(e) )
 
-    try:
-        #this part makes sure that you load the next page instead of just the first
-        after=""
-        after = content['data']['after']
-        if "&after=" in currentUrl:
-            nextUrl = currentUrl[:currentUrl.find("&after=")]+"&after="+after
-        else:
-            nextUrl = currentUrl+"&after="+after
 
-        # plot shows up on estuary. etc. ( avoids the "No information available" message on description )
-        info_label={ "plot": translation(30004) + '[CR]' + page_title}
-        addDir(translation(30004), nextUrl, 'listSubReddit', "", subreddit_key,info_label)   #Next Page
-        #if show_listVideos_debug :log("NEXT PAGE="+nextUrl)
-    except:
-        pass
-
-    #the +'s got removed by url conversion
-    subreddit_key=subreddit_key.replace(' ','+')
-    viewID=WINDOW.getProperty( "viewid-"+subreddit_key )
-    #log("  custom viewid %s for %s " %(viewID,subreddit_key) )
-
-    if viewID:
-        log("  custom viewid %s for %s " %(viewID,subreddit_key) )
-        xbmc.executebuiltin('Container.SetViewMode(%s)' %viewID )
-    else:
-        if forceViewMode:
-            xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
-
-    xbmcplugin.endOfDirectory(handle=pluginhandle,
-                              succeeded=True,
-                              updateListing=False,   #setting this to True causes the ".." entry to quit the plugin
-                              cacheToDisc=True)
-
-def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_total=1,many_subreddit=False,post_id='',subreddit_key='' ):
+def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_id=''):
     from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
     post_title=title
@@ -440,16 +480,18 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     liz.setInfo('video', {"title": liz.getLabel(), } )
 
     liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
-    entries = build_context_menu_entries(num_comments, commentsUrl, many_subreddit, subreddit, domain, media_url, post_id,subreddit_key) #entries for listbox for when you type 'c' or rt-click
+    entries = build_context_menu_entries(num_comments, commentsUrl, subreddit, domain, media_url, post_id) #entries for listbox for when you type 'c' or rt-click
 
     liz.addContextMenuItems(entries)
+    #liz.setProperty('isFolder', isFolder)
+    #liz.setPath(DirectoryItem_url)
     #log( 'playcount=' + repr(getPlayCount(DirectoryItem_url)))
     #log( 'DirectoryItem_url=' + DirectoryItem_url)
-    xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
+    #xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, listitem=liz, isFolder=isFolder, totalItems=post_total)
 
-    return
+    return (DirectoryItem_url,liz,isFolder)  #tuple for addDirectoryItems
 
-def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subreddit, domain, link_url, post_id,subreddit_key):
+def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link_url, post_id):
     from reddit import assemble_reddit_filter_string, subreddit_in_favorites, this_is_a_user_saved_list
     from utils import colored_subreddit
 
@@ -486,7 +528,7 @@ def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subredd
             entries.append( ( translation(30053) ,  #No comments
                           "xbmc.executebuiltin('Action(Close)')" ) )
 
-    if many_subreddit and cxm_show_go_to:
+    if GCXM_hasmultiplesubreddit and cxm_show_go_to:
         entries.append( ( translation(30051)+" %s" %colored_subreddit_full ,
                           "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
 
@@ -512,7 +554,7 @@ def build_context_menu_entries(num_comments,commentsUrl, many_subreddit, subredd
     #reddit_refresh_token=addon.getSetting("reddit_refresh_token")
     from reddit import reddit_refresh_token
     if reddit_refresh_token and cxm_show_reddit_save:
-        if this_is_a_user_saved_list(subreddit_key):
+        if this_is_a_user_saved_list(GCXM_subreddit_key):
             #only show the unsave option if viewing /user/xxxx/saved
             entries.append( ( translation(30059) ,
                                   "XBMC.RunPlugin(%s?mode=reddit_save&url=%s&name=%s)" % ( sys.argv[0], '/api/unsave/', post_id ) ) )
