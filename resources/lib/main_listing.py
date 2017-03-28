@@ -127,6 +127,7 @@ GCXM_hasmultipleauthor=False
 GCXM_subreddit_key=''
 
 def listSubReddit(url, name, subreddit_key):
+    from guis import progressBG
     from utils import post_is_filtered_out
     from reddit import has_multiple
     global GCXM_hasmultiplesubreddit,GCXM_hasmultipledomain,GCXM_hasmultipleauthor,GCXM_subreddit_key
@@ -135,15 +136,14 @@ def listSubReddit(url, name, subreddit_key):
     currentUrl = url
     xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
 
-    dialog_progress = xbmcgui.DialogProgressBG()
-    dialog_progress_heading='Loading'
-    dialog_progress.create(dialog_progress_heading )
-    dialog_progress.update(0,dialog_progress_heading, subreddit_key  )
+    loading_indicator=progressBG('Loading...')
+    loading_indicator.update(8,'Retrieving '+subreddit_key)
 
     content = reddit_request(url)
+    loading_indicator.update(10,subreddit_key  )
 
     if not content:
-        dialog_progress.close() #it is important to close xbmcgui.DialogProgressBG
+        loading_indicator.end() #it is important to close xbmcgui.DialogProgressBG
         return
 
     page_title="[COLOR cadetblue]%s[/COLOR]" %subreddit_key
@@ -188,18 +188,31 @@ def listSubReddit(url, name, subreddit_key):
             log(" EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
             pass
 
+    #check the queue to determine progress
+    break_counter=0 #to avoid infinite loop
+    expected_listitems=(posts_count-filtered_out_posts)
+    loading_indicator.set_tick_total(expected_listitems)
+    last_queue_size=0
+    while q_liz.qsize() < expected_listitems:
+        if break_counter>=1000:break
+        else:break_counter+=1
+        #each change in the queue size gets a tick on our progress track
+        if last_queue_size < q_liz.qsize():
+            items_added=q_liz.qsize()-last_queue_size
+            loading_indicator.tick(items_added)
+        last_queue_size=q_liz.qsize()
+        xbmc.sleep(100)
+
     #wait for all threads to finish before collecting the list items
     for idx, t in enumerate(threads):
         #log('    joining %s' %t.getName())
         t.join(timeout=20)
-        loading_percentage=int((float(idx)/posts_count)*100)
-        dialog_progress.update( loading_percentage,dialog_progress_heading  )
 
     xbmc_busy(False)
 
     #compare the number of entries to the returned results
     #log( "queue:%d entries:%d" %( q_liz.qsize() , len(content['data']['children'] ) ) )
-    if (q_liz.qsize()+filtered_out_posts) != len(content['data']['children']):
+    if q_liz.qsize() != expected_listitems:
         log('some threads did not return a listitem')
 
     #liz is a tuple for addDirectoryItems
@@ -212,8 +225,7 @@ def listSubReddit(url, name, subreddit_key):
 
     xbmcplugin.addDirectoryItems(pluginhandle, li)
 
-    dialog_progress.update( 100,dialog_progress_heading  )
-    dialog_progress.close() #it is important to close xbmcgui.DialogProgressBG
+    loading_indicator.end() #it is important to close xbmcgui.DialogProgressBG
 
     try:
         #this part makes sure that you load the next page instead of just the first

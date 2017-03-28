@@ -556,3 +556,42 @@ def log(message, level=xbmc.LOGNOTICE):
     xbmc.log("reddit_viewer GUI:"+message, level=level)
 
 
+class progressBG( xbmcgui.DialogProgressBG ):
+    progress=0.00
+    heading='Loading...'
+    tick_increment=1.00
+    def __init__(self,heading):
+        xbmcgui.DialogProgressBG.__init__(self)
+        self.heading=heading
+        xbmcgui.DialogProgressBG.create(self, self.heading)
+
+    def update(self, progress, message=None):
+        if self.progress>=100:
+            self.progress=100
+        else:
+            self.progress+=progress
+
+        if message:
+            super(progressBG, self).update( int(self.progress), self.heading, message )
+        else:
+            super(progressBG, self).update( int(self.progress), self.heading )
+
+    def set_tick_total(self,tick_total):
+        self.tick_total=tick_total
+        remaining=100-self.progress
+        self.tick_increment=float(remaining)/tick_total
+        #log('xxxxremaining['+repr(remaining) +']xxxxtick_total['+repr(tick_total)+']xxxxincrement['+repr(self.tick_increment))+']'
+
+    def tick(self,how_many, message=None):
+        #increment remaining loading percentage by 1 (sort of)
+        self.update(self.tick_increment*how_many, message)
+
+    def end(self):
+        super(progressBG, self).update( 100 )
+        super(progressBG, self).close() #it is important to close xbmcgui.DialogProgressBG
+
+    def getProgress(self):
+        return self.progress
+
+if __name__ == '__main__':
+    pass
