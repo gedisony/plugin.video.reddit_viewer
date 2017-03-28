@@ -378,8 +378,15 @@ class ClassImgur(sitesBase):
                 return False
 
         #log("    imgur:check if album- request_url---"+request_url )
-        r = self.requests_get(request_url, headers=ClassImgur.request_header)
-        #log(r.text)
+        try:
+            r = self.requests_get(request_url, headers=ClassImgur.request_header)
+        except requests.exceptions.HTTPError:
+            #http://imgur.com/gallery/Ji0IWhG this link has /gallery/ but returns 404 if asked as gallery
+            request_url="https://api.imgur.com/3/image/"+gallery_name 
+            log('      Trying a different query:'+request_url)
+            r = self.requests_get(request_url, headers=ClassImgur.request_header)
+
+        #if 'Ji0I' in media_url: log(r.text)
         j = r.json()
         #log(" is_album=" + str(j['data']['is_album'])    )
         #log(" in_gallery=" + str(j['data']['in_gallery'])    )
