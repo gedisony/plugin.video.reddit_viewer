@@ -15,9 +15,6 @@ reddit_refresh_token =addon.getSetting("reddit_refresh_token")
 reddit_access_token  =addon.getSetting("reddit_access_token") #1hour token
 
 def reddit_request( url, data=None ):
-    #this function replaces     content = opener.open(url).read()
-    #  for calls to reddit
-
     #if there is a refresh_token, we use oauth.reddit.com instead of www.reddit.com
     if reddit_refresh_token:
         url=url.replace('www.reddit.com','oauth.reddit.com' )
@@ -37,7 +34,6 @@ def reddit_request( url, data=None ):
     try:
         page = urllib2.urlopen(req,data=data, timeout=20)
         response=page.read();page.close()
-        #log( response )
         return response
 
     except urllib2.HTTPError, err:
@@ -47,7 +43,6 @@ def reddit_request( url, data=None ):
                 log("      Success: new access token "+ reddit_access_token)
                 req.add_header('Authorization','bearer '+ reddit_access_token )
                 try:
-
                     log("      2nd attempt:"+ url)
                     page = urllib2.urlopen(req)   #it has to be https:// not http://
                     response=page.read();page.close()
@@ -61,12 +56,9 @@ def reddit_request( url, data=None ):
             else:
                 log( "*** failed to get new access token - don't know what to do " )
 
-
-        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
-        log( err.reason )
+        xbmc_notify("%s %s" %( err.code, err.msg), url)
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
-        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.reason, url)  )
-        log( str(err.reason) )
+        xbmc_notify(err.reason, url)
     except :
         pass
 
@@ -110,7 +102,6 @@ def reddit_get_refresh_token(url, name, type_):
         response=page.read();page.close()
         log( response )
 
-        #response='{"access_token": "xmOMpbJc9RWqjPS46FPcgyD_CKc", "token_type": "bearer", "expires_in": 3600, "refresh_token": "56706164-ZZiEqtAhahg9BkpINvrBPQJhZL4", "scope": "identity read"}'
         status=reddit_set_addon_setting_from_response(response)
 
         if status=='ok':
@@ -139,20 +130,18 @@ def reddit_get_refresh_token(url, name, type_):
 #         response=page.read();page.close()
 
     except urllib2.HTTPError, err:
-        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( err.code, err.msg)  )
-        log( err.reason )
+        xbmc_notify(err.code, err.msg)
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
-        log( err.reason )
+        xbmc_notify('get_refresh_token',err.reason)
 
 def reddit_get_access_token(url="", name="", type_=""):
     try:
         log( "Requesting a reddit 1-hour token" )
-
         req = urllib2.Request('https://www.reddit.com/api/v1/access_token')
 
         #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
         data = urllib.urlencode({'grant_type'    : 'refresh_token'
-                                ,'refresh_token' : reddit_refresh_token })                    #'woX9CDSuw7XBg1MiDUnTXXQd0e4'
+                                ,'refresh_token' : reddit_refresh_token })
 
         #http://stackoverflow.com/questions/2407126/python-urllib2-basic-auth-problem
         import base64
@@ -162,33 +151,26 @@ def reddit_get_access_token(url="", name="", type_=""):
 
         page = urllib2.urlopen(req, data=data)
         response=page.read();page.close()
-        #log( response )
 
-        #response='{"access_token": "lZN8p1QABSr7iJlfPjIW0-4vBLM", "token_type": "bearer", "device_id": "None", "expires_in": 3600, "scope": "identity read"}'
         status=reddit_set_addon_setting_from_response(response)
 
         if status=='ok':
-            #log( '    ok new access token '+ reddit_access_token )
-            #r1="Click 'OK' when done"
-            #r2="Settings will not be saved"
-            #xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( r1, r2)  )
             return True
         else:
             r2="Requesting 1-hour token"
             xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( status, r2)  )
 
     except urllib2.HTTPError, err:
-        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, req.get_full_url())  )
-        log( err.reason )
+        xbmc_notify(err.code, err.msg)
     except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
-        log( err.reason )
+        xbmc_notify('get_access_token',err.reason)
 
     return False
 
 def reddit_set_addon_setting_from_response(response):
     import time, json
     from utils import convert_date
-    global reddit_access_token    #specify "global" if you wanto to change the value of a global variable
+    global reddit_access_token    #specify "global" if you want to change the value of a global variable
     global reddit_refresh_token
     try:
         response = json.loads(response.replace('\\"', '\''))
@@ -258,11 +240,9 @@ def reddit_revoke_refresh_token(url, name, type_):
         xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( 'Token revoked', r2)  )
 
     except urllib2.HTTPError, err:
-        xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, req.get_full_url() )  )
-        log( "http error:" + err.reason )
+        xbmc_notify(err.code, err.msg)
     except Exception as e:
-        xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( str(e), 'Revoking refresh token' )  )
-        log("  Revoking refresh token EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
+        xbmc_notify('Revoking refresh token', str(e))
 
 def reddit_save(api_method, post_id, type_):
     #api_method either /api/save/  or /api/unsave/
@@ -309,7 +289,6 @@ def format_multihub(multihub):
         if word.lower()=='m'   :ls[idx]='m'
     #xbmc.log ("/".join(ls))
     return "/".join(ls)
-
 
 def this_is_a_multireddit(subreddit):
     #subreddits and multihub are stored in the same file

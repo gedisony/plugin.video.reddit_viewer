@@ -555,6 +555,7 @@ def truncate(string, length, ellipse='...'):
 
 def xbmc_notify(Line1, line2):
     xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( Line1, line2) )
+    log("XBMC.Notification: %s %s" %(Line1, line2) )
 
 def open_web_browser(url,name,type):
     #http://forum.kodi.tv/showthread.php?tid=235733

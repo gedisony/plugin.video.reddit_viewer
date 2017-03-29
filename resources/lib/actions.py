@@ -119,10 +119,11 @@ def removeSubreddit(subreddit, name, type_):
 
 def editSubreddit(subreddit, name, type_):
     from reddit import this_is_a_multireddit, format_multihub
-    #note: calling code in addDirR()
-    fh = open(subredditsFile, 'r')
-    content = fh.readlines()
-    fh.close()
+    log( 'editSubreddit ' + subreddit)
+
+    with open(subredditsFile, 'r') as fh:
+        content = fh.readlines()
+
     contentNew = ""
 
     keyboard = xbmc.Keyboard(subreddit, translation(30003))
@@ -142,9 +143,8 @@ def editSubreddit(subreddit, name, type_):
             else:
                 contentNew+=line
 
-        fh = open(subredditsFile, 'w')
-        fh.write(contentNew)
-        fh.close()
+        with open(subredditsFile, 'w') as fh:
+            fh.write(contentNew)
 
         xbmc.executebuiltin("Container.Refresh")
 

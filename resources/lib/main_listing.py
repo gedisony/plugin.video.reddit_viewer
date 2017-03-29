@@ -194,14 +194,18 @@ def listSubReddit(url, name, subreddit_key):
     loading_indicator.set_tick_total(expected_listitems)
     last_queue_size=0
     while q_liz.qsize() < expected_listitems:
-        if break_counter>=1000:break
-        else:break_counter+=1
+        if break_counter>=100:
+            break
+
         #each change in the queue size gets a tick on our progress track
         if last_queue_size < q_liz.qsize():
             items_added=q_liz.qsize()-last_queue_size
             loading_indicator.tick(items_added)
+        else:
+            break_counter+=1
+
         last_queue_size=q_liz.qsize()
-        xbmc.sleep(100)
+        xbmc.sleep(50)
 
     #wait for all threads to finish before collecting the list items
     for idx, t in enumerate(threads):

@@ -288,3 +288,6 @@
  - save/unsave posts on reddit account
  3.3.3 (2017-03-26)
  - use threads to parse each reddit post
+ 3.3.4
+ - more accurate loading indicator
+ - cleanup
