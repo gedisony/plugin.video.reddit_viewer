@@ -30,7 +30,7 @@ cxm_show_filter_domain    = addon.getSetting("cxm_show_filter_domain") == "true"
 cxm_show_open_browser     = addon.getSetting("cxm_show_open_browser") == "true"
 cxm_show_reddit_save      = addon.getSetting("cxm_show_reddit_save") == "true"
 
-def index(url,name,type):
+def index(url,name,type_):
     from utils import xstr, samealphabetic, hassamealphabetic
     from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info
 
@@ -108,7 +108,7 @@ def index(url,name,type):
                 icon=next((item for item in [icon,banner,header] if item ), '')
 
                 addDirR(alias, url, next_mode, icon,
-                        type=subreddit,
+                        type_=subreddit,
                         listitem_infolabel={ "plot": shortcut_description },
                         file_entry=subreddit_entry,
                         banner_image=banner )
@@ -140,7 +140,7 @@ def listSubReddit(url, name, subreddit_key):
     loading_indicator.update(8,'Retrieving '+subreddit_key)
 
     content = reddit_request(url)
-    loading_indicator.update(10,subreddit_key  )
+    loading_indicator.update(11,subreddit_key  )
 
     if not content:
         loading_indicator.end() #it is important to close xbmcgui.DialogProgressBG
@@ -591,12 +591,12 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
 
 
 
-def listLinksInComment(url, name, type):
+def listLinksInComment(url, name, type_):
     from domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
     from utils import markdown_to_bbcode, unescape, ret_info_type_icon, build_script
     #from resources.domains import make_addon_url_from
     #called from context menu
-    log('listLinksInComment:%s:%s' %(type,url) )
+    log('listLinksInComment:%s:%s' %(type_,url) )
 
     #does not work for list comments coz key is the playable url (not reddit comments url)
     #msg=WINDOW.getProperty(url)
@@ -607,7 +607,7 @@ def listLinksInComment(url, name, type):
     author=""
     ShowOnlyCommentsWithlink=False
 
-    if type=='linksOnly':
+    if type_=='linksOnly':
         ShowOnlyCommentsWithlink=True
 
     #sometimes the url has a query string. we discard it coz we add .json at the end
@@ -695,7 +695,6 @@ def listLinksInComment(url, name, type):
 
             #force all links to ytdl to see if it can be played
             if link_url:
-
                 DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, link_url)
 
                 liz.setProperty('IsPlayable', setProperty_IsPlayable)
@@ -708,11 +707,8 @@ def listLinksInComment(url, name, type):
                     plot= "  [COLOR greenyellow][%s]"%( plot ) + "[/COLOR]"
                 liz.setLabel(list_title+plot)
 
-                #log('      there is a link from %s' %domain)
                 if ld:
                     liz.setArt({"thumb": ld.poster, "poster":ld.poster, "banner":ld.poster, "fanart":ld.poster, "landscape":ld.poster   })
-                #else:
-                #    DirectoryItem_url=sys.argv[0]+"?url="+ urllib.quote_plus(link_url) +"&mode=play"
 
             if DirectoryItem_url:
                 #log( 'IsPlayable:'+setProperty_IsPlayable )

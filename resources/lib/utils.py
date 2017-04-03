@@ -22,8 +22,6 @@ TIMEFORMAT = xbmc.getRegion('meridiem')
 #profile_path  = addon.getAddonInfo('profile')   #where user settings are stored
 pluginhandle  = int(sys.argv[1])
 
-#from reddit import subredditsFile, subredditsPickle
-
 #used to filter out image links if content_type is video (when this addon is called from pictures)
 image_exts = ['jpg','png', 'RAW', 'jpeg', 'tiff', 'tga', 'pcx', 'bmp'] #exclude 'gif' as we consider it as gifv
 
@@ -69,7 +67,6 @@ def compose_list_item(label,label2,iconImage,property_item_type, onClick_action,
                          path="") #<-- DirectoryItem_url is not used here by the xml gui
     liz.setProperty('item_type', property_item_type)  #item type "script" -> ('RunAddon(%s):' % di_url )
 
-
     #liz.setInfo( type='video', infoLabels={"plot": shortcut_description, } )
     liz.setProperty('onClick_action', onClick_action)
 
@@ -94,9 +91,9 @@ def build_script( mode, url, name="", type_="", script_to_call=''):
         script_to_call=addonID
         return "RunAddon(%s,%s)" %(script_to_call, "mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+urllib.quote_plus(name)+"&type="+str(type_) )
 
-def build_playable_param( mode, url, name="", type="", script_to_call=addonID):
+def build_playable_param( mode, url, name="", type_="", script_to_call=addonID):
     #builds the  di_url for  pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO); pl.clear();  pl.add(di_url, item) ; xbmc.Player().play(pl, windowed=True)
-    return "plugin://" +script_to_call+"mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+str(name)+"&type="+str(type)
+    return "plugin://" +script_to_call+"mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+str(name)+"&type="+str(type_)
 
 def ret_info_type_icon(info_type, modecommand, domain=''):
     #returns icon for what kind of media the link is.
@@ -160,7 +157,6 @@ def pretty_datediff(dt1, dt2):
         return str(day_diff / 365) + translation(30070)    #" years ago"
     except:
         pass
-
 
 def post_excluded_from( filter, str_to_check):
     #hide posts by domain/subreddit.
@@ -338,7 +334,7 @@ def ret_url_ext(url):
         url=url.split('?')[0]
         #log('        split[0]:' + url)
         if url:
-            filename,ext=parse_filename_and_ext_from_url(url)
+            _,ext=parse_filename_and_ext_from_url(url)
             #log('        [%s][%s]' %(filename,ext) )
             return ext
     return False
@@ -557,7 +553,7 @@ def xbmc_notify(Line1, line2):
     xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( Line1, line2) )
     log("XBMC.Notification: %s %s" %(Line1, line2) )
 
-def open_web_browser(url,name,type):
+def open_web_browser(url,name,type_):
     #http://forum.kodi.tv/showthread.php?tid=235733
     osWin = xbmc.getCondVisibility('system.platform.windows')
     osOsx = xbmc.getCondVisibility('system.platform.osx')
@@ -573,7 +569,7 @@ def open_web_browser(url,name,type):
         log('Running custom command for link:\n' + custom_link_command)
         exec( custom_link_command )
         #example:
-        #     xbmc.executebuiltin("System.Exec(cmd.exe /c start {url})") 
+        #     xbmc.executebuiltin("System.Exec(cmd.exe /c start {url})")
     else:
 
         if osOsx:
@@ -584,7 +580,7 @@ def open_web_browser(url,name,type):
             xbmc.executebuiltin("System.Exec(cmd.exe /c start "+url+")")
         elif osLinux and not osAndroid:
             # ___ Need the xdk-utils package
-            xbmc.executebuiltin("System.Exec(xdg-open "+url+")") 
+            xbmc.executebuiltin("System.Exec(xdg-open "+url+")")
         elif osAndroid:
             # ___ Open media with standard android web browser
             xbmc.executebuiltin("StartAndroidActivity(com.android.browser,android.intent.action.VIEW,,"+url+")")
@@ -594,9 +590,9 @@ def open_web_browser(url,name,type):
             #xbmc.executebuiltin("StartAndroidActivity(com.android.chrome,,,"+url+")")
 
 #addDir(subreddit, subreddit.lower(), next_mode, "")
-def addDir(name, url, mode, iconimage, type="", listitem_infolabel=None, label2=""):
+def addDir(name, url, mode, iconimage, type_="", listitem_infolabel=None, label2=""):
     #adds a list entry
-    u = sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&type="+str(type)
+    u = sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&type="+str(type_)
     #log('addDir='+u)
     ok = True
     liz = xbmcgui.ListItem(label=name, label2=label2, iconImage="", thumbnailImage='')
@@ -610,13 +606,12 @@ def addDir(name, url, mode, iconimage, type="", listitem_infolabel=None, label2=
     ok = xbmcplugin.addDirectoryItem(handle=pluginhandle, url=u, listitem=liz, isFolder=True)
     return ok
 
-def addDirR(name, url, mode, icon_image='', type="", listitem_infolabel=None, file_entry="", banner_image=''):
-
+def addDirR(name, url, mode, icon_image='', type_="", listitem_infolabel=None, file_entry="", banner_image=''):
     #addDir with a remove subreddit context menu
     #alias is the text for the listitem that is presented to the user
     #file_entryis the actual string(containing alias & viewid) that is saved in the "subreddit" file
 
-    u = sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&type="+str(type)
+    u = sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&type="+str(type_)
     #log('addDirR='+u)
     ok = True
     liz = xbmcgui.ListItem(name)

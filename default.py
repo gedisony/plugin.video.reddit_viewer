@@ -109,7 +109,7 @@ if __name__ == '__main__':
     params = parameters_string_to_dict(sys.argv[2])
     mode   = urllib.unquote_plus(params.get('mode', ''))
     url    = urllib.unquote_plus(params.get('url', ''))
-    typez  = urllib.unquote_plus(params.get('type', '')) #type is a python function, try not to use a variable name same as function
+    type_  = urllib.unquote_plus(params.get('type', '')) #type is a python function, try not to use a variable name same as function
     name   = urllib.unquote_plus(params.get('name', ''))
     #xbmc supplies this additional parameter if our <provides> in addon.xml has more than one entry e.g.: <provides>video image</provides>
     #xbmc only does when the add-on is started. we have to pass it along on subsequent calls
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 #    log("----------------------")
 #    log("params="+ str(params))
 #    log("mode="+ mode)
-#    log("type="+ typez)
+#    log("type="+ type_)
 #    log("name="+ name)
 #    log("url="+  url)
 #    log("pluginhandle:" + str(pluginhandle) )
@@ -170,4 +170,4 @@ if __name__ == '__main__':
                     ,'reddit_save'          : reddit_save
                     }
 
-    plugin_modes[mode](url,name,typez)
+    plugin_modes[mode](url,name,type_)

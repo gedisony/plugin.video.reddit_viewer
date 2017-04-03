@@ -291,3 +291,6 @@
  3.3.4
  - more accurate loading indicator
  - cleanup
+ 3.3.5
+ - update imgur parsing
+ - cleanup

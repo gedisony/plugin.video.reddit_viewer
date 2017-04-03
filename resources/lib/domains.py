@@ -15,13 +15,12 @@ from default import addon, addonID, streamable_quality   #,addon_path,pluginhand
 from utils import log, translation
 
 from default import addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
-from utils import build_script, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast
+from utils import parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast
 
 use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
 #resolve_undetermined = addon.getSetting("resolve_undetermined") == "true" #let youtube_dl addon get playable links if unknown url(slow)
 
 from CommonFunctions import parseDOM
-import pprint
 
 keys=[ 'li_label'           #  the text that will show for the list
       ,'li_label2'          #
@@ -382,9 +381,16 @@ class ClassImgur(sitesBase):
             r = self.requests_get(request_url, headers=ClassImgur.request_header)
         except requests.exceptions.HTTPError:
             #http://imgur.com/gallery/Ji0IWhG this link has /gallery/ but returns 404 if asked as gallery
-            request_url="https://api.imgur.com/3/image/"+gallery_name 
-            log('      Trying a different query:'+request_url)
-            r = self.requests_get(request_url, headers=ClassImgur.request_header)
+            request_url="https://api.imgur.com/3/image/"+gallery_name
+            #log('      Trying a different query:'+request_url)
+            try:
+                r = self.requests_get(request_url, headers=ClassImgur.request_header)
+            except requests.exceptions.HTTPError:
+                #https://imgur.com/gallery/knbXW   this link has is not "image" nor "gallery" but is "album"
+                request_url="https://api.imgur.com/3/album/"+gallery_name
+                #log('      Trying a different query:'+request_url)
+                r = self.requests_get(request_url, headers=ClassImgur.request_header)
+                #there has to be a better way to do this...
 
         #if 'Ji0I' in media_url: log(r.text)
         j = r.json()
@@ -456,7 +462,10 @@ class ClassImgur(sitesBase):
             else:
                 return j['data'].get('link')
 
-    def get_thumb_url(self, link_url=''):
+    def get_thumb_url(self):
+        return self.get_thumb_from_url()
+
+    def get_thumb_from_url(self,link_url=''):
         #return the thumbnail url given the image url
         #accomplished by appending a 'b' at the end of the filename
         #this won't work if there is a '/gallery/' in the url
@@ -567,7 +576,7 @@ class ClassImgur(sitesBase):
             height   =entry.get('height')
             title    =entry.get('title')
             descrip  =entry.get('description')
-            media_thumb_url=self.get_thumb_url(media_url)
+            media_thumb_url=self.get_thumb_from_url(media_url)
 
             images.append( {'title': title,
                             'type': media_type,
@@ -862,7 +871,7 @@ class ClassGiphy(sitesBase):
                 self.video_id=m
                 return
 
-    def get_thumb_url(self, quality0123=1):
+    def get_thumb_url(self):
         #calling get_playable_url sometimes results in querying giphy.com. if we do, we also save the thumbnail info.
         if self.thumb_url:
             return self.thumb_url
@@ -907,7 +916,7 @@ class ClassDailymotion(sitesBase):
                 self.video_id=m
                 return
 
-    def get_thumb_url(self, quality0123=1):
+    def get_thumb_url(self):
         #http://stackoverflow.com/questions/13173641/how-to-get-the-video-thumbnail-from-dailymotion-video-from-the-video-id-of-that
         #Video URL: http://www.dailymotion.com/video/`video_id`
         #Thumb URL: http://www.dailymotion.com/thumbnail/video/video_id
@@ -932,10 +941,10 @@ class ClassLiveleak(sitesBase):
 
         else:
             self.link_action=self.DI_ACTION_PLAYABLE
-            return "plugin://plugin.video.liveleak/?mode=play&url={0}&src={0}".format(urllib.quote_plus( media_url ),''), self.TYPE_VIDEO
+            return "plugin://plugin.video.liveleak/?mode=play&url={0}&src={1}".format(urllib.quote_plus( media_url ),''), self.TYPE_VIDEO
 
 
-    def get_thumb_url(self, quality0123=1):
+    def get_thumb_url(self):
         log('    getting liveleak thumbnail ')
         if not self.thumb_url:
             img=self.request_meta_ogimage_content()
@@ -1026,7 +1035,7 @@ class ClassTumblr(sitesBase):
     api_key='no0FySaKYuQHKl0EBQnAiHxX7W0HY4gKvlmUroLS2pCVSevIVy'
     include_gif_in_get_playable=True
 
-    def get_thumb_url(self, image_url="", thumbnail_type='b'):
+    def get_thumb_url(self):
         #call this after calling get_playable_url
         return self.thumb_url
 
@@ -1436,7 +1445,7 @@ class ClassFlickr(sitesBase):
     fTYPE_GALLERY='gallery'
     fmedia_type=''
 
-    def get_thumb_url(self, image_url="", thumbnail_type='b'):
+    def get_thumb_url(self):
         #call this after calling get_playable_url
         return self.thumb_url
 
@@ -1816,7 +1825,7 @@ class ClassGifsCom(sitesBase):
         return self.get_playable_url(self.media_url, is_probably_a_video=False )
 
 
-    def get_thumb_url(self, image_url="", thumbnail_type='b'):
+    def get_thumb_url(self):
         #call this after calling get_playable_url
         return self.thumb_url
 
@@ -1909,7 +1918,7 @@ class ClassGfycat(sitesBase):
             self.video_id=match[0]
 
 
-    def get_thumb_url(self, image_url="", thumbnail_type='b'):
+    def get_thumb_url(self):
         #call this after calling get_playable_url
         return self.thumb_url
 
@@ -2385,7 +2394,7 @@ class Class500px(sitesBase):
         else:
             return False
 
-    def get_thumb_url(self, image_url="", thumbnail_type='b'):
+    def get_thumb_url(self):
 
         self.get_photo_info()
 
