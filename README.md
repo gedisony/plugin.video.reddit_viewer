@@ -9,7 +9,6 @@ This addon is inspired by the original [reddit addon](https://github.com/rasjani
   - Combine subreddits in one shortcut ([documentaries+artisanvideos](https://www.reddit.com/r/ArtisanVideos+Documentaries/))
   - Show posts by domain ([domain:youtube.com](https://www.reddit.com/domain/youtube.com/))
   - Multireddit ([/user/sallyyy19/m/video](https://www.reddit.com/user/sallyyy19/m/video/))
-
 - Play video links supported by the [__youtube_dl__](https://github.com/ruuk/script.module.youtube.dl) addon
 - View images and image albums
 - Explore other subreddits
