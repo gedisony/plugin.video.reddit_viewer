@@ -5,11 +5,20 @@ Reddit is a social news and entertainment website. It is organized into areas of
 This is a video addon for viewing reddit content on Kodi. See also my program addon version, [__reddit_reader__](https://github.com/gedisony/script.reddit.reader).   
 This addon is inspired by the original [reddit addon](https://github.com/rasjani/plugin.video.reddit_tv) by AddonscriptorDE and maintained by rasjani.
 
-- Create shortcuts to your favorite subreddits or filter posts by domain
+- Create shortcuts to your favorite subreddits
+  - Combine subreddits in one shortcut ([documentaries+artisanvideos](https://www.reddit.com/r/ArtisanVideos+Documentaries/))
+  - Show posts by domain ([domain:youtube.com](https://www.reddit.com/domain/youtube.com/))
+  - Multireddit ([/user/sallyyy19/m/video](https://www.reddit.com/user/sallyyy19/m/video/))
+
 - Play video links supported by the [__youtube_dl__](https://github.com/ruuk/script.module.youtube.dl) addon
 - View images and image albums
 - Explore other subreddits
+- Hide posts by subreddit or from certain sites
 - Read user comments
+- Reddit OAuth support
+  - Access to your private subreddits
+  - Add shortcut to your saved posts ([/user/yourredditusername/saved](https://www.reddit.com/user/me/saved))
+  - Add and remove posts from your saved posts
 
 ## Installation
 - Download zip
