@@ -18,6 +18,7 @@ This addon is inspired by the original [reddit addon](https://github.com/rasjani
 - Explore other subreddits
 - Hide posts by subreddit or from certain sites
 - Read user comments
+  - Play or view links posted in comments
 
 ## Installation
 - Download zip
