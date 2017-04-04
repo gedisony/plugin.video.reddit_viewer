@@ -294,3 +294,6 @@
  3.3.5
  - update imgur parsing
  - cleanup
+ 3.3.6 (2017-04-03)
+ - use liveleak addon for liveleak videos
+ - reorganize settings

@@ -221,43 +221,10 @@ msgctxt "#30074"
 msgid "IMG"
 msgstr ""
 
-msgctxt "#30185"
-msgid "File already exists"
-msgstr ""
-
-msgctxt "#30186"
-msgid "Choose download directory"
-msgstr ""
-
-msgctxt "#30187"
-msgid "NSFW content enabled!"
-msgstr ""
-
-msgctxt "#30188"
-msgid "NSFW content disabled!"
-msgstr ""
-
-msgctxt "#30189"
-msgid "Disable NSFW content?"
-msgstr ""
-
-msgctxt "#30190"
-msgid "Enable NSFW content?"
-msgstr ""
-
-msgctxt "#30191"
-msgid "Are you over eighteen and willing to see adult content?"
-msgstr ""
-
-#error message popup when youtube-dl can't get playable url 
-msgctxt "#30192"
-msgid "Failed to get playable url"
-msgstr ""
 
 
 
 #settings screen settings.xml
-
 #setting category
 msgctxt "#30100"
 msgid "General"
@@ -285,6 +252,10 @@ msgstr ""
 
 msgctxt "#30106"
 msgid "Comments threshold"
+msgstr ""
+
+msgctxt "#30107"
+msgid "Repeat gif playback"
 msgstr ""
 
 msgctxt "#30108"
@@ -372,9 +343,43 @@ msgctxt "#30157"
 msgid "Streamable.com Video Quality"
 msgstr ""
 
-#30158-30184 empty
 
-#30192-30299 empty
+
+msgctxt "#30185"
+msgid "File already exists"
+msgstr ""
+
+msgctxt "#30186"
+msgid "Choose download directory"
+msgstr ""
+
+msgctxt "#30187"
+msgid "NSFW content enabled!"
+msgstr ""
+
+msgctxt "#30188"
+msgid "NSFW content disabled!"
+msgstr ""
+
+msgctxt "#30189"
+msgid "Disable NSFW content?"
+msgstr ""
+
+msgctxt "#30190"
+msgid "Enable NSFW content?"
+msgstr ""
+
+msgctxt "#30191"
+msgid "Are you over eighteen and willing to see adult content?"
+msgstr ""
+
+#error message popup when youtube-dl can't get playable url 
+msgctxt "#30192"
+msgid "Failed to get playable url"
+msgstr ""
+
+
+
 
 # settings category
 msgctxt "#30300"
@@ -413,12 +418,23 @@ msgctxt "#30308"
 msgid "Hide posts marked as NSFW"
 msgstr ""
 
+
+
+#setting category
 msgctxt "#30350"
-msgid "Use youtube_dl add-on for Youtube videos"
+msgid "Plugins"
 msgstr ""
 
 msgctxt "#30351"
-msgid "Repeat gif playback"
+msgid "By default, the youtube_dl add-on is used to play all video"
+msgstr ""
+
+msgctxt "#30352"
+msgid "Use Youtube add-on"
+msgstr ""
+
+msgctxt "#30353"
+msgid "Use Liveleak add-on"
 msgstr ""
 
 

@@ -2,12 +2,8 @@
 import urllib
 import xbmc, xbmcgui,xbmcaddon,xbmcplugin
 import re, htmlentitydefs
-import time, pickle
-import os
-import requests
+import pickle
 import json
-import pprint
-import random
 import sys
 
 from urllib import urlencode
@@ -561,8 +557,6 @@ def open_web_browser(url,name,type_):
     osAndroid = xbmc.getCondVisibility('System.Platform.Android')
     #url = 'http://www.google.com/'
 
-    import xbmcaddon
-    addon=xbmcaddon.Addon()
     custom_link_command=addon.getSetting('custom_link_command')
     if custom_link_command:
         custom_link_command=custom_link_command.replace('{url}',url)
