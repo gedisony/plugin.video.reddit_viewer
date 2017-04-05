@@ -10,6 +10,11 @@ from default import subredditsFile, addon, addon_path, profile_path, ytdl_core_p
 from utils import xbmc_busy, log, translation, xbmc_notify
 import threading
 
+ytdl_quality=addon.getSetting("ytdl_quality")
+try: ytdl_quality=[0, 1, 2, 3][ int(ytdl_quality) ]
+except ValueError: ytdl_quality=1
+ytdl_DASH=addon.getSetting("ytdl_DASH")=='true'
+
 def addSubreddit(subreddit, name, type_):
     from utils import colored_subreddit
     from reddit import this_is_a_multireddit, format_multihub
@@ -485,7 +490,7 @@ def playYTDLVideo(url, name, type_):
         #   this already fixed by ruuk magic. in YoutubeDLWrapper
 
         #log( "YoutubeDL extract_info:\n" + pprint.pformat(ydl_info, indent=1) )
-        video_infos=_selectVideoQuality(ydl_info, quality=1, disable_dash=True)
+        video_infos=_selectVideoQuality(ydl_info, quality=ytdl_quality, disable_dash=(not ytdl_DASH))
         log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=3) )
         dialog_progress_YTDL.update(80,dialog_progress_title,translation(30023)  )
 

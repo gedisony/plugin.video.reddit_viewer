@@ -81,8 +81,8 @@ class sitesBase(object):
 
         return content.text
 
-    def requests_get(self, link_url, headers=None, timeout=REQUEST_TIMEOUT):
-        content = requests.get( link_url, headers=headers, timeout=timeout )
+    def requests_get(self, link_url, headers=None, timeout=REQUEST_TIMEOUT, allow_redirects=True):
+        content = requests.get( link_url, headers=headers, timeout=timeout, allow_redirects=allow_redirects )
         if content.status_code==requests.codes.ok:
             return content
         else:
@@ -134,13 +134,15 @@ class sitesBase(object):
             return link_url #will a video link resolve to a preview image?
         else:
             #headers = {"Range": "bytes=0-1000"} content = self.requests_get(link_url, headers)
-            content = self.requests_get(link_url)
-            i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
-            if i:
-                try: return i[0]
-                except IndexError: pass
-            else:
-                log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
+            #timeout not working right if redirect.
+            content = self.requests_get(link_url,headers=None, timeout=(2,2), allow_redirects=False)
+            if content:
+                i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
+                if i:
+                    try: return i[0]
+                    except IndexError: pass
+                    else:
+                        log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
 
     #def combine_title_and_description(self, title, description):
     #    return ( '[B]'+title+'[/B]\n' if title else '' ) + ( description if description else '' )
@@ -1876,7 +1878,7 @@ class ClassGfycat(sitesBase):
 
             content = self.requests_get(request_url)
             #content = opener.open("http://gfycat.com/cajax/get/"+id).read()
-            #log('gfycat response:'+ content)
+            #log('gfycat response:'+ content.text)
             content = content.json()
 
             gfyItem=content.get('gfyItem')
@@ -1901,6 +1903,11 @@ class ClassGfycat(sitesBase):
 
                 self.link_action=sitesBase.DI_ACTION_PLAYABLE
                 return stream_url, self.TYPE_GIF #sitesBase.TYPE_VIDEO
+            else:
+                error=content.get('error')
+                if error:
+                    self.link_action=self.DI_ACTION_ERROR
+                    return error, ""
         else:
             log("cannot get gfycat id")
 

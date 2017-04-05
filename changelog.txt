@@ -297,3 +297,7 @@
  3.3.6 (2017-04-03)
  - use liveleak addon for liveleak videos
  - reorganize settings
+ 3.3.7 (2017-04-05)
+ - add dash and resolution setting for youtube_dl
+ - gfycat error message notified to user
+ - don't follow redirects if just getting thumbnail

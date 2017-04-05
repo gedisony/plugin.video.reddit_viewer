@@ -437,6 +437,32 @@ msgctxt "#30353"
 msgid "Use Liveleak add-on"
 msgstr ""
 
+msgctxt "#30355"
+msgid "Youtube_dl Preferred quality"
+msgstr ""
+
+msgctxt "#30356"
+msgid "480p or less"
+msgstr ""
+
+msgctxt "#30357"
+msgid "720p"
+msgstr ""
+
+msgctxt "#30358"
+msgid "1080p"
+msgstr ""
+
+msgctxt "#30359"
+msgid "Highest Available"
+msgstr ""
+
+msgctxt "#30360"
+msgid "Allow for DASH video if available"
+msgstr ""
+
+
+
 
 # settings category
 msgctxt "#30400"
