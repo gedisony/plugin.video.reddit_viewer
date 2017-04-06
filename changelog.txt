@@ -301,3 +301,9 @@
  - add dash and resolution setting for youtube_dl
  - gfycat error message notified to user
  - don't follow redirects if just getting thumbnail
+ 3.3.8 (2017-04-06)
+ - bugfixes
+   - handle error when user enters invalid subreddit
+   - handle error when there is no listing
+   - os error when launching custom webviewer
+ 

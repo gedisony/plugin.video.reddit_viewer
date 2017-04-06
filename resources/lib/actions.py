@@ -88,20 +88,12 @@ def get_subreddit_entry_info_thread(sub_list):
         subreddits_dlist=load_dict(subredditsPickle)
         #for e in subreddits_dlist: log(e.get('entry_name'))
         #log( pprint.pformat(subreddits_dlist, indent=1) )
-
     #log('****------before for -------- ' + repr(sub_list ))
     for subreddit in sub_list:
         #remove old instance of subreddit
         subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
-
-        #for e in subreddits_dlist: log(e.get('entry_name'))
-
-        #log('****getting sub_info ' )
-
         sub_info=get_subreddit_info(subreddit)
-
-        log('****sub_info ' + repr( sub_info ))
-
+        #log('****sub_info ' + repr( sub_info ))
         if sub_info:
             #log('****if sub_info ')
             subreddits_dlist.append(sub_info)

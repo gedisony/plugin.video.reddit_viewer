@@ -4,7 +4,7 @@ import xbmc, xbmcgui,xbmcaddon,xbmcplugin
 import re, htmlentitydefs
 import pickle
 import json
-import sys
+import sys,os #os is used in open_web_browser()
 
 from urllib import urlencode
 

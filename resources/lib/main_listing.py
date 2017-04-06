@@ -79,10 +79,11 @@ def index(url,name,type_):
         #url= urlMain+"/r/"+subreddit+"/.json?"+nsfw+allHosterQuery+"&limit="+itemsPerPage
         url= assemble_reddit_filter_string("",subreddit, "yes")
         #log("assembled================="+url)
-        if subreddit.lower() == "all":
-            addDir(subreddit, url, next_mode, "", subreddit, { "plot": translation(30009) } )  #Displays the currently most popular content from all of reddit....
+        if subreddit.lower() in ["all","popular"]:
+            addDir(subreddit, url, next_mode, "", subreddit, { "plot": translation(30009) } )  #Displays the currently most popular content from all of reddit
         else:
             if addtl_subr_info: #if we have additional info about this subreddit
+                #log(repr(addtl_subr_info))
                 title=addtl_subr_info.get('title')+'\n'
                 display_name=xstr(addtl_subr_info.get('display_name'))
                 if samealphabetic( title, display_name): title=''
@@ -191,21 +192,22 @@ def listSubReddit(url, name, subreddit_key):
     #check the queue to determine progress
     break_counter=0 #to avoid infinite loop
     expected_listitems=(posts_count-filtered_out_posts)
-    loading_indicator.set_tick_total(expected_listitems)
-    last_queue_size=0
-    while q_liz.qsize() < expected_listitems:
-        if break_counter>=100:
-            break
+    if expected_listitems>0:
+        loading_indicator.set_tick_total(expected_listitems)
+        last_queue_size=0
+        while q_liz.qsize() < expected_listitems:
+            if break_counter>=100:
+                break
 
-        #each change in the queue size gets a tick on our progress track
-        if last_queue_size < q_liz.qsize():
-            items_added=q_liz.qsize()-last_queue_size
-            loading_indicator.tick(items_added)
-        else:
-            break_counter+=1
+            #each change in the queue size gets a tick on our progress track
+            if last_queue_size < q_liz.qsize():
+                items_added=q_liz.qsize()-last_queue_size
+                loading_indicator.tick(items_added)
+            else:
+                break_counter+=1
 
-        last_queue_size=q_liz.qsize()
-        xbmc.sleep(50)
+            last_queue_size=q_liz.qsize()
+            xbmc.sleep(50)
 
     #wait for all threads to finish before collecting the list items
     for idx, t in enumerate(threads):

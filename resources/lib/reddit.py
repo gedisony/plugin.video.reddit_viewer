@@ -505,6 +505,7 @@ def determine_if_video_media_from_reddit_json( data ):
 
 def get_subreddit_info( subreddit ):
     import requests
+    #import pprint
     subs_dict={}
 
     headers = {'User-Agent': reddit_userAgent}
@@ -513,26 +514,27 @@ def get_subreddit_info( subreddit ):
     r = requests.get( req, headers=headers, timeout=REQUEST_TIMEOUT )
     if r.status_code == requests.codes.ok:
         j=r.json()
+        #log( pprint.pformat(j, indent=1) ) 
         j=j.get('data')
-        #log( pprint.pformat(j, indent=1) )
-
-        subs_dict.update( {'entry_name':subreddit.lower(),
-                           'display_name':j.get('display_name'),
-                           'banner_img': j.get('banner_img'),
-                           'icon_img': j.get('icon_img'),
-                           'header_img': j.get('header_img'), #not used? usually similar to with icon_img
-                           'title':j.get('title'),
-                           'header_title':j.get('header_title'),
-                           'public_description':j.get('public_description'),
-                           'subreddit_type':j.get('subreddit_type'),
-                           'subscribers':j.get('subscribers'),
-                           'created':j.get('created'),        #public, private
-                           'over18':j.get('over18'),
-                           } )
-
-        #log( pprint.pformat(subs_dict, indent=1) )
-        return subs_dict
-        #log( repr(self.thumb_url) )
+        if 'display_name' in j:
+            subs_dict.update( {'entry_name':subreddit.lower(),
+                               'display_name':j.get('display_name'),
+                               'banner_img': j.get('banner_img'),
+                               'icon_img': j.get('icon_img'),
+                               'header_img': j.get('header_img'), #not used? usually similar to with icon_img
+                               'title':j.get('title'),
+                               'header_title':j.get('header_title'),
+                               'public_description':j.get('public_description'),
+                               'subreddit_type':j.get('subreddit_type'),
+                               'subscribers':j.get('subscribers'),
+                               'created':j.get('created'),        #public, private
+                               'over18':j.get('over18'),
+                               } )
+            #log( pprint.pformat(subs_dict, indent=1) )
+            return subs_dict
+            #log( repr(self.thumb_url) )
+        else:
+            log('    No data for (%s)'%subreddit)
     else:
         log( '    getting subreddit (%s) info:%s' %(subreddit, r.status_code) )
 

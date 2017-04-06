@@ -39,7 +39,7 @@ msgstr ""
 
 #description for the default shortcut 'all'
 msgctxt "#30009"
-msgid "Displays the currently most popular content from all of reddit.[CR]Some subreddits have chosen to exclude themselves from /r/all."
+msgid "Displays the currently most popular content from all of reddit."
 msgstr ""
 
 #description for the 'search reddit' shortcut
