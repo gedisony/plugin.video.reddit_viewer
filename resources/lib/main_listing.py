@@ -187,7 +187,6 @@ def listSubReddit(url, name, subreddit_key):
 
         except Exception as e:
             log(" EXCEPTION:="+ str( sys.exc_info()[0]) + "  " + str(e) )
-            pass
 
     #check the queue to determine progress
     break_counter=0 #to avoid infinite loop

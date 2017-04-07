@@ -306,4 +306,6 @@
    - handle error when user enters invalid subreddit
    - handle error when there is no listing
    - os error when launching custom webviewer
- 
+ 3.3.9
+   - imgur gallery bugfix
+   - appease codacity 

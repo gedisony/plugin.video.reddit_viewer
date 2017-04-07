@@ -721,7 +721,6 @@ def parse_url_and_play(url, name, type_):
 #                xbmc.Player().play(playlist)
 #        else:
 #            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( translation(30192), 'Youtube_dl')  )
-    pass
 
 def queueVideo(url, name, type_):
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)

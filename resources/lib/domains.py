@@ -360,6 +360,7 @@ class ClassImgur(sitesBase):
 
     def is_an_album(self, media_url):
         #determins if an imgur url is an album
+        r=None
         request_url=''
         media_url=media_url.split('?')[0] #get rid of the query string
 
@@ -368,16 +369,67 @@ class ClassImgur(sitesBase):
             album_id=media_url.split("/a/",1)[1]
             #sometimes album contain only one image. we check if this is true and results in many requests to imgur and SLOWs down directory listing for album-heavy subreddits like r/DIY
             request_url="https://api.imgur.com/3/album/"+album_id
-            #return True
+            r=self.requests_get(request_url, headers=ClassImgur.request_header)
         else:
             #links with /gallery/ is trickier. sometimes it is an album sometimes it is just one image
             if '/gallery/' in media_url:
-                gallery_name = media_url.split("/gallery/",1)[1]
-                if gallery_name=="":
+                r=self.get_gallery_info(media_url)
+
+        if r:
+            #if 'Ji0I' in media_url: log(r.text)
+            j = r.json()
+            #log(" is_album=" + str(j['data']['is_album'])    )
+            #log(" in_gallery=" + str(j['data']['in_gallery'])    )
+            #we already incurred the bandwidth asking imgur about album info. might as well use the data provided
+            jdata=j.get('data')
+            if jdata:
+                self.is_an_album_type= jdata.get('type')   #"image/png" , "image\/gif"
+                self.is_an_album_link= jdata.get('link')
+
+            #this link (https://imgur.com/gallery/VNPcuYP) returned an extra 'h' on j['data']['link']  ("http:\/\/i.imgur.com\/VNPcuYPh.gif")
+            #causing the video not to play. so, we grab mp4 link if present
+                if jdata.get('mp4'):
+                    self.is_an_album_link= jdata.get('mp4')
+
+            self.images_count=jdata.get('images_count')
+            if self.images_count:
+                #log('    imgur album images count ' + repr(self.images_count))
+                if self.images_count == 1:
+                    #if there is an mp4 tag in the json, use that value.
+                    #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)
+                    #     so renaming by changing the .gif to .mp4 wouldn't work.
+                    #        credit to mac1202 2/26/2017 for finding this bug.
+                    if jdata.get('images')[0].get('mp4'):
+                        self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
+                    else:
+                        self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
+                    #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
                     return False
-                request_url="https://api.imgur.com/3/gallery/"+gallery_name
-            else:  #'gallery' not found in media url
+                else:
+                    return True
+            else:
+                #sometimes we receive a single image data (no images_count)  is_album=false
+                self.image_url_of_a_single_image_album=self.is_an_album_link
                 return False
+            #sometimes 'is_album' key is not returned, so we also check for 'in_gallery'
+    #            if 'is_album' in j['data']:
+    #                is_album_key=jdata.get('is_album')
+    #                return is_album_key
+    #            else:
+    #                try:in_gallery_key=jdata.get('in_gallery')
+    #                except: in_gallery_key=False
+    #                return in_gallery_key
+    #        #else: #status code not 200... what to do...
+    #        #    return True  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
+        else:
+            return False
+
+    def get_gallery_info(self, media_url):
+        gallery_name = media_url.split("/gallery/",1)[1]
+        if gallery_name=="":
+            return False
+
+        request_url="https://api.imgur.com/3/gallery/"+gallery_name
 
         #log("    imgur:check if album- request_url---"+request_url )
         try:
@@ -394,53 +446,7 @@ class ClassImgur(sitesBase):
                 #log('      Trying a different query:'+request_url)
                 r = self.requests_get(request_url, headers=ClassImgur.request_header)
                 #there has to be a better way to do this...
-
-        #if 'Ji0I' in media_url: log(r.text)
-        j = r.json()
-        #log(" is_album=" + str(j['data']['is_album'])    )
-        #log(" in_gallery=" + str(j['data']['in_gallery'])    )
-        #we already incurred the bandwidth asking imgur about album info. might as well use the data provided
-        jdata=j.get('data')
-        if jdata:
-            self.is_an_album_type= jdata.get('type')   #"image/png" , "image\/gif"
-            self.is_an_album_link= jdata.get('link')
-
-        #this link (https://imgur.com/gallery/VNPcuYP) returned an extra 'h' on j['data']['link']  ("http:\/\/i.imgur.com\/VNPcuYPh.gif")
-        #causing the video not to play. so, we grab mp4 link if present
-            if jdata.get('mp4'):
-                self.is_an_album_link= jdata.get('mp4')
-
-        self.images_count=jdata.get('images_count')
-        if self.images_count:
-            #log('    imgur album images count ' + repr(self.images_count))
-            if self.images_count == 1:
-                #if there is an mp4 tag in the json, use that value.
-                #     there have been instances where the 'link' tag leads to a gif. that does not have the same name as the .mp4 equivalent (it has an extra 'h' at the end)
-                #     so renaming by changing the .gif to .mp4 wouldn't work.
-                #        credit to mac1202 2/26/2017 for finding this bug.
-                if jdata.get('images')[0].get('mp4'):
-                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('mp4')
-                else:
-                    self.image_url_of_a_single_image_album=jdata.get('images')[0].get('link')
-                #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
-                return False
-            else:
-                return True
-        else:
-            #sometimes we receive a single image data (no images_count)  is_album=false
-            self.image_url_of_a_single_image_album=self.is_an_album_link
-            return False
-
-        #sometimes 'is_album' key is not returned, so we also check for 'in_gallery'
-#            if 'is_album' in j['data']:
-#                is_album_key=jdata.get('is_album')
-#                return is_album_key
-#            else:
-#                try:in_gallery_key=jdata.get('in_gallery')
-#                except: in_gallery_key=False
-#                return in_gallery_key
-#        #else: #status code not 200... what to do...
-#        #    return True  #i got a 404 on one item that turns out to be an album when checked in browser. i'll just return true
+        return r
 
     def ask_imgur_for_link(self, media_url):
         #sometimes, imgur links are posted without the extension(gif,jpg etc.). we ask imgur for it.
