@@ -16,9 +16,9 @@ import xbmc
 #updater.set_youtube_dl_importPath()
 
 
-from youtube_dl.utils import std_headers, DownloadError  # noqa E402
+from youtube_dl.utils import std_headers#, DownloadError  # noqa E402
 
-DownloadError  # Hides IDE warnings
+#DownloadError  # Hides IDE warnings
 
 
 ###############################################################################
@@ -58,7 +58,7 @@ except TypeError:
 
 _YTDL = None
 _DISABLE_DASH_VIDEO = True #util.getSetting('disable_dash_video', True)
-_CALLBACK = None
+#_CALLBACK = None
 # BLACKLIST = ['youtube:playlist', 'youtube:toplist', 'youtube:channel', 'youtube:user', 'youtube:search', 'youtube:show', 'youtube:favorites', 'youtube:truncated_url','vimeo:channel', 'vimeo:user', 'vimeo:album', 'vimeo:group', 'vimeo:review','dailymotion:playlist', 'dailymotion:user','generic'] # noqa E501
 _BLACKLIST = []
 _OVERRIDE_PARAMS = {}
@@ -172,16 +172,16 @@ class YoutubeDLWrapper(youtube_dl.YoutubeDL):
         youtube_dl.YoutubeDL.__init__(self, *args, **kwargs)
 
     def showMessage(self, msg):
-        global _CALLBACK
-        if _CALLBACK:
-            try:
-                return _CALLBACK(msg)
-            except:
+        #global _CALLBACK
+        #if _CALLBACK:
+        #    try:
+        #        return _CALLBACK(msg)
+        #    except:
                 #util.ERROR('Error in callback. Removing.')
-                _CALLBACK = None
-        else:
-            if xbmc.abortRequested:
-                raise Exception('abortRequested')
+        #        _CALLBACK = None
+        #else:
+        #    if xbmc.abortRequested:
+        #        raise Exception('abortRequested')
             # print msg.encode('ascii','replace')
         return True
 
@@ -193,8 +193,8 @@ class YoutubeDLWrapper(youtube_dl.YoutubeDL):
         if _DOWNLOAD_DURATION:
             if time.time() - _DOWNLOAD_START > _DOWNLOAD_DURATION:
                 raise DownloadCanceledException('duration_reached')
-        if not _CALLBACK:
-            return
+        #if not _CALLBACK:
+        #    return
         # 'downloaded_bytes': byte_counter,
         # 'total_bytes': data_len,
         # 'tmpfilename': tmpfilename,
@@ -458,7 +458,7 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             formatID = info['format_id']
             format_desc=info['format']
             #log(logBase.format(format_desc, info.get('width', '?'), info.get('height', '?'), entry.get('title', '').encode('ascii', 'replace')))
-
+            #log( 'Selected format:\n' + pprint.pformat(info, indent=1, depth=1) )
             #log('********************************************************************************************')
             if url.find("rtmp") == -1:
                 url += '|' + urllib.urlencode({'User-Agent': entry.get('user_agent') or std_headers['User-Agent']})

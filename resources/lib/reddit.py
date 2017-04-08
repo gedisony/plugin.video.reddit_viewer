@@ -268,13 +268,15 @@ def create_default_subreddits():
         fh.write('Stop_Motion+FrameByFrame+Brickfilms+Animation\n')
         fh.write('random\n')
         #fh.write('randnsfw\n')
-        fh.write('[Frontpage]\n')
+        fh.write('animemusic+amv+animetrailers\n')
         fh.write('popular\n')
-        fh.write('gametrailers+tvtrailers+trailers\n')
+        fh.write('mealtimevideos/new\n')
         fh.write('music+listentothis+musicvideos\n')
+        fh.write('moviemusic+soundtracks+gamemusic\n')
+        fh.write('fantrailers+fanedits+gametrailers+trailers\n')
+        fh.write('gamereviews+moviecritic\n')
         fh.write('site:youtube.com\n')
         fh.write('videos\n')
-        #fh.write('videos/new\n')
         fh.write('woahdude+interestingasfuck+shittyrobots\n')
 
 def format_multihub(multihub):

@@ -58,9 +58,8 @@ def compose_list_item(label,label2,iconImage,property_item_type, onClick_action,
 
     liz=xbmcgui.ListItem(label=label,
                          label2=label2,
-                         iconImage=iconImage,
-                         thumbnailImage=iconImage,
                          path="") #<-- DirectoryItem_url is not used here by the xml gui
+    liz.setArt({"icon":iconImage, "thumb":iconImage,})
     liz.setProperty('item_type', property_item_type)  #item type "script" -> ('RunAddon(%s):' % di_url )
 
     #liz.setInfo( type='video', infoLabels={"plot": shortcut_description, } )
@@ -589,7 +588,9 @@ def addDir(name, url, mode, iconimage, type_="", listitem_infolabel=None, label2
     u = sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&type="+str(type_)
     #log('addDir='+u)
     ok = True
-    liz = xbmcgui.ListItem(label=name, label2=label2, iconImage="", thumbnailImage='')
+    liz = xbmcgui.ListItem(label=name, label2=label2)
+    if iconimage:
+        liz.setArt({ 'thumb': iconimage, 'icon': iconimage, 'clearlogo': iconimage  })
 
     if listitem_infolabel==None:
         liz.setInfo(type="Video", infoLabels={"Title": name})

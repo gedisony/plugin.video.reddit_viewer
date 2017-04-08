@@ -93,7 +93,7 @@ def get_subreddit_entry_info_thread(sub_list):
         #remove old instance of subreddit
         subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
         sub_info=get_subreddit_info(subreddit)
-        #log('****sub_info ' + repr( sub_info ))
+        log('****sub_info ' + repr( sub_info ))
         if sub_info:
             #log('****if sub_info ')
             subreddits_dlist.append(sub_info)
@@ -176,7 +176,7 @@ def viewImage(image_url, name, preview_url):
     #log( '   msg=' + msg )
     msg=""
     li=[]
-    liz=xbmcgui.ListItem(label=msg, label2="", iconImage="", thumbnailImage=image_url)
+    liz=xbmcgui.ListItem(label=msg, label2="")
     liz.setInfo( type='video', infoLabels={"plot": msg, } )
     liz.setArt({"thumb": preview_url, "banner":image_url })
 
@@ -337,9 +337,7 @@ def display_album_from(dictlist, album_name):
         #log( d['infoLabels'].get('plot') )
 
         liz=xbmcgui.ListItem(label=d['infoLabels']['plot'],
-                             label2=d['li_label2'],
-                             iconImage='',
-                             thumbnailImage='')
+                             label2=d['li_label2'])
 
         #parse the link so that we can determine whether it is image or video.
         ld=parse_reddit_link(media_url)
@@ -506,12 +504,12 @@ def playYTDLVideo(url, name, type_):
             except (ValueError, TypeError, ZeroDivisionError):
                 StartPercent=0
 
+            video_thumbnail=video_info.get('thumbnail')
             li=xbmcgui.ListItem(label=title,
                                 label2='',
-                                iconImage=video_info.get('thumbnail'),
-                                thumbnailImage=video_info.get('thumbnail'),
                                 path=url)
             li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
+            li.setArt( {'icon':video_thumbnail, 'thumb':video_thumbnail} )
 
             #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
             #    we need to use StartPercent.

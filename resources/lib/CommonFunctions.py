@@ -113,7 +113,7 @@ def getParameters(parameterString):
         if (len(command) > 0):
             splitCommand = command.split('=')
             key = splitCommand[0]
-            try: 
+            try:
                 value = splitCommand[1].encode("utf-8")
             except:
                 log("Error utf-8 encoding argument value: " + repr(splitCommand[1]))
@@ -317,7 +317,7 @@ def extractJS(data, function=False, variable=False, match=False, evaluate=False,
         if function:
             tmp_lst = re.compile(function + '\(.*?\).*?;', re.M | re.S).findall(script)
         elif variable:
-            tmp_lst = re.compile(variable.replace("[", "\[").replace("]", "\]") + '[ ]+=.*?;', re.M | re.S).findall(script)            
+            tmp_lst = re.compile(variable.replace("[", "\[").replace("]", "\]") + '[ ]+=.*?;', re.M | re.S).findall(script)
         else:
             tmp_lst = [script]
         if len(tmp_lst) > 0:
@@ -352,7 +352,7 @@ def extractJS(data, function=False, variable=False, match=False, evaluate=False,
             elif variable:
                 tlst = re.compile(variable +".*?=.*?;", re.M | re.S).findall(lst[i])
                 data = []
-                for tmp in tlst: # This breaks for some stuff. "ad_tag": "http://ad-emea.doubleclick.net/N4061/pfadx/com.ytpwatch.entertainment/main_563326'' # ends early, must end with } 
+                for tmp in tlst: # This breaks for some stuff. "ad_tag": "http://ad-emea.doubleclick.net/N4061/pfadx/com.ytpwatch.entertainment/main_563326'' # ends early, must end with }
                     cont_char = tmp[0]
                     cont_char = tmp[tmp.find("=") + 1:].strip()
                     cont_char = cont_char[0]
@@ -439,12 +439,12 @@ def fetchPage(params={}):
             #data_type = chardet.detect(inputdata)
             #inputdata = inputdata.decode(data_type["encoding"])
             try:
-                ret_obj["content"] = inputdata.decode("utf-8")                    
+                ret_obj["content"] = inputdata.decode("utf-8")
             except:
                 try:
-                    ret_obj["content"] = inputdata.decode("latin-1")                    
+                    ret_obj["content"] = inputdata.decode("latin-1")
                 except:
-                    raise    
+                    raise
 
         con.close()
 
@@ -530,7 +530,7 @@ def makeUTF8(data):
 #        s = u""
 #        for i in data:
 #            try:
-#                i.decode("utf8", "xmlcharrefreplace") 
+#                i.decode("utf8", "xmlcharrefreplace")
 #            except:
 #                log("Can't convert character", 4)
 #                continue

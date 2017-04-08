@@ -89,9 +89,9 @@ class cGUI(xbmcgui.WindowXML):
         #url="http://i.imgur.com/ARdeL4F.mp4"
         if self.include_parent_directory_entry:
             back_image='DefaultFolderBackSquare.png'
-            listitem = xbmcgui.ListItem(label='..', label2="", iconImage=back_image)
+            listitem = xbmcgui.ListItem(label='..', label2="")
             #listitem.setInfo( type="Video", infoLabels={ "Title": '..', "plot": "", "studio": '' } )
-            listitem.setArt({"thumb": back_image }) #, "poster":back_image, "banner":back_image, "fanart":back_image, "landscape":back_image   })
+            listitem.setArt({"icon":back_image, "thumb": back_image }) #, "poster":back_image, "banner":back_image, "fanart":back_image, "landscape":back_image   })
             #listitem.setPath(url)
             self.gui_listbox.addItem(listitem)
 
