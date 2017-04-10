@@ -3019,6 +3019,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
         else:
             if url_resolver_support(link_url):
                 ld=LinkDetails(sitesBase.TYPE_VIDEO, sitesBase.DI_ACTION_URLR, link_url, '', '')
+                return ld
 
             if False: #resolve_undetermined:  (abandoned, too slow)
                 log('sending undetermined link to ytdl...')

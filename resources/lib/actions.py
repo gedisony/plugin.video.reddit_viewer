@@ -408,13 +408,21 @@ def listAlbum(album_url, name, type_):
             display_album_from( dictlist, name )
 
 def playURLRVideo(url, name, type_):
+    dialog_progress_title='URL Resolver'
+    dialog_progress_YTDL = xbmcgui.DialogProgressBG()
+    dialog_progress_YTDL.create(dialog_progress_title )
+    dialog_progress_YTDL.update(10,dialog_progress_title,translation(30024)  )
+
     import urlresolver
     #from urlparse import urlparse
     #parsed_uri = urlparse( url )
     #domain = '{uri.netloc}'.format(uri=parsed_uri)
     #hmf = urlresolver.HostedMediaFile(url)
+    dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
+
     try:
         media_url = urlresolver.resolve(url)
+        dialog_progress_YTDL.update(80,dialog_progress_title,translation(30023)  )
         if media_url:
             log( '  URLResolver stream url=' + repr(media_url ))
 
@@ -424,7 +432,8 @@ def playURLRVideo(url, name, type_):
             log( "  Can't URL Resolve:" + repr(url))
             xbmc_notify('URLresolver',translation(30192))
     except Exception as e:
-        xbmc_notify('URLresolver',str(e))
+        xbmc_notify('URLresolver', str(e) )
+    dialog_progress_YTDL.close()
 
 def loopedPlayback(url, name, type_):
     #for gifs

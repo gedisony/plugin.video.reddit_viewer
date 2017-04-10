@@ -308,4 +308,10 @@
    - os error when launching custom webviewer
  3.3.9
    - imgur gallery bugfix
-   - appease codacity 
+   - appease codacity
+ 3.4.0 (2017-04-09)
+   - bugfix
+     - url resolver links incorrectly sent to youtube_dl
+     - add progress dialog for urlresolver playback
+     - decode <strong></strong> to [B][/B] in comments
+     - new default subredits

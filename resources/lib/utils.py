@@ -460,6 +460,7 @@ def markdown_to_bbcode(s):
         #s = re.sub(r"\[/list]\n\[list(=1)?]\n", "", s)
         #s = re.sub(r"(?m)\[code=(\d+)]", replace_code, s)
 
+        s = re.sub(r"<strong>(.*?)<\/strong>$", translate("[B]%s[/B]"), s)                                #<strong></strong>  becomes bold
         return s
     except:
         return s
