@@ -135,14 +135,26 @@ class sitesBase(object):
         else:
             #headers = {"Range": "bytes=0-1000"} content = self.requests_get(link_url, headers)
             #timeout not working right if redirect.
-            content = self.requests_get(link_url,headers=None, timeout=(2,2), allow_redirects=False)
-            if content:
-                i=parseDOM(content.text, "meta", attrs = { "property": "og:image" }, ret="content" )
-                if i:
-                    try: return i[0]
-                    except IndexError: pass
-                    else:
-                        log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
+
+            #first, do a head request. sometimes the link is an mp3 and we don't want to download the entire file just to check the 'content-type'
+            head=requests.head(link_url, timeout=(2,2),allow_redirects=True)
+            #log('head request returned:'+repr(head.status_code)+' '+repr(head.headers))
+            if head.status_code==requests.codes.ok:
+                if 'html' in head.headers.get('content-type') :
+                    r = self.requests_get(link_url,headers=None, timeout=(2,2), allow_redirects=True)
+                    #log( "getting OG:image:" + repr(r.headers))
+                    if r:
+                        #log( "if content:" + repr(r.headers))
+                        i=parseDOM(r.text, "meta", attrs = { "property": "og:image" }, ret="content" )
+                        #log( "if parseDOM:" + link_url)
+                        if i:
+                            #log( "if i:" + link_url)
+                            try:
+                                import urlparse
+                                return urlparse.urljoin(link_url, i[0]) #handle relative or absolute
+                            except IndexError: pass
+                            else:
+                                log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
 
     #def combine_title_and_description(self, title, description):
     #    return ( '[B]'+title+'[/B]\n' if title else '' ) + ( description if description else '' )
@@ -2271,9 +2283,47 @@ class ClassReddit(sitesBase):
                     return
 
     def get_thumb_url(self):
+        headers = {'User-Agent': reddit_userAgent}
+        body_text=None
+        from utils import clean_str
+
+        #log('get thumb url from '+self.original_url)
+        if '/comments/' in self.original_url:
+            #this is mainly for r/bestof. we extract the text and add it on the description
+            u=self.original_url
+            if '?' in self.original_url:
+                url=self.original_url.split('?', 1)[0]+'.json?limit=1&'+self.original_url.split('?', 1)[1]
+                u=self.original_url.replace('?','/')
+            else:
+                url=self.original_url+'.json?limit=1'
+                if not self.original_url.endswith('/'):
+                    u=self.original_url+'/'
+
+            #determine whether the good info is in the post's 'selftext'(t3)  or the comment's 'body'
+            #  link to comments(t1) have 2 id's in the url.
+            #  link to posts(t3) only have 1 id
+
+            #log(u);log(repr( u.count('/') ) )
+            s_count=u.count('/')  #very crude way to determine how many id's in the url is to just count the '/' separators
+            #if '64f9' in self.original_url:
+            #    log('url= '+self.original_url)
+            #    log(repr(j))
+
+            if s_count > 8:#this is a comment (t1)
+                r = self.requests_get( url, headers=headers)
+                j=r.json()
+                body_text=clean_str(j,[1,'data','children',0,'data','body']  )
+            else:  #this is a post (t3)
+                #we skip getting the selftext for posts
+                #   t3 posts in r/bestof does not have selftext BUT other subreddit have them.
+                #   this causes a duplicate and unnecessary bandwidth. --> r/bestof is not a big priority
+                #body_text=clean_str(j,[0,'data','children',0,'data','selftext']  )
+                pass
+
+            self.description=body_text
+
         if self.video_id:
             #get subreddit icon_img, header_img or banner_img
-            headers = {'User-Agent': reddit_userAgent}
             req='https://www.reddit.com/r/%s/about.json' %self.video_id
             #log( req )
             #log('headers:' + repr(headers))
@@ -2289,6 +2339,7 @@ class ClassReddit(sitesBase):
 
             self.thumb_url=icon
             self.poster_url=banner_img
+
 
 class ClassKindgirls(sitesBase):
     regex='(kindgirls.com)'

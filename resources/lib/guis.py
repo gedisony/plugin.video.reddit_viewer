@@ -579,6 +579,7 @@ class progressBG( xbmcgui.DialogProgressBG ):
     def set_tick_total(self,tick_total):
         self.tick_total=tick_total
         remaining=100-self.progress
+        if tick_total==0:tick_total=1
         self.tick_increment=float(remaining)/tick_total
         #log('xxxxremaining['+repr(remaining) +']xxxxtick_total['+repr(tick_total)+']xxxxincrement['+repr(self.tick_increment))+']'
 

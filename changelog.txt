@@ -315,3 +315,10 @@
      - add progress dialog for urlresolver playback
      - decode <strong></strong> to [B][/B] in comments
      - new default subredits
+ 3.4.1 (2017-04-11)
+   - bugfix
+     - json parsing
+     - account for query string in some comment links
+   - add progress dialog for list comments
+   - update get thumbnail routine
+   - get post body for comment posts

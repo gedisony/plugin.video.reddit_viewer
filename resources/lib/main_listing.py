@@ -410,7 +410,6 @@ def reddit_post_worker(idx, entry, q_out):
     except Exception as e:
         log( '  #reddit_post_worker EXCEPTION:' + repr(sys.exc_info()) +'--'+ str(e) )
 
-
 def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_id=''):
     from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
@@ -590,11 +589,10 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
     #entries.append((translation(30022), 'RunPlugin(plugin://'+addonID+'/?mode=addToFavs&url='+urllib.quote_plus(favEntry)+'&type='+urllib.quote_plus(subreddit)+')',))
     return entries
 
-
-
 def listLinksInComment(url, name, type_):
     from domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
-    from utils import markdown_to_bbcode, unescape, ret_info_type_icon, build_script
+    from utils import markdown_to_bbcode, unescape
+    from guis import progressBG
     #from resources.domains import make_addon_url_from
     #called from context menu
     log('listLinksInComment:%s:%s' %(type_,url) )
@@ -611,21 +609,29 @@ def listLinksInComment(url, name, type_):
     if type_=='linksOnly':
         ShowOnlyCommentsWithlink=True
 
-    #sometimes the url has a query string. we discard it coz we add .json at the end
-    #url=url.split('?', 1)[0]+'.json'
-
     #url='https://www.reddit.com/r/Music/comments/4k02t1/bonnie_tyler_total_eclipse_of_the_heart_80s_pop/' + '.json'
     #only get up to "https://www.reddit.com/r/Music/comments/4k02t1".
     #   do not include                                            "/bonnie_tyler_total_eclipse_of_the_heart_80s_pop/"
     #   because we'll have problem when it looks like this: "https://www.reddit.com/r/Overwatch/comments/4nx91h/ever_get_that_feeling_dÃ©jÃ _vu/"
 
     #url=re.findall(r'(.*/comments/[A-Za-z0-9]+)',url)[0]
-    url=urllib.quote_plus(url,safe=':/')
-    url+='.json'
+
+    #use safe='' argument in quoteplus to encode only the weird chars part
+    url=urllib.quote_plus(url,safe=':/?&')
+    if '?' in url:
+        url=url.split('?', 1)[0]+'.json?'+url.split('?', 1)[1]
+    else:
+        url+= '.json'
+
+    loading_indicator=progressBG(translation(30024))
+    loading_indicator.update(0,'Retrieving comments')
 
     content = reddit_request(url)
-    if not content: return
+    if not content:
+        loading_indicator.end()
+        return
 
+    loading_indicator.update(10,'Parsing')
     content = json.loads(content)
 
     del harvest[:]
@@ -645,6 +651,9 @@ def listLinksInComment(url, name, type_):
     r_linkHunter(content[1]['data']['children'])
 
     comment_score=0
+
+    loading_indicator.set_tick_total(len(harvest))
+
     for i, h in enumerate(harvest):
         try:
             #log(str(i)+"  score:"+ str(h[0]).zfill(5)+" "+ h[1] +'|'+ h[3] )
@@ -734,7 +743,10 @@ def listLinksInComment(url, name, type_):
         #for di in directory_items:
         #    log( str(di) )
 
-    log('  comments_view id=%s' %comments_viewMode)
+        loading_indicator.tick(1, desc100)
+    loading_indicator.end()
+
+    #log('  comments_view id=%s' %comments_viewMode)
 
     #xbmcplugin.setContent(pluginhandle, "mixed")  #in estuary, mixed have limited view id's available. it has widelist which is nice for comments but we'll just stick with 'movies'
     xbmcplugin.setContent(pluginhandle, "movies")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
