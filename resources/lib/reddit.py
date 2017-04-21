@@ -20,8 +20,7 @@ def reddit_request( url, data=None ):
         url=url.replace('www.reddit.com','oauth.reddit.com' )
         url=url.replace( 'np.reddit.com','oauth.reddit.com' )
         url=url.replace(       'http://',        'https://' )
-        log( "  replaced reqst." + url + " + access token=" + reddit_access_token)
-
+        #log( "  replaced reqst." + url + " + access token=" + reddit_access_token)
     req = urllib2.Request(url)
 
     #req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.14) Gecko/20080404 Firefox/2.0.0.14')
@@ -516,7 +515,7 @@ def get_subreddit_info( subreddit ):
     r = requests.get( req, headers=headers, timeout=REQUEST_TIMEOUT )
     if r.status_code == requests.codes.ok:
         j=r.json()
-        #log( pprint.pformat(j, indent=1) ) 
+        #log( pprint.pformat(j, indent=1) )
         j=j.get('data')
         if 'display_name' in j:
             subs_dict.update( {'entry_name':subreddit.lower(),
@@ -534,7 +533,6 @@ def get_subreddit_info( subreddit ):
                                } )
             #log( pprint.pformat(subs_dict, indent=1) )
             return subs_dict
-            #log( repr(self.thumb_url) )
         else:
             log('    No data for (%s)'%subreddit)
     else:
@@ -603,6 +601,48 @@ def subreddit_in_favorites( subreddit ):
                 if subreddit.lower() == s.lower():
                     return True
 
+def get_subreddit_entry_info(subreddit):
+    import threading
+    #from resources.lib.utils import get_subreddit_info, parse_subreddit_entry, create_default_subreddits, load_dict
+    if subreddit.lower() in ['all','random','randnsfw','popular']:
+        return
+    s=[]
+    if '/' in subreddit:  #we want to get diy from diy/top or diy/new
+        subreddit=subreddit.split('/')[0]
+
+    if '+' in subreddit:
+        s.extend(subreddit.split('+'))
+    else:
+        s.append(subreddit)
+
+    t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
+    #threads.append(t)
+    #log('****starting... '+repr(t))
+    t.start()
+
+def get_subreddit_entry_info_thread(sub_list):
+    import os
+    from utils import load_dict, save_dict
+
+    subreddits_dlist=[]
+    #log('**** thread running:'+repr(sub_list))
+    if os.path.exists(subredditsPickle):
+        #log('****file exists ' + repr( subredditsPickle ))
+        subreddits_dlist=load_dict(subredditsPickle)
+        #for e in subreddits_dlist: log(e.get('entry_name'))
+        #log( pprint.pformat(subreddits_dlist, indent=1) )
+    #log('****------before for -------- ' + repr(sub_list ))
+    for subreddit in sub_list:
+        #remove old instance of subreddit
+        #log('****processing ' + repr( subreddit ))
+        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
+        #log('getting sub info')
+        sub_info=get_subreddit_info(subreddit)
+        log('    retrieved subreddit info ' + repr( sub_info ))
+        if sub_info:
+            subreddits_dlist.append(sub_info)
+            save_dict(subreddits_dlist, subredditsPickle)
+            #log('****saved ')
 
 if __name__ == '__main__':
     pass

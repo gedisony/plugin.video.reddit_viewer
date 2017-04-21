@@ -322,3 +322,8 @@
    - add progress dialog for list comments
    - update get thumbnail routine
    - get post body for comment posts
+ 3.4.2 (2017-04-21)
+   - update instagram parsing
+   - update get preview image routine
+   - remove url from comment post
+   - reorganize

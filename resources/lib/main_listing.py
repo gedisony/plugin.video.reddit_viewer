@@ -332,7 +332,7 @@ def reddit_post_worker(idx, entry, q_out):
             thumb=clean_str(data,['thumbnail'])
             #if show_listSubReddit_debug : log("       THUMB%.2d=%s" %( idx, thumb ))
 
-            if thumb in ['nsfw','default','self']:  #reddit has a "default" thumbnail (alien holding camera with "?")
+            if not thumb.startswith('http'): #in ['nsfw','default','self']:  #reddit has a "default" thumbnail (alien holding camera with "?")
                 thumb=""
 
             if thumb=="":
@@ -473,13 +473,15 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         if needs_preview and ld:
             queried_preview_image= next((i for i in [ld.poster,ld.thumb] if i ), '')
             previewimage=queried_preview_image
+            iconimage=ld.thumb
 
         arg_name=title
         arg_type=previewimage
-        if ld:
+        #if ld:
             #log('    ' + ld.media_type + ' -> ' + ld.link_action )
             #log('    ***icon:' + ld.thumb + ' -> ' + ld.link_action )
-            if iconimage in ["","nsfw", "default"]: iconimage=ld.thumb
+            #log('  ***poster:' + ld.poster + ' ' )
+            #if iconimage in ["","nsfw", "default"]: iconimage=ld.thumb
 
         DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld,
                                                                                                                         media_url,
@@ -590,7 +592,7 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
     return entries
 
 def listLinksInComment(url, name, type_):
-    from domains import parse_reddit_link, sitesBase, build_DirectoryItem_url_based_on_media_type
+    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
     from utils import markdown_to_bbcode, unescape
     from guis import progressBG
     #from resources.domains import make_addon_url_from

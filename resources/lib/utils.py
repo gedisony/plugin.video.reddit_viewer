@@ -465,6 +465,20 @@ def markdown_to_bbcode(s):
     except:
         return s
 
+def format_description(s, hide_text_in_parens=True):
+
+    formatted=unescape(s)  #convert html entities e.g.:(&#39;)
+
+    if hide_text_in_parens:
+        formatted=re.sub(r']\([^)]*\)', ']', formatted)
+    else:
+        #put a space between [link_description](http://link.descript.ion) so that they can be split into 2 lines in the textbox
+        #helps the the textbox control treat [url description] and (url) as separate words. so that they can be separated into 2 lines
+        formatted=s.replace('](', '] (')
+
+    formatted=markdown_to_bbcode(formatted)
+    formatted=strip_emoji(formatted)
+    return formatted
 
 def convert_date(stamp):
     #http://forum.kodi.tv/showthread.php?tid=221119
@@ -678,6 +692,31 @@ def json_query(query, ret):
             return json.loads(result)
     except:
         return {}
+
+#https://github.com/russellballestrini/nested-lookup/blob/master/nested_lookup/nested_lookup.py
+def nested_lookup(key, document):
+    """Lookup a key in a nested document, return a list of values"""
+    return list(_nested_lookup(key, document))
+
+def _nested_lookup(key, document):
+    #from six import iteritems
+    """Lookup a key in a nested document, yield a value"""
+    if isinstance(document, list):
+        for d in document:
+            for result in _nested_lookup(key, d):
+                yield result
+
+    if isinstance(document, dict):
+        for k, v in dict.items(document): #iteritems(document):
+            if k == key:
+                yield v
+            elif isinstance(v, dict):
+                for result in _nested_lookup(key, v):
+                    yield result
+            elif isinstance(v, list):
+                for d in v:
+                    for result in _nested_lookup(key, d):
+                        yield result
 
 
 if __name__ == '__main__':

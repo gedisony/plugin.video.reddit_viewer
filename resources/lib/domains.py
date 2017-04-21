@@ -6,6 +6,7 @@ import sys
 import re
 import requests
 import json
+import urlparse
 import xbmc
 import xbmcgui
 import xbmcplugin
@@ -54,6 +55,7 @@ class sitesBase(object):
     original_url=''
     media_w=0
     media_h=0
+    description=None  #additional description gathered from link
 
     include_gif_in_get_playable=False   #it is best to parse the link and get the mp4/webm version of a gif media. we can't do this with some sites so we just return the gif media instead of looking for mp4/webm
 
@@ -133,35 +135,37 @@ class sitesBase(object):
             #if m_type=='image': return link_url
             return link_url #will a video link resolve to a preview image?
         else:
-            #headers = {"Range": "bytes=0-1000"} content = self.requests_get(link_url, headers)
-            #timeout not working right if redirect.
+            try:
+                #headers = {"Range": "bytes=0-1000"} content = self.requests_get(link_url, headers)
+                #timeout not working right if redirect.
 
-            #first, do a head request. sometimes the link is an mp3 and we don't want to download the entire file just to check the 'content-type'
-            head=requests.head(link_url, timeout=(2,2),allow_redirects=True)
-            #log('head request returned:'+repr(head.status_code)+' '+repr(head.headers))
-            if head.status_code==requests.codes.ok:
-                if 'html' in head.headers.get('content-type') :
-                    r = self.requests_get(link_url,headers=None, timeout=(2,2), allow_redirects=True)
-                    #log( "getting OG:image:" + repr(r.headers))
-                    if r:
-                        #log( "if content:" + repr(r.headers))
-                        i=parseDOM(r.text, "meta", attrs = { "property": "og:image" }, ret="content" )
-                        #log( "if parseDOM:" + link_url)
-                        if i:
-                            #log( "if i:" + link_url)
-                            try:
-                                import urlparse
-                                return urlparse.urljoin(link_url, i[0]) #handle relative or absolute
-                            except IndexError: pass
-                            else:
-                                log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
+                #first, do a head request. sometimes the link is an mp3 and we don't want to download the entire file just to check the 'content-type'
+                head=requests.head(link_url, timeout=(4,4),allow_redirects=True)
+                #log('head request returned:'+repr(head.status_code)+' '+repr(head.headers))
+                if head.status_code==requests.codes.ok:
+                    if 'html' in head.headers.get('content-type') :
+                        r = self.requests_get(link_url,headers=None, timeout=(4,4), allow_redirects=True)
+                        #log( "getting OG:image:" + repr(r.headers))
+                        if r:
+                            a=parseDOM(r.text, "meta", attrs = { "property": "og:image" }, ret="content" )   #most sites use <meta property="
+                            b=parseDOM(r.text, "meta", attrs = {     "name": "og:image" }, ret="content" )   #boardgamegeek uses <meta name="
+                            i=next((item for item in [a,b] if item ), '')
+                            #log( "if parseDOM:" + link_url)
+                            if i:
+                                try:
+                                    return urlparse.urljoin(link_url, i[0]) #handle relative or absolute
+                                except IndexError: pass
+                                else:
+                                    log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
+            except Exception as e:
+                log('request_meta_ogimage_content:'+str(e))
 
     #def combine_title_and_description(self, title, description):
     #    return ( '[B]'+title+'[/B]\n' if title else '' ) + ( description if description else '' )
 
     def clog(self, error_code, request_url):
         log("    %s error:%s %s" %( self.__class__.__name__, error_code ,request_url) )
-
+    @classmethod
     def get_first_url_from(self,string_with_url):
         match = re.compile("(https?://[^\s/$.?#].[^\s]*)['\\\"]?(?:$)?").findall(string_with_url)
         #log('   get_first_url_from:matches' + repr(match) )
@@ -512,8 +516,7 @@ class ClassImgur(sitesBase):
             self.thumb_url, self.poster_url= self.get_album_thumb(link_url)
             return self.thumb_url
 
-        from urlparse import urlparse
-        o=urlparse(link_url)    #from urlparse import urlparse
+        o=urlparse.urlparse(link_url)
         filename,ext=parse_filename_and_ext_from_url(link_url)
         #log("file&ext------"+filename+"--"+ext+"--"+o.netloc )
 
@@ -1271,9 +1274,7 @@ class ClassBlogspot(sitesBase):
         return '',''
 
     def ret_blog_post_request(self):
-
-        from urlparse import urlparse
-        o=urlparse(self.media_url)   #scheme, netloc, path, params, query, fragment
+        o=urlparse.urlparse(self.media_url)   #scheme, netloc, path, params, query, fragment
         #log( '  blogpath=' + o.path )
         blog_path= o.path
 
@@ -1357,6 +1358,7 @@ class ClassInstagram(sitesBase):
     def get_playable_url(self, media_url, is_probably_a_video=True):
         #the instagram api has limits and that would not work for this purpose
         #  scrape the instagram post instead.
+        from utils import nested_lookup
 
         r = self.requests_get(media_url)
         #log(r.text)
@@ -1371,18 +1373,23 @@ class ClassInstagram(sitesBase):
                 if j.get('entry_data'):
                     post_pages=j.get('entry_data').get('PostPage')
                     #log('    post_pages %d' %len(post_pages) )
-
+                    #log('    post_page ' +repr(post_pages[0]) )
                     post_page=post_pages[0]
                     media=post_page.get('media')
-                    #log(str(j['entry_data']['PostPage'][0]['media']['display_src']))
-                    display_src=media.get('display_src')
+                    if media:
+                        #log(str(j['entry_data']['PostPage'][0]['media']['display_src']))
+                        display_src=media.get('display_src')
+                    else:
+                        #this part added to parse: https://www.instagram.com/p/BBqU7WPtudX/?taken-by=insecuregod
+                        media=nested_lookup('shortcode_media',post_page)[0]
+                        display_src=media.get('display_url')
+
                     is_video=media.get('is_video')
                     self.media_w=media.get('dimensions').get('width')
                     self.media_h=media.get('dimensions').get('height')
 
                     self.thumb_url=display_src
                     self.poster_url=self.thumb_url
-
                     #log('      vid=%s %dx%d %s' %(is_video,self.media_w,self.media_h,display_src)  )
                     if is_video:
                         self.media_url=media.get('video_url')
@@ -1393,9 +1400,8 @@ class ClassInstagram(sitesBase):
                 else:
                     log("  Could not get 'entry_data' from scraping instagram [window._sharedData = ]")
 
-            except:
-                log('    exception while parsing json')
-                return '',''
+            except Exception as e:
+                log('    exception while parsing json:'+str(e))
 
         return '', ''
 
@@ -1535,7 +1541,6 @@ class ClassFlickr(sitesBase):
 
         self.fmedia_type="photo"
         ret_url=""
-        photo_id=0
 
         #figure out the media type; this determines how we extract the ID and api call to use
         self.fmedia_type=self.flickr_link_type(media_url)
@@ -2335,11 +2340,10 @@ class ClassReddit(sitesBase):
             banner_img=j.get('banner_img')
             header_img=j.get('header_img')
 
-            icon=next((item for item in [icon_img,banner_img,header_img] if item ), '')
+            icon=next((item for item in [icon_img,header_img,banner_img] if item ), '')
 
             self.thumb_url=icon
             self.poster_url=banner_img
-
 
 class ClassKindgirls(sitesBase):
     regex='(kindgirls.com)'
@@ -2440,7 +2444,7 @@ class ClassKindgirls(sitesBase):
         if self.is_album(self.original_url):
             #log('    is album')
             #this also gets the thumb and poster url's
-            dictlist = self.ret_album_list( self.original_url )
+            self.ret_album_list( self.original_url )
             return self.thumb_url
 
 class Class500px(sitesBase):
@@ -2705,9 +2709,6 @@ class ClassImgTrex(sitesBase):
             #***** there were instances where imgtrex returned image extension as .jpg but it is actually .gif.    we can't do anything about this.
             self.set_media_type_thumb_and_action(image[0])
             return self.media_url, self.media_type
-
-    def ret_album_list(self, album_url, thumbnail_size_code=''):
-        return None
 
     def get_thumb_url(self):
         pass
@@ -3010,7 +3011,7 @@ class genericVideo(sitesBase):
 
 
 class LinkDetails():
-    def __init__(self, media_type, link_action, playable_url='', thumb='', poster='', poster_w=0, poster_h=0, dictlist=None  ):
+    def __init__(self, media_type, link_action, playable_url='', thumb='', poster='', poster_w=0, poster_h=0, dictlist=None, description='' ):
         #self.kodi_url = kodi_url
         self.playable_url = playable_url
         self.media_type = media_type
@@ -3020,6 +3021,7 @@ class LinkDetails():
         self.poster_w = poster_w
         self.poster_h = poster_h
         self.dictlist = dictlist #for img albums
+        self.desctiption=description #for text gathered from link to present to the user. (r/bestof comment body for now)
 
 def sitesManager( media_url ):
     #picks which class will handle the media identification and extraction for website_name
@@ -3037,7 +3039,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
 
     album_dict_list=None
     hoster = sitesManager( link_url )
-    log( '    %s %s %s=> %s' %(hoster.__class__.__name__, link_url, hoster.link_action if hoster else '[No action]', hoster.media_url if hoster else '[Not supported]' ) )
+    #log( '  %s %s => %s' %(hoster.__class__.__name__, link_url, hoster.media_url if hoster else '[Not supported]' ) )
 
     try:
         if hoster:
@@ -3046,13 +3048,13 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
                 pass
 
             prepped_media_url, media_type = hoster.get_playable(link_url, assume_is_video)
-            #log( '    %s parsed: [%s] type=%s url=%s ' % ( hoster.__class__.__name__, hoster.link_action, media_type,  prepped_media_url ) )
+            #log( '    parsed: [%s] type=%s url=%s ' % ( hoster.link_action, media_type,  prepped_media_url ) )
+            if not prepped_media_url:
+                log("  Failed to parse %s" %(link_url) )
 
             if needs_preview:
                 hoster.get_thumb_url()
-                #log('thumb:' + thumb)
-                #poster=hoster.poster_url
-                #log('      poster_url:'+poster)
+
             if not hoster.link_action:
                 if media_type==sitesBase.TYPE_IMAGE:
                     if image_ar>0 and image_ar < 0.4: #special action for tall images
@@ -3064,7 +3066,7 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
                     album_dict_list=hoster.dictList
                     hoster.link_action='listAlbum'
 
-            ld=LinkDetails(media_type, hoster.link_action, prepped_media_url, hoster.thumb_url, hoster.poster_url, dictlist=album_dict_list )
+            ld=LinkDetails(media_type, hoster.link_action, prepped_media_url, hoster.thumb_url, hoster.poster_url, dictlist=album_dict_list,description=hoster.description  )
             return ld
 
         else:

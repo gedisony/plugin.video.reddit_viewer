@@ -8,7 +8,7 @@ import shutil
 
 from default import subredditsFile, addon, addon_path, profile_path, ytdl_core_path, pluginhandle, subredditsPickle
 from utils import xbmc_busy, log, translation, xbmc_notify
-import threading
+from reddit import get_subreddit_entry_info
 
 ytdl_quality=addon.getSetting("ytdl_quality")
 try: ytdl_quality=[0, 1, 2, 3][ int(ytdl_quality) ]
@@ -19,9 +19,8 @@ def addSubreddit(subreddit, name, type_):
     from utils import colored_subreddit
     from reddit import this_is_a_multireddit, format_multihub
     alreadyIn = False
-    fh = open(subredditsFile, 'r')
-    content = fh.readlines()
-    fh.close()
+    with open(subredditsFile, 'r') as fh:
+        content = fh.readlines()
     if subreddit:
         for line in content:
             if line.lower()==subreddit.lower():
@@ -53,65 +52,25 @@ def addSubreddit(subreddit, name, type_):
                     alreadyIn = True
 
             if not alreadyIn:
-                fh = open(subredditsFile, 'a')
-                fh.write(subreddit+'\n')
-                fh.close()
+                with open(subredditsFile, 'a') as fh:
+                    fh.write(subreddit+'\n')
+
         xbmc.executebuiltin("Container.Refresh")
 
-def get_subreddit_entry_info(subreddit):
-    #from resources.lib.utils import get_subreddit_info, parse_subreddit_entry, create_default_subreddits, load_dict
-    if subreddit.lower() in ['all','random','randnsfw']:
-        return
-    s=[]
-    if '/' in subreddit:  #we want to get diy from diy/top or diy/new
-        subreddit=subreddit.split('/')[0]
-
-    if '+' in subreddit:
-        s.extend(subreddit.split('+'))
-    else:
-        s.append(subreddit)
-
-    t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
-    #threads.append(t)
-    #log('****starting... '+repr(t))
-    t.start()
-
-def get_subreddit_entry_info_thread(sub_list):
-    import os
-    from utils import load_dict, save_dict
-    from reddit import get_subreddit_info
-
-    subreddits_dlist=[]
-    #log('**** thread running')
-    if os.path.exists(subredditsPickle):
-        #log('****file exists ' + repr( subredditsPickle ))
-        subreddits_dlist=load_dict(subredditsPickle)
-        #for e in subreddits_dlist: log(e.get('entry_name'))
-        #log( pprint.pformat(subreddits_dlist, indent=1) )
-    #log('****------before for -------- ' + repr(sub_list ))
-    for subreddit in sub_list:
-        #remove old instance of subreddit
-        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
-        sub_info=get_subreddit_info(subreddit)
-        log('****sub_info ' + repr( sub_info ))
-        if sub_info:
-            #log('****if sub_info ')
-            subreddits_dlist.append(sub_info)
-            save_dict(subreddits_dlist, subredditsPickle)
-            #log('****saved ')
 def removeSubreddit(subreddit, name, type_):
-    #note: calling code in addDirR()
-    fh = open(subredditsFile, 'r')
-    content = fh.readlines()
-    fh.close()
+    log( 'removeSubreddit ' + subreddit)
+
+    with open(subredditsFile, 'r') as fh:
+        content = fh.readlines()
+
     contentNew = ""
     for line in content:
         if line!=subreddit+'\n':
             #log('line='+line+'toremove='+subreddit)
             contentNew+=line
-    fh = open(subredditsFile, 'w')
-    fh.write(contentNew)
-    fh.close()
+    with open(subredditsFile, 'w') as fh:
+        fh.write(contentNew)
+        #fh.close()
     xbmc.executebuiltin("Container.Refresh")
 
 def editSubreddit(subreddit, name, type_):
