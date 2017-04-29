@@ -694,12 +694,6 @@ def listLinksInComment(url, name, type_):
             plot= markdown_to_bbcode(plot)
             plot=unescape(plot)  #convert html entities e.g.:(&#39;)
 
-#            liz=xbmcgui.ListItem(label=     "[COLOR greenyellow]*"+     list_title+"[%s] %s"%(domain, result.replace('\n',' ')[0:100])  + "[/COLOR]",
-#                                 label2="",
-#                                 iconImage="",
-#                                 thumbnailImage='',
-#                                 path=DirectoryItem_url)
-
             liz=xbmcgui.ListItem(label=list_title +': '+ desc100)
 
             liz.setInfo( type="Video", infoLabels={ "Title": h[1], "plot": plot, "studio": domain, "votes": str(comment_score), "director": author  } )

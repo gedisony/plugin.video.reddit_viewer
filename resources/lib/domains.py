@@ -422,6 +422,9 @@ class ClassImgur(sitesBase):
                     #log( '  *** album with 1 image ' + self.image_url_of_a_single_image_album)
                     return False
                 else:
+                    #data is already there, just parse it
+                    images=self.ret_images_dict_from_album_json(j)
+                    self.assemble_images_dictList(images)
                     return True
             else:
                 #sometimes we receive a single image data (no images_count)  is_album=false
@@ -1984,6 +1987,10 @@ class ClassEroshare(sitesBase):
                     #log('    multiple: %s orig=%s ' %( item.get('type').lower(), item.get('url_orig') ))
                     media_types.append( item.get('type').lower() )
 
+                #data already here, might as well parse it.
+                images=self.ret_images_dict_from_album_json(j)
+                self.assemble_images_dictList(images)
+
                 if all_same(media_types):
                     if media_types[0]==self.TYPE_IMAGE:
                         log('    eroshare link has all images %d' %len(items) )
@@ -1998,7 +2005,7 @@ class ClassEroshare(sitesBase):
 
                 else: #video and images
                     log('    eroshare link has mixed video and images %d' %len(items) )
-                    #self.link_action=sitesBase.DI_ACTION_YTDL
+                    self.link_action=None #sitesBase.DI_ACTION_YTDL
                     self.media_type=self.TYPE_ALBUM
                     return link_url, self.media_type
         else:
@@ -2029,21 +2036,31 @@ class ClassEroshare(sitesBase):
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
         #returns an object (list of dicts) that contain info for the calling function to create the listitem/addDirectoryItem
-        images=[]
         content = self.requests_get( album_url)
 
         match = re.compile('var album\s=\s(.*)\;').findall(content.text)
         #log('********* ' + match[0])
         if match:
             j = json.loads(match[0])
+            images=self.ret_images_dict_from_album_json(j)
+            self.assemble_images_dictList(images)
+            #self.assemble_images_dictList(   ( [ s.get('description'), prefix+s.get('url_full')] for s in items)    )
 
+        else:
+            log('      eroshare:ret_album_list: var album string not found. ')
+
+        return self.dictList
+
+    def ret_images_dict_from_album_json(self,j):
+        images=[]
+        try:
             reddit_submission=j.get('reddit_submission')
             if reddit_submission:
                 reddit_submission_title=reddit_submission.get('title')
 
             title=j.get('title') if j.get('title') else reddit_submission_title
             items=j.get('items')
-            log( '      %d item(s)' % len(items) )
+            #log( '      %d item(s)' % len(items) )
             prefix='https:'
             for s in items:
                 media_type=s.get('type').lower()
@@ -2072,13 +2089,9 @@ class ClassEroshare(sitesBase):
                                     'width': width,
                                     'height': height,
                                     }  )
-            self.assemble_images_dictList(images)
-            #self.assemble_images_dictList(   ( [ s.get('description'), prefix+s.get('url_full')] for s in items)    )
-
-        else:
-            log('      eroshare:ret_album_list: var album string not found. ')
-
-        return self.dictList
+        except AttributeError as e:
+            log('  error parsing eroshare album:'+str(e))
+        return images
 
     def get_media(self, j_item):
         h='https:'

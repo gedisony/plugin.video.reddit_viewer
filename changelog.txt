@@ -327,3 +327,6 @@
    - update get preview image routine
    - remove url from comment post
    - reorganize
+ 3.4.3 (2017-04-28)
+   - exclude videos with no audio codec in ytdl
+   - update viewAlbum gui to pre-load next image

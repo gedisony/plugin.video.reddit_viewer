@@ -278,7 +278,7 @@ def display_album_from(dictlist, album_name):
         using_custom_gui=False
 
     #log( repr(dictlist))
-    for idx, d in enumerate(dictlist):
+    for _, d in enumerate(dictlist):
         ti=d['li_thumbnailImage']
         media_url=d.get('DirectoryItem_url')
 
@@ -300,7 +300,7 @@ def display_album_from(dictlist, album_name):
 
         #parse the link so that we can determine whether it is image or video.
         ld=parse_reddit_link(media_url)
-        DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix = build_DirectoryItem_url_based_on_media_type(ld, media_url, '', '', script_to_call="")
+        DirectoryItem_url, setProperty_IsPlayable, isFolder, _ = build_DirectoryItem_url_based_on_media_type(ld, media_url, '', '', script_to_call="")
 
         if using_custom_gui:
             url_for_DirectoryItem=media_url
@@ -318,12 +318,7 @@ def display_album_from(dictlist, album_name):
         liz.setInfo( type='video', infoLabels=d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
         liz.setArt({"thumb": ti,'icon': ti, "poster":media_url, "banner":media_url, "fanart":media_url, "landscape":media_url   })
 
-        directory_items.append( (url_for_DirectoryItem, liz, False,) )
-    #msg=WINDOW.getProperty(url)
-    #WINDOW.clearProperty( url )
-    #log( '   msg=' + msg )
-    #<label>$INFO[Window(10000).Property(foox)]</label>
-    #WINDOW.setProperty('view_450_slideshow_title',WINDOW.getProperty(url))
+        directory_items.append( (url_for_DirectoryItem, liz, isFolder,) )
 
     if using_custom_gui:
         from guis import cGUI
