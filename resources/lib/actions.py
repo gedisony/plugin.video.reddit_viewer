@@ -291,9 +291,6 @@ def display_album_from(dictlist, album_name):
         combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
         combined += d['infoLabels'].get('plot') if d['infoLabels'].get('plot') else ""
         d['infoLabels']['plot'] = combined
-        #d['infoLabels']['genre'] = "0,-2000"
-        #d['infoLabels']['year'] = 1998
-        #log( d['infoLabels'].get('plot') )
 
         liz=xbmcgui.ListItem(label=d['infoLabels']['plot'],
                              label2=d['li_label2'])
@@ -306,8 +303,13 @@ def display_album_from(dictlist, album_name):
             url_for_DirectoryItem=media_url
             if setProperty_IsPlayable=='true':
                 liz.setProperty('item_type','playable')
-                #liz.setProperty('onClick_action', build_script('play', media_url,'','') )
                 liz.setProperty('onClick_action',  media_url )
+                liz.setProperty('is_video','true')
+            else:
+                #other playable item here skipped
+                #  usually albums with mixed video and image are from imgur and eroshare. their videos are already resolved.
+                #  can't find a sample of album with video that needs ytdl to resolve the video to play
+                pass
         else:
             #sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=viewImage"
 

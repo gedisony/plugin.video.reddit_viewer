@@ -28,13 +28,19 @@
 					<!-- animation effect="fade" start="100" end="0" time="1000" delay="0" tween="back" easing="in">visible</animation-->
 				</control>
 
-		        <control type="image">
-		        	<top>-100</top>
-		            <description>The spinning animation in the background</description>
-		            <aspectratio align="center" aligny="center" >center</aspectratio>
-		            <texture>srr_busy.gif</texture>
-		            <visible>!IntegerGreaterThan(Container(53).NumPages,0) | ![Container(53).OnNext | Container(53).OnPrevious]</visible>
-		        </control>
+				<control type="image">
+					<description>The spinning animation in the background</description>
+					<aspectratio align="center" aligny="center" >center</aspectratio>
+					<texture>srr_busy.gif</texture>
+					<visible>!IntegerGreaterThan(Container(53).NumPages,0) | ![Container(53).OnNext | Container(53).OnPrevious] + isEmpty(Container(53).ListItem.Property(is_video))</visible>
+				</control>
+
+				<control type="image">
+					<description>Play overlay for video</description>
+					<aspectratio align="center" aligny="center" >center</aspectratio>
+					<texture>play_overlay.png</texture>
+					<visible>!isEmpty(Container(53).ListItem.Property(is_video))</visible>
+				</control>
 
 				<control type="image" id="204">
 					<visible>Control.HasFocus(104)</visible>

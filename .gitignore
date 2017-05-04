@@ -4,3 +4,4 @@
 *.pyo
 resources/lib/youtube_dl/**
 thumbs.db
+Thumbs.db

@@ -587,7 +587,7 @@ def truncate(string, length, ellipse='...'):
 
 def xbmc_notify(Line1, line2):
     xbmc.executebuiltin('XBMC.Notification("%s", "%s" )' %( Line1, line2) )
-    log("XBMC.Notification: %s %s" %(Line1, line2) )
+    log("XBMC.Notification: %s: %s" %(Line1, line2) )
 
 def open_web_browser(url,name,type_):
     #http://forum.kodi.tv/showthread.php?tid=235733
@@ -751,6 +751,7 @@ def dictlist_to_listItems(dictlist):
             if isPlayable=='true':
                 liz.setProperty('item_type','playable')
                 liz.setProperty('onClick_action', media_url )
+                liz.setProperty('is_video','true')
             else:
                 liz.setProperty('item_type','script')
                 liz.setProperty('onClick_action', build_script('playYTDLVideo', media_url,'',media_thumb) )
