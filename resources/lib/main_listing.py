@@ -32,7 +32,7 @@ cxm_show_reddit_save      = addon.getSetting("cxm_show_reddit_save") == "true"
 
 def index(url,name,type_):
     from utils import xstr, samealphabetic, hassamealphabetic
-    from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info
+    from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info, ret_settings_type_default_icon
 
     ## this is where the main screen is created
 
@@ -77,14 +77,17 @@ def index(url,name,type_):
         #log( subreddit + "   " + shortcut_description )
 
         #url= urlMain+"/r/"+subreddit+"/.json?"+nsfw+allHosterQuery+"&limit="+itemsPerPage
+        icon=default_icon='' #addon_path+"/resources/skins/Default/media/"+ret_settings_type_default_icon(entry_type)
+
+        #log('  %s             icon=%s' %(subreddit, icon))
         url= assemble_reddit_filter_string("",subreddit, "yes")
         #log("assembled================="+url)
         if subreddit.lower() in ["all","popular"]:
-            addDir(subreddit, url, next_mode, "", subreddit, { "plot": translation(30009) } )  #Displays the currently most popular content from all of reddit
+            addDir(subreddit, url, next_mode, icon, subreddit, { "plot": translation(30009) } )  #Displays the currently most popular content from all of reddit
         else:
             if addtl_subr_info: #if we have additional info about this subreddit
                 #log(repr(addtl_subr_info))
-                title=addtl_subr_info.get('title')+'\n'
+                title=xstr(addtl_subr_info.get('title'))+'\n'
                 display_name=xstr(addtl_subr_info.get('display_name'))
                 if samealphabetic( title, display_name): title=''
                 #if re.sub('\W+','', display_name.lower() )==re.sub('\W+','', title.lower()): title=''
@@ -106,7 +109,7 @@ def index(url,name,type_):
 
                 #log( subreddit + ' icon=' + repr(icon) +' header=' + repr(header))
                 #picks the first item that is not None
-                icon=next((item for item in [icon,banner,header] if item ), '')
+                icon=next((item for item in [icon,banner,header] if item ), '') or default_icon
 
                 addDirR(alias, url, next_mode, icon,
                         type_=subreddit,
@@ -114,7 +117,7 @@ def index(url,name,type_):
                         file_entry=subreddit_entry,
                         banner_image=banner )
             else:
-                addDirR(alias, url, next_mode, "", subreddit, { "plot": shortcut_description }, subreddit_entry )
+                addDirR(alias, url, next_mode, icon, subreddit, { "plot": shortcut_description }, subreddit_entry )
 
     addDir("[B]- "+translation(30001)+"[/B]", "", 'addSubreddit', "", "", { "plot": translation(30006) } ) #"Customize this list with your favorite subreddit."
     addDir("[B]- "+translation(30005)+"[/B]", "",'searchReddits', "", "", { "plot": translation(30010) } ) #"Search reddit for a particular post or topic

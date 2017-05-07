@@ -278,6 +278,28 @@ def create_default_subreddits():
         fh.write('videos\n')
         fh.write('woahdude+interestingasfuck+shittyrobots\n')
 
+def populate_subreddits_pickle():
+    from guis import progressBG
+    loading_indicator=progressBG(translation(32023))   #Gathering icons..
+    #loading_indicator.update(0,translation(32024) %'') #Gathering icons.. %s
+
+    with open(subredditsFile, 'r') as fh:
+        subreddit_settings = fh.readlines()
+
+    #xbmc_notify("initializing", "Building icons cache", 5000)
+    loading_indicator.set_tick_total(len(subreddit_settings))
+    for entry in subreddit_settings:
+        entry=entry.strip()
+        loading_indicator.tick(1,entry)
+        s=convert_settings_entry_into_subreddits_list_or_domain(entry)
+        if s:
+            #t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
+            log('processing saved entry:'+repr(entry))
+            get_subreddit_entry_info_thread(s)
+
+    xbmc.sleep(2000)
+    loading_indicator.end()
+
 def format_multihub(multihub):
 #properly format a multihub string
 #make sure input is a valid multihub
@@ -330,10 +352,28 @@ def parse_subreddit_entry(subreddit_entry_from_file):
         entry_type='multireddit'
         description=translation(30007)  #"Custom Multireddit"
 
+    if subreddit.startswith('?'):
+        entry_type='search'
+        description=translation(32016)  #"Custom Search"
     #save that view id in our global mailbox (retrieved by listSubReddit)
     #WINDOW.setProperty('viewid-'+subreddit, viewid)
 
     return entry_type, subreddit, alias, description
+
+def ret_settings_type_default_icon(entry_type):
+    icon="type_unsupp.png"
+    if entry_type=='subreddit':
+        icon="icon_generic_subreddit.png"
+    elif entry_type=='domain':
+        icon="icon_domain.png"
+    elif entry_type=='combined':
+        icon="icon_multireddit.png"
+    elif entry_type=='multireddit':
+        icon="icon_multireddit.png"
+    elif entry_type=='search':
+        icon="icon_search_subreddit.png"
+
+    return icon
 
 def subreddit_alias( subreddit_entry_from_file ):
     #users can specify an alias for the subredit and it is stored in the file as a regular string  e.g. diy[do it yourself]
@@ -508,35 +548,38 @@ def get_subreddit_info( subreddit ):
     import requests
     #import pprint
     subs_dict={}
-
+    #log('get_subreddit_info(%s)' %subreddit)
     headers = {'User-Agent': reddit_userAgent}
     req='https://www.reddit.com/r/%s/about.json' %subreddit
     #log('headers:' + repr(headers))
     r = requests.get( req, headers=headers, timeout=REQUEST_TIMEOUT )
     if r.status_code == requests.codes.ok:
-        j=r.json()
-        #log( pprint.pformat(j, indent=1) )
-        j=j.get('data')
-        if 'display_name' in j:
-            subs_dict.update( {'entry_name':subreddit.lower(),
-                               'display_name':j.get('display_name'),
-                               'banner_img': j.get('banner_img'),
-                               'icon_img': j.get('icon_img'),
-                               'header_img': j.get('header_img'), #not used? usually similar to with icon_img
-                               'title':j.get('title'),
-                               'header_title':j.get('header_title'),
-                               'public_description':j.get('public_description'),
-                               'subreddit_type':j.get('subreddit_type'),
-                               'subscribers':j.get('subscribers'),
-                               'created':j.get('created'),        #public, private
-                               'over18':j.get('over18'),
-                               } )
-            #log( pprint.pformat(subs_dict, indent=1) )
-            return subs_dict
+        try:
+            j=r.json()
+            #log( pprint.pformat(j, indent=1) )
+            j=j.get('data')
+            if 'display_name' in j:
+                subs_dict.update( {'entry_name':subreddit.lower(),
+                                   'display_name':j.get('display_name'),
+                                   'banner_img': j.get('banner_img'),
+                                   'icon_img': j.get('icon_img'),
+                                   'header_img': j.get('header_img'), #not used? usually similar to with icon_img
+                                   'title':j.get('title'),
+                                   'header_title':j.get('header_title'),
+                                   'public_description':j.get('public_description'),
+                                   'subreddit_type':j.get('subreddit_type'),
+                                   'subscribers':j.get('subscribers'),
+                                   'created':j.get('created'),        #public, private
+                                   'over18':j.get('over18'),
+                                   } )
+                #log( pprint.pformat(subs_dict, indent=1) )
+                return subs_dict
+        except ValueError:
+            log('    ERROR:No data for (%s)'%subreddit)
         else:
-            log('    No data for (%s)'%subreddit)
+            log('    ERROR:No data for (%s)'%subreddit)
     else:
-        log( '    getting subreddit (%s) info:%s' %(subreddit, r.status_code) )
+        log( '    ERROR:getting subreddit (%s) info:%s' %(subreddit, r.status_code) )
 
 subreddits_dlist=[]
 def ret_sub_info( subreddit_entry ):
@@ -549,6 +592,7 @@ def ret_sub_info( subreddit_entry ):
         if not subreddits_dlist:
             if os.path.exists(subredditsPickle):
                 subreddits_dlist=load_dict(subredditsPickle)
+                #log(repr(subreddits_dlist))
 
         subreddit_search=subreddit_entry.lower()
         if '/' in subreddit_search:
@@ -561,10 +605,10 @@ def ret_sub_info( subreddit_entry ):
             #we have an entry in our pickle file about the subreddit entry
             if sd.get('entry_name')==subreddit_search:
                 return sd
-    except:
+    except Exception as e:
         #sometimes we get a race condition when the save thread is saving and the index function is listing
         #hopefully the 'global' line up above minimizes this
-        pass
+        log('**error parsing subredditsPickle (ret_sub_info):'+str(e))
 
 def ret_sub_icon(subreddit):
     sub_info=ret_sub_info(subreddit)
@@ -603,41 +647,62 @@ def subreddit_in_favorites( subreddit ):
 
 def get_subreddit_entry_info(subreddit):
     import threading
-    #from resources.lib.utils import get_subreddit_info, parse_subreddit_entry, create_default_subreddits, load_dict
-    if subreddit.lower() in ['all','random','randnsfw','popular']:
+
+    s=convert_settings_entry_into_subreddits_list_or_domain(subreddit)
+    if s:
+        t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
+        #log('****starting... '+repr(t))
+        t.start()
+
+def convert_settings_entry_into_subreddits_list_or_domain(settings_entry):
+    settings_entry=settings_entry.lower().strip()
+    if settings_entry in ['all','random','randnsfw','popular']:
         return
+
+    if settings_entry.startswith('/user'):#no icon for multireddit or saved posts
+        return
+
+    if settings_entry.startswith('?'):  #no icon for searches
+        return
+
     s=[]
-    if '/' in subreddit:  #we want to get diy from diy/top or diy/new
-        subreddit=subreddit.split('/')[0]
 
-    if '+' in subreddit:
-        s.extend(subreddit.split('+'))
+    if '/' in settings_entry:  #only get "diy" from "diy/top" or "diy/new"
+        settings_entry=settings_entry.split('/')[0]
+
+    if '+' in settings_entry:
+        s.extend(settings_entry.split('+'))
     else:
-        s.append(subreddit)
+        s.append(settings_entry)
 
-    t = threading.Thread(target=get_subreddit_entry_info_thread, args=(s,) )
-    #threads.append(t)
-    #log('****starting... '+repr(t))
-    t.start()
+    return s
 
 def get_subreddit_entry_info_thread(sub_list):
-    import os
-    from utils import load_dict, save_dict
+    from utils import load_dict, save_dict, get_domain_icon, setting_entry_is_domain
 
-    subreddits_dlist=[]
+    global subreddits_dlist #subreddits_dlist=[]
     #log('**** thread running:'+repr(sub_list))
-    if os.path.exists(subredditsPickle):
-        #log('****file exists ' + repr( subredditsPickle ))
-        subreddits_dlist=load_dict(subredditsPickle)
-        #for e in subreddits_dlist: log(e.get('entry_name'))
-        #log( pprint.pformat(subreddits_dlist, indent=1) )
+    if not subreddits_dlist:
+        if os.path.exists(subredditsPickle):
+            #log('****file exists ' + repr( subredditsPickle ))
+            subreddits_dlist=load_dict(subredditsPickle)
+            #for e in subreddits_dlist: log(e.get('entry_name'))
+            #log( pprint.pformat(subreddits_dlist, indent=1) )
     #log('****------before for -------- ' + repr(sub_list ))
     for subreddit in sub_list:
+        subreddit=subreddit.lower().strip()
         #remove old instance of subreddit
         #log('****processing ' + repr( subreddit ))
-        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name') != subreddit.lower() ]
-        #log('getting sub info')
-        sub_info=get_subreddit_info(subreddit)
+        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name','') != subreddit ]
+        domain=setting_entry_is_domain(subreddit)
+        if domain:
+            log('  getting domain info '+domain)
+            sub_info=get_domain_icon(subreddit,domain)
+            #icon="http://%s/favicon.ico"%domain
+        else:
+            log('  getting sub info '+subreddit)
+            sub_info=get_subreddit_info(subreddit)
+
         log('    retrieved subreddit info ' + repr( sub_info ))
         if sub_info:
             subreddits_dlist.append(sub_info)

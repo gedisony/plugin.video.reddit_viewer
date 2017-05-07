@@ -280,8 +280,18 @@ class ClassYoutube(sitesBase):
         if not media_url:
             media_url=self.media_url
 
+        o = urlparse.urlparse(media_url)
+        query = urlparse.parse_qs(o.query)
+
         self.get_video_id()
         #log('      youtube video id:' + self.video_id )
+
+        #for parsing this: https://www.youtube.com/attribution_link?a=y08k0cdNBKw&u=%2Fwatch%3Fv%3DQOVrrL5KtsM%26feature%3Dshare%26list%3DPLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW%26index%3D4
+        if not self.video_id and 'a' in query and 'u' in query:   #if all (k in query for k in ("a","u")):
+            u=query['u'][0]
+            #log('   u  '+ repr(u)) #  <--  /watch?v=QOVrrL5KtsM&feature=share&list=PLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW&index=4
+            self.get_video_id('youtube.com'+u)
+            #log('      2nd try: youtube video id:' + self.video_id )
 
         if self.video_id:
             if use_addon_for_youtube:
@@ -292,7 +302,7 @@ class ClassYoutube(sitesBase):
                 #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
                 #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
                 #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43
-                if 't=' in media_url:
+                if 't' in query:
                     return media_url, self.TYPE_VIDEO
                 else:
                     return "http://youtube.com/v/{0}".format(self.video_id), self.TYPE_VIDEO
@@ -301,8 +311,10 @@ class ClassYoutube(sitesBase):
             self.link_action='playYTDLVideo'
             return media_url, self.TYPE_VIDEO
 
-    def get_video_id(self):
-        match = re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL).findall(self.media_url)
+    def get_video_id(self, yt_url=None):
+        if not yt_url:
+            yt_url=self.media_url
+        match = re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL).findall(yt_url)
         if match:
             self.video_id=match[0]
 

@@ -426,12 +426,27 @@ def playYTDLVideo(url, name, type_):
     dialog_progress_YTDL.update(10,dialog_progress_title,translation(30024)  )
 
     from YoutubeDLWrapper import YoutubeDLWrapper, _selectVideoQuality
+    from urlparse import urlparse, parse_qs
     import pprint
+
+    o = urlparse(url)
+    query = parse_qs(o.query)
+    video_index=0
+    #note that in domains.py youtube class will send a simplified url to avoid sending
+    #   https://www.youtube.com/watch?v=R6_dZhE-4bk&index=22&list=PLGJ6ezwqAB2a4RP8hWEWAGB9eT2bmaBsy  (ytdl will parse around 90+ videos, takes a very long time)
+    #   http://youtube.com/v/R6_dZhE-4bk   (will be faster)
+    if 'index' in query:
+        try:video_index=int(query['index'][0])
+        except (TypeError, ValueError): video_index=0
+        #log( repr(video_index) )
+        dialog_progress_YTDL.update(20,dialog_progress_title,translation(30025)  )
+    else:
+        #if there is index, link is likely a playlist, parsing will take a looooong time.
+        #  we move progress dialog here to differentiate
+        dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
 
     pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     pl.clear()
-
-    dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
 
     #use YoutubeDLWrapper by ruuk to avoid  bad file error
     ytdl=YoutubeDLWrapper()
@@ -446,40 +461,15 @@ def playYTDLVideo(url, name, type_):
 
         #log( "YoutubeDL extract_info:\n" + pprint.pformat(ydl_info, indent=1) )
         video_infos=_selectVideoQuality(ydl_info, quality=ytdl_quality, disable_dash=(not ytdl_DASH))
-        log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=3) )
+        #log( "video_infos:\n" + pprint.pformat(video_infos, indent=1, depth=3) )
         dialog_progress_YTDL.update(80,dialog_progress_title,translation(30023)  )
 
         if len(video_infos)>1:
-            log('    ***ytdl link resolved to multple streams. playing only the first stream')
+            log('    ***ytdl link resolved to %d streams. playing #%d' %(len(video_infos), video_index))
+            #xbmc_notify("Multiple video", "{} videos in playlist".format(len(pl)))
 
-#        #we are only playing the first stream because this is a plugin and it expects to play links via setResolvedUrl()
-#        #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
-        video_info=video_infos[0]
-        url=video_info.get('xbmc_url')
-        title=video_info.get('title') or name
-
-        ytdl_format=video_info.get('ytdl_format')
-        if ytdl_format:
-            description=ytdl_format.get('description')
-            #check if there is a time skip code
-            try:
-                start_time=ytdl_format.get('start_time',0)   #int(float(ytdl_format.get('start_time')))
-                duration=ytdl_format.get('duration',0)
-                StartPercent=(float(start_time)/duration)*100
-            except (ValueError, TypeError, ZeroDivisionError):
-                StartPercent=0
-
-            video_thumbnail=video_info.get('thumbnail')
-            li=xbmcgui.ListItem(label=title,
-                                label2='',
-                                path=url)
-            li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
-            li.setArt( {'icon':video_thumbnail, 'thumb':video_thumbnail} )
-
-            #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
-            #    we need to use StartPercent.
-            li.setProperty('StartPercent', str(StartPercent))
-            xbmcplugin.setResolvedUrl(pluginhandle, True, li)
+        li=ytdl_video_info_to_listitem(video_infos, video_index, name)
+        xbmcplugin.setResolvedUrl(pluginhandle, True, li)
 
     except Exception as e:
         ytdl_ver=dialog_progress_title+' v'+ytdl_get_version_info('local')
@@ -494,6 +484,42 @@ def playYTDLVideo(url, name, type_):
 #    finally:
     dialog_progress_YTDL.update(100,dialog_progress_title ) #not sure if necessary to set to 100 before closing dialogprogressbg
     dialog_progress_YTDL.close()
+
+def ytdl_video_info_to_listitem(video_infos, video_index, title=None):
+
+    if video_index > 0 and video_index<len(video_infos):
+        video_info=video_infos[video_index-1]
+    else:
+#       #we are only playing the first stream because this is a plugin and it expects to play links via setResolvedUrl()
+#       #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
+        video_info=video_infos[0]
+
+    url=video_info.get('xbmc_url')
+    title=video_info.get('title') or title
+
+    ytdl_format=video_info.get('ytdl_format')
+    if ytdl_format:
+        description=ytdl_format.get('description')
+        #check if there is a time skip code
+        try:
+            start_time=ytdl_format.get('start_time',0)   #int(float(ytdl_format.get('start_time')))
+            duration=ytdl_format.get('duration',0)
+            StartPercent=(float(start_time)/duration)*100
+        except (ValueError, TypeError, ZeroDivisionError):
+            StartPercent=0
+
+        video_thumbnail=video_info.get('thumbnail')
+        li=xbmcgui.ListItem(label=title,
+                            label2='',
+                            path=url)
+        li.setInfo( type="Video", infoLabels={ "Title": title, "plot": description } )
+        li.setArt( {'icon':video_thumbnail, 'thumb':video_thumbnail} )
+
+        #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
+        #    we need to use StartPercent.
+        li.setProperty('StartPercent', str(StartPercent))
+
+        return li
 
 def playYTDLVideoOLD(url, name, type_):
     #url = "http://www.youtube.com/watch?v=_yVv9dx88x0"   #a youtube ID will work as well and of course you could pass the url of another site
