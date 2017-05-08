@@ -2067,6 +2067,7 @@ class ClassEroshare(sitesBase):
         images=[]
         try:
             reddit_submission=j.get('reddit_submission')
+            reddit_submission_title=''
             if reddit_submission:
                 reddit_submission_title=reddit_submission.get('title')
 

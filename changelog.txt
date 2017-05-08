@@ -334,4 +334,5 @@
    - add a play icon for video in viewAlbum gui
  3.4.5 (2017-05-06)
    - update youtube link parsing
- 
+ 3.4.6
+   - fix error in eroshare parsing
