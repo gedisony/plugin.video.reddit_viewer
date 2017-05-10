@@ -101,7 +101,9 @@ def index(url,name,type_):
                 if samealphabetic(title,public_description): public_description=''
                 #if hassamealphabetic(header_title,title,public_description): public_description=''
 
-                shortcut_description='[COLOR cadetblue][B]r/%s[/B][/COLOR]\n%s[I]%s[/I]\n%s' %(display_name,title,header_title,public_description )
+                if entry_type=='subreddit':
+                    display_name='r/'+display_name
+                shortcut_description='[COLOR cadetblue][B]%s[/B][/COLOR]\n%s[I]%s[/I]\n%s' %(display_name,title,header_title,public_description )
 
                 icon=addtl_subr_info.get('icon_img')
                 banner=addtl_subr_info.get('banner_img')

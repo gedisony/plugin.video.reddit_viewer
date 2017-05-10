@@ -1913,11 +1913,23 @@ class ClassGfycat(sitesBase):
         if self.video_id:
             #log('    video id:' + repr(self.video_id) )
             request_url="https://gfycat.com/cajax/get/" + self.video_id
+            #request_url="https://api.gfycat.com/v1test/gfycats/{gfyid}".format(gfyid=self.video_id)  #this method requires auth token etc.
 
-            content = self.requests_get(request_url)
-            #content = opener.open("http://gfycat.com/cajax/get/"+id).read()
-            #log('gfycat response:'+ content.text)
-            content = content.json()
+            try:
+                content = self.requests_get(request_url)
+                #log('gfycat response:'+ content.text)
+                content = content.json()
+            except requests.exceptions.HTTPError:
+                log('    Error requesting info via api endpoint. Trying actual link: '+media_url)
+                #encountered a link that returns 404 with the api request but exists using browser. https://gfycat.com/gifs/detail/DeliciousBowedAlpinegoat
+                # we will parse it manually
+                r = self.requests_get(media_url)
+                jo=re.compile('___INITIAL_STATE__=({.*});').findall(r.text)
+                if jo:
+                    #import pprint
+                    #log( pprint.pformat(jo[0], indent=1) )
+                    j=json.loads(jo[0])
+                    content=j.get('detail')
 
             gfyItem=content.get('gfyItem')
             if gfyItem:

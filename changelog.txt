@@ -336,3 +336,5 @@
    - update youtube link parsing
  3.4.6
    - fix error in eroshare parsing
+ 3.4.7 (2017-05-10)
+   - parse gfycat link manually if api call returns error
