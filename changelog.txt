@@ -338,3 +338,7 @@
    - fix error in eroshare parsing
  3.4.7 (2017-05-10)
    - parse gfycat link manually if api call returns error
+ 3.4.8
+   - add an extra context menu for youtube posts to
+       -show related videos & other videos from channel
+   - update the "Next Page" url call to more closely resemble that from browser

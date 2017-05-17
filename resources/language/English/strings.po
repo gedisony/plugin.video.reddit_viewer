@@ -112,6 +112,16 @@ msgctxt "#30025"
 msgid "Parsing multiple videos..."
 msgstr ""
 
+#: used in context menu.
+msgctxt "#30048"
+msgid "Videos in channel (Youtube)"
+msgstr ""
+
+#: used in context menu.
+msgctxt "#30049"
+msgid "Related videos (Youtube)"
+msgstr ""
+
 #: used in context menu.  (also see "#30500")
 msgctxt "#30050"
 msgid "Show comments"
@@ -574,6 +584,10 @@ msgctxt "#30510"
 msgid "Save/Unsave post on Reddit (needs OAuth)"
 msgstr ""
 
+msgctxt "#30511"
+msgid "Youtube channel/related videos"
+msgstr ""
+
 #settings category. - advanced optins
 msgctxt "#30600"
 msgid "Advanced Options"
@@ -598,3 +612,8 @@ msgstr ""
 msgctxt "#30612"
 msgid "[Update youtube-dl core]"
 msgstr ""
+
+msgctxt "#30613"
+msgid "Youtube API key"
+msgstr ""
+

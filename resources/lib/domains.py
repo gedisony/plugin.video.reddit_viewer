@@ -12,11 +12,9 @@ import xbmcgui
 import xbmcplugin
 #sys.setdefaultencoding("utf-8")
 
-from default import addon, addonID, streamable_quality   #,addon_path,pluginhandle,addonID
-from utils import log, translation
-
+from default import addon, streamable_quality   #,addon_path,pluginhandle,addonID
 from default import addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
-from utils import parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast
+from utils import log, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast, clean_str,pretty_datediff
 
 #use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
 use_addon_for_youtube     = addon.getSetting("use_addon_for_youtube") == "true"
@@ -38,6 +36,9 @@ keys=[ 'li_label'           #  the text that will show for the list
       ,'width'
       ,'height'
       ,'description'
+      ,'link_action'
+      ,'channel_id'         #used in youtube videos
+      ,'video_id'           #used in youtube videos
       ]
 
 ytdl_sites=[]
@@ -66,6 +67,7 @@ class sitesBase(object):
     TYPE_VIDS ='vids'
     TYPE_MIXED='mixed'
     TYPE_REDDIT='reddit'
+    TYPE_UNKNOWN='unknown'
     DI_ACTION_PLAYABLE='playable'
     DI_ACTION_YTDL='playYTDLVideo'
     DI_ACTION_URLR='playURLRVideo'
@@ -85,6 +87,8 @@ class sitesBase(object):
 
     def requests_get(self, link_url, headers=None, timeout=REQUEST_TIMEOUT, allow_redirects=True):
         content = requests.get( link_url, headers=headers, timeout=timeout, allow_redirects=allow_redirects )
+        #if hasattr(content, "from_cache"): log( '  #cached:{0} {1}'.format( repr(content.from_cache),link_url) )
+        #else:log( '  #cache disabled: {0}'.format( link_url) )  #if requests_cache is not installed, page will not have from_cache attribute
         if content.status_code==requests.codes.ok:
             return content
         else:
@@ -166,11 +170,15 @@ class sitesBase(object):
     def clog(self, error_code, request_url):
         log("    %s error:%s %s" %( self.__class__.__name__, error_code ,request_url) )
     @classmethod
-    def get_first_url_from(self,string_with_url):
-        match = re.compile("(https?://[^\s/$.?#].[^\s]*)['\\\"]?(?:$)?").findall(string_with_url)
-        #log('   get_first_url_from:matches' + repr(match) )
-        if match:
-            return match[0]
+    def get_first_url_from(self,string_with_url,return_all_as_list=False):
+        if string_with_url:
+            match = re.compile("(https?://[^\s/$.?#].[^\s]*)['\\\"]?(?:$)?").findall(string_with_url)
+            #log('   get_first_url_from:matches' + repr(match) )
+            if match:
+                if return_all_as_list:
+                    return match
+                else:
+                    return match[0]
 
     def set_media_type_thumb_and_action(self,media_url,default_type=TYPE_VIDEO, default_action=DI_ACTION_YTDL):
         _,ext=parse_filename_and_ext_from_url(media_url)
@@ -223,6 +231,7 @@ class sitesBase(object):
                     thumbnail=item[2]
             elif isinstance(item, dict):  #type(item) is dict:
                 title    =item.get('title') if item.get('title') else ''
+                label2   =item.get('label2','')
                 desc     =item.get('description') if item.get('description') else ''
                 image_url=item.get('url')
                 thumbnail=item.get('thumb')
@@ -230,10 +239,13 @@ class sitesBase(object):
                 height   =item.get('height') if item.get('height') else 0
                 item_type=item.get('type')
                 isPlayable=item.get('isPlayable')
+                link_action=item.get('link_action','')
+                channel_id=item.get('channel_id','')
+                video_id=item.get('video_id','')
 
             infoLabels={ "Title": title, "plot": desc, "PictureDesc": desc }
             e=[ title                   #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
-               ,''                      #'li_label2'          #
+               ,label2                  #'li_label2'          #
                ,""                      #'li_iconImage'       #
                ,thumbnail               #'li_thumbnailImage'  #
                ,image_url               #'DirectoryItem_url'  #
@@ -244,7 +256,10 @@ class sitesBase(object):
                ,'none'                  #'context_menu'       # ...
                ,width
                ,height
-               ,desc
+               ,desc                    #'description'
+               ,link_action             #'link_action'
+               ,channel_id              #'channel_id'
+               ,video_id                #'video_id'
                 ]
             self.dictList.append(dict(zip(keys, e)))
 
@@ -273,8 +288,10 @@ def url_resolver_support(link_url):
     return False
 
 class ClassYoutube(sitesBase):
-    regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)'
+    regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)|(plugin.video.youtube/play)'
     video_id=''
+
+    api_key='AIzaSyBilnA0h2drOvpnqno24xeVqGy00fp07so'
 
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
         if not media_url:
@@ -283,40 +300,67 @@ class ClassYoutube(sitesBase):
         o = urlparse.urlparse(media_url)
         query = urlparse.parse_qs(o.query)
 
-        self.get_video_id()
+        self.video_id=self.get_video_id( self.media_url )
         #log('      youtube video id:' + self.video_id )
 
-        #for parsing this: https://www.youtube.com/attribution_link?a=y08k0cdNBKw&u=%2Fwatch%3Fv%3DQOVrrL5KtsM%26feature%3Dshare%26list%3DPLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW%26index%3D4
-        if not self.video_id and 'a' in query and 'u' in query:   #if all (k in query for k in ("a","u")):
-            u=query['u'][0]
-            #log('   u  '+ repr(u)) #  <--  /watch?v=QOVrrL5KtsM&feature=share&list=PLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW&index=4
-            self.get_video_id('youtube.com'+u)
-            #log('      2nd try: youtube video id:' + self.video_id )
-
         if self.video_id:
-            if use_addon_for_youtube:
-                self.link_action=self.DI_ACTION_PLAYABLE
-                return "plugin://plugin.video.youtube/play/?video_id=" + self.video_id, self.TYPE_VIDEO
+            self.link_action, playable_url=self.return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube()
+
+            #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
+            #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
+            #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43
+            if 't' in query or '#t=' in media_url:
+                return media_url, self.TYPE_VIDEO
             else:
-                self.link_action=self.DI_ACTION_YTDL
-                #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
-                #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
-                #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43
-                if 't' in query:
-                    return media_url, self.TYPE_VIDEO
-                else:
-                    return "http://youtube.com/v/{0}".format(self.video_id), self.TYPE_VIDEO
+                return playable_url, self.TYPE_VIDEO
         else:
             log("    %s cannot get videoID %s" %( self.__class__.__name__, media_url) )
             self.link_action='playYTDLVideo'
             return media_url, self.TYPE_VIDEO
 
-    def get_video_id(self, yt_url=None):
-        if not yt_url:
-            yt_url=self.media_url
-        match = re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL).findall(yt_url)
+    def return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(self, video_id=None):
+        if not video_id:
+            video_id=self.video_id
+        link_actn=''
+        link_=''
+
+        if video_id:
+            if use_addon_for_youtube:
+                link_actn=self.DI_ACTION_PLAYABLE
+                link_="plugin://plugin.video.youtube/play/?video_id=" + video_id
+            else:
+                link_actn=self.DI_ACTION_YTDL
+                #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
+                #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
+                #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43
+                link_="http://youtube.com/v/{0}".format(video_id)
+            #log('    returning:{} {}'.format(link_actn, link_))
+            return link_actn, link_
+
+    @classmethod
+    def get_video_id(self, yt_url):
+
+        #video_id_regex=re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL)
+        #added parsing for video_id in kodi_youtube_plugin url
+        video_id_regex=re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/|plugin:\/\/plugin\.video\.youtube\/play\/\?video_id=)([a-zA-Z0-9_-]{11})', re.DOTALL)
+
+        match = video_id_regex.findall(yt_url)
         if match:
-            self.video_id=match[0]
+            video_id=match[0]
+        else:
+            #log('    second parsing for video id:'+yt_url)
+            #for parsing this: https://www.youtube.com/attribution_link?a=y08k0cdNBKw&u=%2Fwatch%3Fv%3DQOVrrL5KtsM%26feature%3Dshare%26list%3DPLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW%26index%3D4
+            o = urlparse.urlparse(yt_url)
+            query = urlparse.parse_qs(o.query)
+            if 'a' in query and 'u' in query:   #if all (k in query for k in ("a","u")):
+                u=query['u'][0]
+                #log('   u  '+ repr(u)) #  <--  /watch?v=QOVrrL5KtsM&feature=share&list=PLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW&index=4
+                match = video_id_regex.findall('youtube.com'+u)
+                if match:
+                    video_id=match[0]
+                else:
+                    log("    Can't get youtube video id:"+yt_url)
+        return video_id
 
     def get_thumb_url(self):
         """
@@ -347,6 +391,151 @@ class ClassYoutube(sitesBase):
             self.poster_url='http://img.youtube.com/vi/%s/%d.jpg' %(self.video_id,0)
 
         return self.thumb_url
+
+    def get_links_in_description(self, return_channelID_only=False):
+        links=[]
+        self.video_id=self.get_video_id( self.media_url )
+        youtube_api_key=self.ret_api_key()
+
+        if self.video_id:
+            # Get info for this YouTube video, need the channel id for later
+            query_params = {
+                'key': youtube_api_key,
+                'id': self.video_id,
+                'fields':'items(snippet(channelId,title,description))',  #use '*' to get all fields
+                'part': 'id,snippet',
+            }
+
+            api_url='https://www.googleapis.com/youtube/v3/videos?'+urllib.urlencode(query_params)
+            r = self.requests_get(api_url)
+            #log(r.text)
+            j=r.json()   #.loads(r.text)  #j=json.loads(r.text.replace('\\"', '\''))
+            description=clean_str(j, ['items',0,'snippet','description'])
+            channel_id=clean_str(j, ['items',0,'snippet','channelId'])
+            if return_channelID_only:
+                return channel_id
+            #log(description)
+            #log('***channel_id:'+channel_id)
+            links_from_description=self.get_first_url_from(description, return_all_as_list=True)
+            if links_from_description:
+                for i,l in enumerate(links_from_description,1):
+                    log('    parsing link: '+l )
+                    ld=parse_reddit_link(l, assume_is_video=False, needs_preview=False )  #setting needs_preview=True slows things down
+                    if ld:
+                        links.append( {'title': l,
+                                        'type': ld.media_type,
+                                        'description': 'link #{index} from video description\n{link}'.format(index=i,link=l),
+                                        'url': ld.playable_url,
+                                        'thumb':ld.thumb,
+        #                                'isPlayable':'true',
+                                        'link_action':ld.link_action,
+                                        }  )
+                    else:
+                        links.append( {'title': l,
+                                        'type': self.TYPE_UNKNOWN,
+                                        'description': 'link #{index} from video description\n{link}'.format(index=i,link=l),
+                                        'url': l,
+                                        }  )
+                return links
+
+    def ret_api_key(self):
+        youtube_api_key = addon.getSetting("youtube_api_key")
+        if not youtube_api_key:
+            youtube_api_key=self.api_key
+        return youtube_api_key
+
+    def get_more_info(self, type_='channel'):
+        youtube_api_key=self.ret_api_key()
+        links=[]
+        self.video_id=self.get_video_id( self.media_url )
+
+        if self.video_id:
+            if type_=='channel':
+                channel_id=self.get_links_in_description(return_channelID_only=True)
+                query_params = {
+                    'key': youtube_api_key,
+                    'fields':'items(id(videoId),snippet(publishedAt,channelId,title,description,thumbnails(medium)))',
+                    'type': 'video',         #video,channel,playlist.
+        #            'kind': 'youtube#video',
+                    'maxResults': '50',      # Acceptable values are 0 to 50
+                    'part': 'snippet',
+                    'order': 'date',
+                    'channelId': channel_id,
+        #            'playlistId': 'YOUR-PLAYLIST-ID-HERE',
+                }
+            else:  #if type_=='related':
+                query_params = {    #https://developers.google.com/youtube/v3/docs/search/list#relatedToVideoId
+                    'key': youtube_api_key,
+                    'fields':'items(id(videoId),snippet(publishedAt,channelId,title,description,thumbnails(medium)))',
+                    'type': 'video',
+                    'maxResults': '50',
+                    'part': 'snippet',
+                    'order': 'date',
+                    'relatedToVideoId': self.video_id,
+                }
+
+            links.extend( self.search(query_params) )
+
+            #log(repr(links))
+            self.assemble_images_dictList(links)
+            return self.dictList
+
+    def search(self, query_params):
+        links=[]
+        api_url='https://www.googleapis.com/youtube/v3/search?'+urllib.urlencode(query_params)
+        r = self.requests_get(api_url)
+        #log(r.text)
+        j=r.json()
+        items=j.get('items')
+        for i in items:
+            #snippet has: publishedAt channelId title description thumbnails{}
+
+            #log('i:'+repr(i))
+            #id_kind=clean_str(i, ['id','kind'])
+            videoId=clean_str(i, ['id','videoId'])
+            #log('video id:'+repr(videoId))
+            publishedAt=clean_str(i, ['snippet','publishedAt'])
+            pretty_date=self.pretty_date(publishedAt)
+            #log('publishedAt:'+repr(publishedAt) + ' which is ' + pretty_date)
+
+            channel_id=clean_str(i, ['snippet','channelId'])
+            title=clean_str(i, ['snippet','title'])
+            description=clean_str(i, ['snippet','description'])
+            #thumb1280=clean_str(i, ['snippet','thumbnails','maxres']) #1280x720
+            thumb640=clean_str(i, ['snippet','thumbnails','standard','url']) #640x480
+            thumb480=clean_str(i, ['snippet','thumbnails','high','url'])   #480x360
+            thumb320=clean_str(i, ['snippet','thumbnails','medium','url']) #320x180
+
+            link_action, playable_url=self.return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(videoId)
+            #log('  link_action:'+link_action +' -->'+ playable_url)
+            links.append( {'title': title,
+                            'type': self.TYPE_VIDEO,
+                            'label2': pretty_date,
+                            'description': description,
+                            'url': playable_url,
+                            'thumb': next((i for i in [thumb640,thumb480,thumb320] if i ), ''),
+                            'isPlayable': 'true' if link_action==self.DI_ACTION_PLAYABLE else 'false',
+                            'link_action':link_action,
+                            'channel_id':channel_id,
+                            'video_id':videoId,
+                            }  )
+        return links
+
+    def pretty_date(self, yt_date_string):
+        from datetime import datetime
+        import time
+        #http://forum.kodi.tv/showthread.php?tid=112916
+        try:
+            date_object = datetime.strptime(yt_date_string,"%Y-%m-%dT%H:%M:%S.000Z")
+        except TypeError:
+            date_object = datetime(*(time.strptime(yt_date_string,"%Y-%m-%dT%H:%M:%S.000Z")[0:6]))
+
+        #date_object_ts=time.mktime(date_object.timetuple())
+        now_utc = datetime.utcnow()
+        #log('  yt ts : '+repr(date_object) )
+        #log('  yt now: '+repr(now_utc) )
+        #log('  pretty : '+pretty_datediff(now_utc, date_object) )
+        return pretty_datediff(now_utc, date_object)
 
 class ClassImgur(sitesBase):
     regex='(imgur.com)'

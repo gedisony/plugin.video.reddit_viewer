@@ -5,6 +5,7 @@ import xbmcplugin
 #import xbmcvfs
 import sys
 import shutil
+import re, pprint, os
 
 from default import subredditsFile, addon, addon_path, profile_path, ytdl_core_path, pluginhandle, subredditsPickle
 from utils import xbmc_busy, log, translation, xbmc_notify
@@ -743,7 +744,7 @@ def ytdl_get_version_info(which_one='latest'):
 
 def update_youtube_dl_core(url,name,action_type):
 #credit to ruuk for most of the download code
-    import os, urllib
+    import urllib
     import tarfile
 
     if action_type=='download':
@@ -823,6 +824,68 @@ def update_dl_status(message):
 def setSetting(setting_id, value):
     addon.setSetting(setting_id, value)
 
+def delete_setting_file(url,name,action_type):
+    #log( "delete setting file:" + action_type)
+    if action_type=='requests_cache':
+        file_to_delete=CACHE_FILE+'.sqlite'
+    elif action_type=='icons_cache':
+        file_to_delete=subredditsPickle
+    elif action_type=='subreddits_setting':
+        file_to_delete=subredditsFile
+
+    try:
+        os.remove(file_to_delete)
+        xbmc_notify("Deleting", '..'+file_to_delete[-30:])
+    except OSError as e:
+        xbmc_notify("Error:", str(e))
+
+def listRelatedVideo(url,name,type_):
+    #type_: 'channel' -other videos in the channel
+    #       'related' -related videos
+    #only youtube is supported for now
+    from domains import ClassYoutube
+    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
+
+    match=re.compile( ClassYoutube.regex, re.I).findall( url )
+    if match:
+        #log('***** isYouTubeable' + repr(link_url))
+        yt=ClassYoutube(url)
+        links_dictList=yt.get_more_info(type_)  #returns a list of dict same as one used for albums
+        if links_dictList:
+            #log(pprint.pformat(links_dictList))
+
+            for _, d in enumerate(links_dictList):
+                label=d.get('li_label')
+                label2=d.get('li_label2')
+                #li_iconImage=d.get('li_iconImage')
+                ti=d.get('li_thumbnailImage')
+                media_url=d.get('DirectoryItem_url')
+                #media_type=d.get('type')
+                #media_thumb=d.get('thumb')
+                #isPlayable=d.get('isPlayable')
+                #link_action=d.get('link_action')
+                #channel_id=d.get('channel_id')
+                #video_id=d.get('video_id')
+
+                liz=xbmcgui.ListItem(label,label2)
+                liz.setInfo( type='video', infoLabels=d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the descriptions
+                liz.setArt({"thumb": ti,'icon': ti, "poster":ti, "banner":ti, "fanart":ti, "landscape":ti   })
+
+                #a little overkill considering we're only matching for youtube
+                ld=parse_reddit_link(media_url)
+                DirectoryItem_url, setProperty_IsPlayable, isFolder, _ = build_DirectoryItem_url_based_on_media_type(ld, media_url, '', '', script_to_call="")
+                #directory_items.append( (url_for_DirectoryItem, liz, False,) )
+                liz.setProperty('IsPlayable', setProperty_IsPlayable)
+                xbmcplugin.addDirectoryItem(pluginhandle, DirectoryItem_url, liz, isFolder)
+
+            xbmcplugin.endOfDirectory(handle=pluginhandle,
+                              succeeded=True,
+                              updateListing=False,   #setting this to True causes the ".." entry to quit the plugin
+                              cacheToDisc=True)
+        else:
+            xbmc_notify('Nothing to list', url)
+    else:
+        xbmc_notify('cannot identify youtube url', url)
 
 if __name__ == '__main__':
     pass

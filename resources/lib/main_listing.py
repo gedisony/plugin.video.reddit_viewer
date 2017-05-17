@@ -3,7 +3,7 @@ import xbmc
 import xbmcgui
 import xbmcaddon
 import xbmcplugin
-import urllib
+import urllib, urlparse
 import json
 import threading
 import re
@@ -29,6 +29,7 @@ cxm_show_filter_subreddit = addon.getSetting("cxm_show_filter_subreddit") == "tr
 cxm_show_filter_domain    = addon.getSetting("cxm_show_filter_domain") == "true"
 cxm_show_open_browser     = addon.getSetting("cxm_show_open_browser") == "true"
 cxm_show_reddit_save      = addon.getSetting("cxm_show_reddit_save") == "true"
+cxm_show_youtube_items    = addon.getSetting("cxm_show_youtube_items") == "true"
 
 def index(url,name,type_):
     from utils import xstr, samealphabetic, hassamealphabetic
@@ -134,7 +135,7 @@ GCXM_subreddit_key=''
 
 def listSubReddit(url, name, subreddit_key):
     from guis import progressBG
-    from utils import post_is_filtered_out
+    from utils import post_is_filtered_out, set_query_field
     from reddit import has_multiple
     global GCXM_hasmultiplesubreddit,GCXM_hasmultipledomain,GCXM_hasmultipleauthor,GCXM_subreddit_key
     log("listSubReddit subreddit=%s url=%s" %(subreddit_key,url) )
@@ -239,19 +240,33 @@ def listSubReddit(url, name, subreddit_key):
 
     try:
         #this part makes sure that you load the next page instead of just the first
-        after=""
-        after = content['data']['after']
-        if "&after=" in currentUrl:
-            nextUrl = currentUrl[:currentUrl.find("&after=")]+"&after="+after
+        after=content['data']['after']
+
+        o = urlparse.urlparse(currentUrl)
+        current_url_query = urlparse.parse_qs(o.query)
+
+        nextUrl=set_query_field(currentUrl, field='after', value=after, replace=True)  #(url, field, value, replace=False):
+        #log('$$$currenturl: ' +currentUrl)
+        #log('$$$   nextUrl: ' +nextUrl)
+
+        count=current_url_query.get('count')
+        #log('$$$count   : ' +repr(count))
+        if current_url_query.get('count')==None:
+            #firsttime it is none
+            count=itemsPerPage
         else:
-            nextUrl = currentUrl+"&after="+after
+            #nexttimes it will be kept incremented with itemsPerPage
+            try: count=int(current_url_query.get('count')[0]) + int(itemsPerPage)
+            except ValueError: count=itemsPerPage
+
+        nextUrl=set_query_field(nextUrl,'count', count, True)
+        #log('$$$   nextUrl: ' +nextUrl)
 
         # plot shows up on estuary. etc. ( avoids the "No information available" message on description )
         info_label={ "plot": translation(30004) + '[CR]' + page_title}
         addDir(translation(30004), nextUrl, 'listSubReddit', "", subreddit_key,info_label)   #Next Page
-        #if show_listVideos_debug :log("NEXT PAGE="+nextUrl)
-    except:
-        pass
+    except Exception as e:
+        log('    Exception: '+ str(e))
 
     #the +'s got removed by url conversion
     subreddit_key=subreddit_key.replace(' ','+')
@@ -585,6 +600,17 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
             entries.append( ( translation(30058) ,
                                   "XBMC.RunPlugin(%s?mode=reddit_save&url=%s&name=%s)" % ( sys.argv[0], '/api/save/', post_id ) ) )
 
+    if cxm_show_youtube_items:
+        #check if link_url is youtube
+        from domains import ClassYoutube
+        match=re.compile( ClassYoutube.regex, re.I).findall( link_url )  #regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)|(plugin.video.youtube/play)'
+        if match:
+            #video_id=ClassYoutube.get_video_id(link_url )
+            #log('video id:'+repr(video_id))
+            entries.append( ( translation(30048) ,
+                                "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listRelatedVideo&url=%s&type=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(link_url), 'channel' ) ) )
+            entries.append( ( translation(30049) ,
+                                "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listRelatedVideo&url=%s&type=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(link_url), 'related' ) ) )
     #not working...
     #entries.append( ( translation(30054) ,
     #                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=playURLResolver&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(media_url) ) ) )

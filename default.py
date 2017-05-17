@@ -132,12 +132,11 @@ if __name__ == '__main__':
     from resources.lib.slideshow import autoSlideshow
     from resources.lib.utils import addtoFilter,open_web_browser
     from resources.lib.actions import addSubreddit,editSubreddit,removeSubreddit,viewImage,viewTallImage,listAlbum,playURLRVideo, loopedPlayback,error_message,update_youtube_dl_core,searchReddits
-    from resources.lib.actions import playVideo, playYTDLVideo, parse_url_and_play #queueVideo
+    from resources.lib.actions import playVideo, playYTDLVideo, parse_url_and_play, listRelatedVideo #queueVideo
 
     from resources.lib.autoplay import autoPlay
     from resources.lib.reddit import reddit_get_refresh_token, reddit_get_access_token, reddit_revoke_refresh_token, reddit_save
     from resources.lib.main_listing import index, listSubReddit, listLinksInComment
-
 
     if mode=='':mode='index'  #default mode is to list start page (index)
     #plugin_modes holds the mode string and the function that will be called given the mode
@@ -168,6 +167,7 @@ if __name__ == '__main__':
                     ,'revoke_refresh_token' : reddit_revoke_refresh_token
                     ,'play'                 : parse_url_and_play
                     ,'reddit_save'          : reddit_save
+                    ,'listRelatedVideo'     : listRelatedVideo
                     }
 
     plugin_modes[mode](url,name,type_)

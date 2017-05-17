@@ -7,6 +7,8 @@ import json
 import sys,os #os is used in open_web_browser()
 
 from urllib import urlencode
+#from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
 
 addon         = xbmcaddon.Addon()
 addonID       = addon.getAddonInfo('id')  #plugin.video.reddit_viewer
@@ -104,6 +106,8 @@ def ret_info_type_icon(info_type, modecommand, domain=''):
             icon="type_ytdl.png"
         if modecommand==sitesBase.DI_ACTION_URLR:
             icon="type_urlr.png"
+        if any( x in domain for x in ['youtube','youtu.be']):
+            icon="type_youtube.png"
         #if 'giphy.com' in domain:
         #    icon="type_giphy.gif"
 
@@ -591,9 +595,9 @@ def colored_subreddit(subreddit,color='cadetblue', add_r=True):
 def truncate(string, length, ellipse='...'):
     return (string[:length] + ellipse) if len(string) > length else string
 
-def xbmc_notify(Line1, line2, time=1000):
-    time=1000
-    icon=''
+def xbmc_notify(Line1, line2, time=1000, icon=''):
+    if icon and os.path.sep not in icon:
+        icon=os.path.join(addon.getAddonInfo('path'), 'resources','skins','Default','media', icon)
     xbmc.executebuiltin('XBMC.Notification("%s", "%s", %d, %s )' %( Line1, line2, time, icon) )
     log("XBMC.Notification: %s: %s" %(Line1, line2) )
 
@@ -734,12 +738,15 @@ def dictlist_to_listItems(dictlist):
     for idx, d in enumerate(dictlist):
         label=d.get('li_label')
         label2=d.get('li_label2')
-        dictlist_to_listItems
+        #li_iconImage=d.get('li_iconImage')
         ti=d.get('li_thumbnailImage')
         media_url=d.get('DirectoryItem_url')
         media_type=d.get('type')
         media_thumb=d.get('thumb')
         isPlayable=d.get('isPlayable')
+        link_action=d.get('link_action')
+        channel_id=d.get('channel_id')
+        video_id=d.get('video_id')
 
         #Error Type: <type 'exceptions.TypeError'> cannot concatenate 'str' and 'list' objects
         #log('  dictlist_to_listItems list:'+ media_url + "  " + repr(media_type) )  # ****** don't forget to add "[0]" when using parseDOM    parseDOM(div,"img", ret="src")[0]
@@ -749,23 +756,32 @@ def dictlist_to_listItems(dictlist):
         #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
         #  new note: this is how it is done:
         #     $INFO[Container(53).ListItem.Label,[B],[/B][CR]] $INFO[Container(53).ListItem.Plot]  #if the infolabel is empty, nothing is printed for that block
-        combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
-        combined += d['infoLabels'].get('plot') if d['infoLabels'].get('plot') else ""
-        d['infoLabels']['plot'] = combined
+        #combined = "[B]{}[/B][CR]".format(label2) if label2 else ""
+        #combined = d['infoLabels'].get('plot') if d['infoLabels'].get('plot') else ""
+        #d['infoLabels']['plot'] = combined
 
         liz=xbmcgui.ListItem(label=label, label2=label2)
 
         if media_type==sitesBase.TYPE_VIDEO:
+#            if link_action or link_action!='playable':
+#                isPlayable='false'          #if there's a link_action then media_url is not straight up playable
+            if not link_action:
+                link_action='playYTDLVideo' #default action is to send link to ytdl
+
             if isPlayable=='true':
                 liz.setProperty('item_type','playable')
                 liz.setProperty('onClick_action', media_url )
                 liz.setProperty('is_video','true')
             else:
                 liz.setProperty('item_type','script')
-                liz.setProperty('onClick_action', build_script('playYTDLVideo', media_url,'',media_thumb) )
+                liz.setProperty('onClick_action', build_script(link_action, media_url,'',media_thumb) )
         elif media_type==sitesBase.TYPE_IMAGE:
             liz.setProperty('item_type','script')
             liz.setProperty('onClick_action', build_script('viewImage', media_url,'',media_thumb) )
+
+        liz.setProperty('link_url', media_url )  #added so we have a way to retrieve the link
+        liz.setProperty('channel_id', channel_id )
+        liz.setProperty('video_id', video_id )   #youtube only for now
 
         liz.setInfo( type='video', infoLabels= d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
         #liz.setArt({"thumb": ti, "poster":poster_url, "banner":d['DirectoryItem_url'], "fanart":poster_url, "landscape":d['DirectoryItem_url']   })
@@ -824,7 +840,7 @@ def get_domain_icon( entry_name, domain ):
                                    'display_name':domain,
                                    'icon_img': icon,
 #                                   'header_img': j.get('header_img'), #not used? usually similar to with icon_img
-                                   'title':domain,
+#                                   'title':j.get('title'),
 #                                   'header_title':j.get('header_title'),
 #                                   'public_description':j.get('public_description'),
 #                                   'subreddit_type':j.get('subreddit_type'),
@@ -840,6 +856,31 @@ def get_domain_icon( entry_name, domain ):
             log( "    can't parse icon: get_domain_icon (%s)" %(domain) )
     else:
         log( '    getting get_domain_icon (%s) info:%s' %(domain, r.status_code) )
+
+#https://alexwlchan.net/2016/08/dealing-with-query-strings/
+def set_query_field(url, field, value, replace=False):
+    # Parse out the different parts of the URL.
+
+    components = urlparse.urlparse(url)
+
+    query_pairs = urlparse.parse_qsl(components.query)
+
+    if replace:
+        query_pairs = [(f, v) for (f, v) in query_pairs if f != field]
+    query_pairs.append((field, value))
+
+    new_query_str = urllib.urlencode(query_pairs)
+
+    # Finally, construct the new URL
+    new_components = (
+        components.scheme,
+        components.netloc,
+        components.path,
+        components.params,
+        new_query_str,
+        components.fragment
+    )
+    return urlparse.urlunparse(new_components)
 
 if __name__ == '__main__':
     pass
