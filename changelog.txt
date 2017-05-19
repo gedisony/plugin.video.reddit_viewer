@@ -342,3 +342,5 @@
    - add an extra context menu for youtube posts to
        -show related videos & other videos from channel
    - update the "Next Page" url call to more closely resemble that from browser
+ 3.4.9
+   - update wording in reddit OAuth settings

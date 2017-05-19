@@ -488,11 +488,11 @@ msgid "[B]Instructions:[/B] https://github.com/gedisony/plugin.video.reddit_view
 msgstr ""
 
 msgctxt "#30402"
-msgid "code"
+msgid "code*"
 msgstr ""
 
 msgctxt "#30403"
-msgid "[Click here to get Refresh Token with valid code]"
+msgid "[Get refresh token]"
 msgstr ""
 
 msgctxt "#30404"
@@ -500,15 +500,15 @@ msgid "    Refresh token"
 msgstr ""
 
 msgctxt "#30405"
-msgid "Refresh Token is used to get an Access Token. Access Tokens expires in 1 hour."
+msgid ""
 msgstr ""
 
 msgctxt "#30406"
-msgid "[Reddit viewer will automatically get Access Token. Click here to test.]"
+msgid "[Test refresh token]"
 msgstr ""
 
 msgctxt "#30407"
-msgid "Access token (1-hour)"
+msgid "    Access token (1-hour)"
 msgstr ""
 
 msgctxt "#30408"
@@ -520,7 +520,7 @@ msgid "    Valid until"
 msgstr ""
 
 msgctxt "#30410"
-msgid "[Click here to revoke the Refresh Token]"
+msgid "[Revoke refresh token]"
 msgstr ""
 
 msgctxt "#30411"
@@ -538,6 +538,11 @@ msgstr ""
 msgctxt "#30414"
 msgid "Are you sure you want to replace it?"
 msgstr ""
+
+msgctxt "#30415"
+msgid "* Make sure to hit [OK] after entering code"
+msgstr ""
+
 
 #settings category. - customize context menu entries. strings here pair with strings in #30050, #30051, #30052...
 msgctxt "#30500"

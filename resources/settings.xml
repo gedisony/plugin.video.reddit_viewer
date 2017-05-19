@@ -82,15 +82,15 @@
         <setting                              type="lsep"        label="30401"               enable="true"   />
         <setting                              type="sep" />
         <setting id="reddit_code"             type="text"        label="30402"  default=""                   />
+        <setting                              type="lsep"        label="30415"               enable="true"   />
+        <setting                              type="sep" />
         <setting                              type="action"      label="30403"  action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=get_refresh_token)"/>
         <setting id="reddit_refresh_token"    type="text"        label="30404"  default=""   enable="false"  />
-        <setting                              type="lsep"        label="30405"               enable="true"   />
-        <setting                              type="sep" />
-        <setting                              type="action"      label="30406"  action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=get_access_token)"/>
         <setting id="reddit_access_token"     type="text"        label="30407"  default=""   enable="false"  />
         <setting id="reddit_access_token_scope"   type="text"    label="30408"  default=""   enable="false"  />
         <setting id="reddit_access_token_expires" type="text"    label="30409"  default=""   enable="false"  />
         <setting                              type="sep" />
+        <setting                              type="action"      label="30406"  action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=get_access_token)"/>
         <setting                              type="action"      label="30410"  action="RunPlugin(plugin://plugin.video.reddit_viewer/?mode=revoke_refresh_token)"/>
     </category>
 </settings>
