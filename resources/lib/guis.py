@@ -125,21 +125,9 @@ class cGUI(xbmcgui.WindowXML):
                     #self.close()
             elif item_type=='script':
                 #"script.web.viewer, http://m.reddit.com/login"
-                #log(  di_url )
-
-                #xbmc.executebuiltin("ActivateWindow(busydialog)")
-                #xbmc.executebuiltin( di_url  )
-                #xbmc.sleep(5000)
-                #xbmc.executebuiltin( "Dialog.Close(busydialog)" )
+                #log( 'di_url'+ di_url )
 
                 self.busy_execute_sleep(di_url, 3000, close=False)   #note: setting close to false seems to cause kodi not to close properly (will wait on this thread)
-
-                #modes=['listImgurAlbum','viewImage','listLinksInComment','playTumblr','playInstagram','playFlickr' ]
-                #if any(x in di_url for x in modes):
-                    #viewImage uses xml gui, xbmc.Player() sometimes report an error after 'play'-ing
-                    #   use RunPlugin to avoid this issue
-
-
 
                 #xbmcplugin.setResolvedUrl(self.pluginhandle, True, item)
                 #xbmc.executebuiltin('RunPlugin(%s)' %di_url )  #works for showing image(with gui) but doesn't work for videos(Attempt to use invalid handle -1)
@@ -186,14 +174,13 @@ class cGUI(xbmcgui.WindowXML):
         return listing
 
     def busy_execute_sleep(self,executebuiltin, sleep=500, close=True):
-        #
         xbmc.executebuiltin("ActivateWindow(busydialog)")
         #RunAddon(script.reddit.reader,mode=listSubReddit&url=https%3A%2F%2Fwww.reddit.com%2Fr%2Fall%2F.json%3F%26nsfw%3Ano%2B%26limit%3D10%26after%3Dt3_4wmiag&name=all&type=)
-        xbmc.executebuiltin( executebuiltin  )
+
+        xbmc.executebuiltin( 'XBMC.RunPlugin(%s)' %executebuiltin  )  #<-- invalid handle -1  error if resolving video
 
         xbmc.Monitor().waitForAbort( int(sleep/1000)   )
         #xbmc.sleep(sleep) #a sleep of 500 is enough for listing subreddit  use about 5000 for executing a link/playing video especially a ytdl video
-
         if close:
             self.close()
         else:

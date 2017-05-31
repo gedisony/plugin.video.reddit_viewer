@@ -344,3 +344,6 @@
    - update the "Next Page" url call to more closely resemble that from browser
  3.4.9
    - update wording in reddit OAuth settings
+ 3.5.0
+   - add parsing for instagram profile page (album)
+   - parse youtube playlist/channel url (won't play for album custom gui)

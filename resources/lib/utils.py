@@ -75,7 +75,7 @@ def compose_list_item(label,label2,iconImage,property_item_type, onClick_action,
     return liz
 
 
-def build_script( mode, url, name="", type_="", script_to_call=''):
+def build_script( mode, url="", name="", type_="", script_to_call=''):
     #builds the parameter for xbmc.executebuiltin   --> 'RunAddon(script.reddit.reader, ... )'
     if script_to_call: #plugin://plugin.video.reddit_viewer/
         #not used
@@ -84,9 +84,16 @@ def build_script( mode, url, name="", type_="", script_to_call=''):
     else:
         #if name.startswith('In style'): log ('    namearg=' + name + ' ' + urllib.quote_plus(name.decode('unicode_escape').encode('ascii','ignore')) )
         #remove unicode characters in name.
-        name=name.decode('unicode_escape').encode('ascii','ignore')
+        name='' if name==None else name.decode('unicode_escape').encode('ascii','ignore')
+        url=''  if url==None else url.decode('unicode_escape').encode('ascii','ignore') #causes error in urllib.quote_plus() if None
         script_to_call=addonID
-        return "RunAddon(%s,%s)" %(script_to_call, "mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+urllib.quote_plus(name)+"&type="+str(type_) )
+        #log("&url="+repr(url)+"&name="+repr(name)+"&type="+repr(type_))
+        #return "RunAddon(%s,%s)" %(script_to_call, "mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+urllib.quote_plus(name)+"&type="+str(type_) )
+        return "RunAddon({script_to_call},mode={mode}&url={url}&name={name}&type={type})".format( script_to_call=script_to_call,
+                                                                                                  mode=mode,
+                                                                                                  url=urllib.quote_plus(url),
+                                                                                                  name=urllib.quote_plus(name),
+                                                                                                  type=str(type_)  )
 
 def build_playable_param( mode, url, name="", type_="", script_to_call=addonID):
     #builds the  di_url for  pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO); pl.clear();  pl.add(di_url, item) ; xbmc.Player().play(pl, windowed=True)
@@ -303,8 +310,7 @@ def parse_filename_and_ext_from_url(url=""):
     filename=""
     ext=""
 
-    from urlparse import urlparse
-    path = urlparse(url).path
+    path = urlparse.urlparse(url).path
     #ext = os.path.splitext(path)[1]
     try:
         if '.' in path:
@@ -546,7 +552,7 @@ def clean_str(dict_obj, keys_list, default=''):
             else:
                 continue
         return unescape(dd.encode('utf-8'))
-    except AttributeError as e:
+    except (AttributeError,IndexError) as e:
         log( 'clean_str:' + str(e) )
         return default
 
@@ -595,11 +601,12 @@ def colored_subreddit(subreddit,color='cadetblue', add_r=True):
 def truncate(string, length, ellipse='...'):
     return (string[:length] + ellipse) if len(string) > length else string
 
-def xbmc_notify(Line1, line2, time=1000, icon=''):
+def xbmc_notify(line1, line2, time=2000, icon=''):
     if icon and os.path.sep not in icon:
         icon=os.path.join(addon.getAddonInfo('path'), 'resources','skins','Default','media', icon)
-    xbmc.executebuiltin('XBMC.Notification("%s", "%s", %d, %s )' %( Line1, line2, time, icon) )
-    log("XBMC.Notification: %s: %s" %(Line1, line2) )
+
+    xbmcgui.Dialog().notification( line1, line2, icon, time)  #<-- use this instead of  xbmc.executebuiltin('XBMC.Notification("%s", "%s", %d, %s )' %( Line1, line2, time, icon) )
+    log("User notification: %s: %s" %(line1, line2) )
 
 def open_web_browser(url,name,type_):
     #http://forum.kodi.tv/showthread.php?tid=235733
@@ -742,11 +749,11 @@ def dictlist_to_listItems(dictlist):
         ti=d.get('li_thumbnailImage')
         media_url=d.get('DirectoryItem_url')
         media_type=d.get('type')
-        media_thumb=d.get('thumb')
         isPlayable=d.get('isPlayable')
         link_action=d.get('link_action')
         channel_id=d.get('channel_id')
         video_id=d.get('video_id')
+        infoLabels=d.get('infoLabels')
 
         #Error Type: <type 'exceptions.TypeError'> cannot concatenate 'str' and 'list' objects
         #log('  dictlist_to_listItems list:'+ media_url + "  " + repr(media_type) )  # ****** don't forget to add "[0]" when using parseDOM    parseDOM(div,"img", ret="src")[0]
@@ -762,7 +769,11 @@ def dictlist_to_listItems(dictlist):
 
         liz=xbmcgui.ListItem(label=label, label2=label2)
 
-        if media_type==sitesBase.TYPE_VIDEO:
+        if media_type==sitesBase.TYPE_IMAGE:
+            liz.setProperty('item_type','script')
+            liz.setProperty('onClick_action', build_script('viewImage', media_url,'',ti) )
+            liz.setArt({"thumb": ti, "banner":media_url })
+        else:  #if media_type==sitesBase.TYPE_VIDEO:
 #            if link_action or link_action!='playable':
 #                isPlayable='false'          #if there's a link_action then media_url is not straight up playable
             if not link_action:
@@ -774,18 +785,17 @@ def dictlist_to_listItems(dictlist):
                 liz.setProperty('is_video','true')
             else:
                 liz.setProperty('item_type','script')
-                liz.setProperty('onClick_action', build_script(link_action, media_url,'',media_thumb) )
-        elif media_type==sitesBase.TYPE_IMAGE:
-            liz.setProperty('item_type','script')
-            liz.setProperty('onClick_action', build_script('viewImage', media_url,'',media_thumb) )
+                liz.setProperty('onClick_action', build_script(link_action, media_url,'','') )
+
+            liz.setArt({"thumb": ti })
 
         liz.setProperty('link_url', media_url )  #added so we have a way to retrieve the link
         liz.setProperty('channel_id', channel_id )
         liz.setProperty('video_id', video_id )   #youtube only for now
+        liz.setProperty('label', label )
 
-        liz.setInfo( type='video', infoLabels= d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
+        liz.setInfo( type='video', infoLabels=infoLabels ) #this tricks the skin to show the plot. where we stored the picture descriptions
         #liz.setArt({"thumb": ti, "poster":poster_url, "banner":d['DirectoryItem_url'], "fanart":poster_url, "landscape":d['DirectoryItem_url']   })
-        liz.setArt({"thumb": ti, "banner":media_url })
 
         directory_items.append( liz )
 

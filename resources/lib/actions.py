@@ -268,7 +268,8 @@ def viewTallImage(image_url, width, height):
         log("  EXCEPTION viewTallImage:="+ str( sys.exc_info()[0]) + "  " + str(e) )
 
 def display_album_from(dictlist, album_name):
-    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
+    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type, sitesBase
+    from utils import build_script
     directory_items=[]
 
     album_viewMode=addon.getSetting("album_viewMode")
@@ -289,39 +290,41 @@ def display_album_from(dictlist, album_name):
         #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
         #  new note: this is how it is done:
         #     $INFO[Container(53).ListItem.Label,[B],[/B][CR]] $INFO[Container(53).ListItem.Plot]  #if the infolabel is empty, nothing is printed for that block
-        combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
-        combined += d['infoLabels'].get('plot') if d['infoLabels'].get('plot') else ""
+        #combined = '[B]'+ d['li_label2'] + "[/B][CR]" if d['li_label2'] else ""
+        combined = d['infoLabels'].get('plot') if d['infoLabels'].get('plot') else ""
         d['infoLabels']['plot'] = combined
 
-        liz=xbmcgui.ListItem(label=d['infoLabels']['plot'],
-                             label2=d['li_label2'])
+        liz=xbmcgui.ListItem(label=d.get('li_label'), label2=d.get('li_label2') )
 
         #parse the link so that we can determine whether it is image or video.
         ld=parse_reddit_link(media_url)
         DirectoryItem_url, setProperty_IsPlayable, isFolder, _ = build_DirectoryItem_url_based_on_media_type(ld, media_url, '', '', script_to_call="")
-
+        #log('isFolder:' + repr(isFolder)+ ' IsPlayable:'+repr(setProperty_IsPlayable) + ' DirectoryItem_url:' + repr(DirectoryItem_url))
         if using_custom_gui:
             url_for_DirectoryItem=media_url
-            if setProperty_IsPlayable=='true':
+            liz.setProperty('onClick_action',  DirectoryItem_url )
+            liz.setProperty('is_video','true')
+            #if setProperty_IsPlayable=='true':
+            if ld.link_action == sitesBase.DI_ACTION_PLAYABLE:
                 liz.setProperty('item_type','playable')
-                liz.setProperty('onClick_action',  media_url )
-                liz.setProperty('is_video','true')
             else:
-                #other playable item here skipped
-                #  usually albums with mixed video and image are from imgur and eroshare. their videos are already resolved.
-                #  can't find a sample of album with video that needs ytdl to resolve the video to play
-                pass
+                #this part is for playing video that needs to be resolved first. (youtube_dl)
+                #I could not get this to work  -->  #Attempt to use invalid handle -1
+                #I think you can't setresolvedUrl a listitem from a custom gui
+                #url_for_DirectoryItem=DirectoryItem_url
+                liz.setProperty('item_type','script')
         else:
             #sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=viewImage"
 
             #with xbmc's standard gui, we need to specify to call the plugin to open the gui that shows image
-            #log('*****[diu]:'+ DirectoryItem_url)
+            #log('***'+'isFolder:' + repr(isFolder)+ ' IsPlayable:'+repr(setProperty_IsPlayable) +'**[diu]:'+ DirectoryItem_url)
+            liz.setProperty('IsPlayable',setProperty_IsPlayable)
             url_for_DirectoryItem=DirectoryItem_url
 
         liz.setInfo( type='video', infoLabels=d['infoLabels'] ) #this tricks the skin to show the plot. where we stored the picture descriptions
         liz.setArt({"thumb": ti,'icon': ti, "poster":media_url, "banner":media_url, "fanart":media_url, "landscape":media_url   })
 
-        directory_items.append( (url_for_DirectoryItem, liz, isFolder,) )
+        directory_items.append( (url_for_DirectoryItem, liz, isFolder) )
 
     if using_custom_gui:
         from guis import cGUI
@@ -421,6 +424,10 @@ def playVideo(url, name, type_):
         log("playVideo(url) url is blank")
 
 def playYTDLVideo(url, name, type_):
+    if pluginhandle==-1:
+        xbmc_notify("Error","Attempt to use invalid handle -1") #saves the user from waiting
+        return
+
     dialog_progress_title='Youtube_dl'  #.format(ytdl_get_version_info())
     dialog_progress_YTDL = xbmcgui.DialogProgressBG()
     dialog_progress_YTDL.create(dialog_progress_title )
@@ -793,7 +800,7 @@ def update_youtube_dl_core(url,name,action_type):
                 update_dl_status('    New core copied')
                 xbmc.sleep(1000)
                 update_dl_status('Update complete')
-                xbmc.sleep(2000)
+                xbmc.Monitor().waitForAbort(2.0)
                 #ourVersion=ytdl_get_version_info('local')
                 setSetting('ytdl_btn_check_version', "")
                 setSetting('ytdl_btn_download', "")
@@ -850,7 +857,7 @@ def listRelatedVideo(url,name,type_):
     if match:
         #log('***** isYouTubeable' + repr(link_url))
         yt=ClassYoutube(url)
-        links_dictList=yt.get_more_info(type_)  #returns a list of dict same as one used for albums
+        links_dictList=yt.ret_album_list(type_)  #returns a list of dict same as one used for albums
         if links_dictList:
             #log(pprint.pformat(links_dictList))
 
