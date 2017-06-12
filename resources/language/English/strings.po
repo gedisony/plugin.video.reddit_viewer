@@ -32,9 +32,9 @@ msgctxt "#30007"
 msgid "Custom Multireddit"
 msgstr ""
 
-#Show youtube.com links //Show vimeo.com links
+#Posts to  youtube.com  //Posts to  vimeo.com
 msgctxt "#30008"
-msgid "Show %s links"
+msgid "Posts to"
 msgstr ""
 
 #description for the default shortcut 'all'
@@ -110,6 +110,11 @@ msgstr ""
 
 msgctxt "#30025"
 msgid "Parsing multiple videos..."
+msgstr ""
+
+#notification that we're checking websites gathering icons
+msgctxt "#30026"
+msgid "Gathering icons"
 msgstr ""
 
 #: used in context menu.

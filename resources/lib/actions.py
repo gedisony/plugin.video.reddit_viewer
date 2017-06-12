@@ -453,9 +453,6 @@ def playYTDLVideo(url, name, type_):
         #  we move progress dialog here to differentiate
         dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
 
-    pl = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
-    pl.clear()
-
     #use YoutubeDLWrapper by ruuk to avoid  bad file error
     ytdl=YoutubeDLWrapper()
     try:

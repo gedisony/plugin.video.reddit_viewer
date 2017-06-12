@@ -280,8 +280,7 @@ def create_default_subreddits():
 
 def populate_subreddits_pickle():
     from guis import progressBG
-    loading_indicator=progressBG(translation(32023))   #Gathering icons..
-    #loading_indicator.update(0,translation(32024) %'') #Gathering icons.. %s
+    loading_indicator=progressBG(translation(30026))   #Gathering icons..
 
     with open(subredditsFile, 'r') as fh:
         subreddit_settings = fh.readlines()
@@ -340,7 +339,7 @@ def parse_subreddit_entry(subreddit_entry_from_file):
         entry_type='domain'
         #log("domain "+ subreddit)
         domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
-        description=translation(30008) % domain            #"Show %s links"
+        description=translation(30008) + domain            #"Show %s links"
 
     #describe combined subreddits
     if '+' in subreddit:

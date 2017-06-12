@@ -252,7 +252,7 @@ class sitesBase(object):
                 channel_id=item.get('channel_id','')
                 video_id=item.get('video_id','')
 
-            infoLabels={ "Title": title, "plot": desc, "PictureDesc": desc }
+            infoLabels={ "Title": title, "plot": desc }
             e=[ title                   #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
                ,label2                  #'li_label2'          #
                ,""                      #'li_iconImage'       #
