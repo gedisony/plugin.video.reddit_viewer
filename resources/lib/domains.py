@@ -29,17 +29,15 @@ keys=[ 'li_label'           #  the text that will show for the list
       ,'type'               # video pictures  liz.setInfo(type='pictures',
       ,'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
       ,'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
-      ,'context_menu'       # ...
       ,'width'
       ,'height'
       ,'description'
       ,'link_action'
       ,'channel_id'         #used in youtube videos
+      ,'channel_name'
       ,'video_id'           #used in youtube videos
       ]
-
 ytdl_sites=[]
-
 #deviantart mixtape.moe sli.mg
 
 class sitesBase(object):
@@ -170,14 +168,18 @@ class sitesBase(object):
         log("    %s error:%s %s" %( self.__class__.__name__, error_code ,request_url) )
     @classmethod
     def get_first_url_from(self,string_with_url,return_all_as_list=False):
-        if string_with_url:
+        #first, search for [link description](https:www.yhotuve.com/...) pattern
+        #  NOTE that the [...](...) pattern has a space inserted between the [] and () in format_description() and we account for this in the regex
+        match = re.compile('\[.*?\][ ]??\((https?:\/\/.*?)\)').findall(string_with_url)
+        if not match:
             match = re.compile("(https?://[^\s/$.?#].[^\s]*)['\\\"]?(?:$)?").findall(string_with_url)
-            #log('   get_first_url_from:matches' + repr(match) )
-            if match:
-                if return_all_as_list:
-                    return match
-                else:
-                    return match[0]
+
+        #log('   get_first_url_from:matches' + repr(match) )
+        if match:
+            if return_all_as_list:
+                return match
+            else:
+                return match[0]
 
     @classmethod
     def split_text_into_links(self,string_with_url):
@@ -250,9 +252,11 @@ class sitesBase(object):
                 isPlayable=item.get('isPlayable')
                 link_action=item.get('link_action','')
                 channel_id=item.get('channel_id','')
+                channel_name=item.get('channel_name','')
                 video_id=item.get('video_id','')
 
             infoLabels={ "Title": title, "plot": desc }
+            #order is important here.
             e=[ title                   #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
                ,label2                  #'li_label2'          #
                ,""                      #'li_iconImage'       #
@@ -262,12 +266,12 @@ class sitesBase(object):
                ,item_type               #'type'               # video pictures  liz.setInfo(type='pictures',
                ,isPlayable              #'isPlayable'         # key:value       liz.setProperty('IsPlayable', 'true')  #there are other properties but we only use this
                ,infoLabels              #'infoLabels'         # {"title": post_title, "plot": description, "plotoutline": description, "Aired": credate, "mpaa": mpaa, "Genre": "r/"+subreddit, "studio": hoster, "director": posted_by }   #, "duration": 1271}   (duration uses seconds for titan skin
-               ,'none'                  #'context_menu'       # ...
                ,width
                ,height
                ,desc                    #'description'
                ,link_action             #'link_action'
                ,channel_id              #'channel_id'
+               ,channel_name            #'channel_name'
                ,video_id                #'video_id'
                 ]
             self.dictList.append(dict(zip(keys, e)))
@@ -284,8 +288,6 @@ class sitesBase(object):
 #    print dictList
 #    for item in dictList:
 #        print ' '.join([item[key] for key in keys])
-
-
 def all_same(items):
     #returns True if all items the same
     return all(x == items[0] for x in items)
@@ -352,6 +354,15 @@ class ClassYoutube(sitesBase):
             elif user_id:
                 return 'user', user_id
         return '',''
+
+    @classmethod
+    def get_playlist_id_from_url(self, youtube_url):
+        o = urlparse.urlparse(youtube_url)
+        query = urlparse.parse_qs(o.query)
+
+        playlist_id=query.get('list',None)
+        if playlist_id:
+            return playlist_id[0]
 
     def return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(self, video_id=None):
         if not video_id:
@@ -507,7 +518,7 @@ class ClassYoutube(sitesBase):
             youtube_api_key=self.api_key
         return youtube_api_key
 
-    def ret_album_list(self, type_='related'):
+    def ret_album_list(self, type_='related', search_string=None):
         youtube_api_key=self.ret_api_key()
         links=[]
         query_params={}
@@ -519,21 +530,18 @@ class ClassYoutube(sitesBase):
             if not channel_id:
                 raise ValueError('Could not get channel_id')
             request_action, query_params = self.build_query_params_for_channel_videos(youtube_api_key,channel_id)
-        else:  #if type_=='related':
+        elif type_=='playlist':  #here, user specifically asked to show videos in playlist via context menu
+            playlist_id=self.get_playlist_id_from_url( self.media_url )
+            request_action, query_params = self.build_query_params_for_playlist_videos(youtube_api_key,playlist_id)
+        elif type_=='playlists':  #here, user specifically asked to show playlists in the channel. the url is required to be a channel (channel_url built in ContextMenus.py)
+            channel_id=self.get_channel_id_from_url( self.media_url )
+            request_action, query_params = self.build_query_params_for_playlists_in_channel(youtube_api_key,channel_id)
+        elif type_=='search':  #here, user specifically asked to search
+            request_action, query_params = self.build_query_params_for_search(youtube_api_key,search_string)
+
+        else:  #in this portion, we determine if we will determine what kind of related videos to list by the url provided. usually it is related by videoid, but we can also handle channel, user or playlist url's
             if self.url_type=='video':
-                self.video_id=id_from_url
-
-                request_action='search'
-                query_params = {    #https://developers.google.com/youtube/v3/docs/search/list#relatedToVideoId
-                    'key': youtube_api_key,
-                    'fields':'items(id(videoId),snippet(publishedAt,channelId,title,description,thumbnails(medium)))',
-                    'type': 'video',
-                    'maxResults': '50',
-                    'part': 'snippet',
-                    'order': 'date',
-                    'relatedToVideoId': self.video_id,
-                }
-
+                request_action, query_params = self.build_query_params_for_related_to_videoId(youtube_api_key,id_from_url)
             elif self.url_type=='channel': #try to see if we were able to parse channel_id from url if no video_id was parsed
                 request_action, query_params = self.build_query_params_for_channel_videos(youtube_api_key,id_from_url)
             elif  self.url_type=='playlist':
@@ -550,11 +558,11 @@ class ClassYoutube(sitesBase):
             #log(repr(links))
             self.assemble_images_dictList(links)
             return self.dictList
-
+    @classmethod
     def build_query_params_for_channel_videos(self,youtube_api_key, channel_id):
         return  'search', {
                 'key': youtube_api_key,
-                'fields':'items(id(videoId),snippet(publishedAt,channelId,title,description,thumbnails(medium)))',
+                'fields':'items(kind,id(videoId),snippet(publishedAt,channelTitle,channelId,title,description,thumbnails(medium)))',
                 'type': 'video',         #video,channel,playlist.
     #            'kind': 'youtube#video',
                 'maxResults': '50',      # Acceptable values are 0 to 50
@@ -562,17 +570,29 @@ class ClassYoutube(sitesBase):
                 'order': 'date',
                 'channelId': channel_id,
             }
-    #not used, not tested.
-    def build_query_params_for_channel(self, channel_display_name):
+    @classmethod
+    def build_query_params_for_related_to_videoId(self,youtube_api_key,video_id):
         return  'search', {
-                'key': self.ret_api_key(),
-                'fields':'items(id(videoId),snippet(publishedAt,channelId,title,description,thumbnails(medium)))',
-                'type': 'channel',         #video,channel,playlist.
+                'key': youtube_api_key,
+                'fields':'items(kind,id(videoId),snippet(publishedAt,channelTitle,channelId,title,description,thumbnails(medium)))',
+                'type': 'video',         #video,channel,playlist.
                 'maxResults': '50',      # Acceptable values are 0 to 50
                 'part': 'snippet',
                 'order': 'date',
-                'q': channel_display_name,
+                'relatedToVideoId': video_id,
             }
+    @classmethod
+    def build_query_params_for_search(self,youtube_api_key,search_string,type_='video'):
+        return  'search', {
+                'key': youtube_api_key,
+                'fields':'items(kind,id(videoId),snippet(publishedAt,channelTitle,channelId,title,description,thumbnails(medium)))',
+                'type': type_,         #video,channel,playlist.
+                'maxResults': '50',      # Acceptable values are 0 to 50
+                'part': 'snippet',
+                'order': 'date',
+                'q': search_string,
+            }
+    @classmethod
     def build_query_params_for_playlist_videos(self,youtube_api_key, playlist_id):
         return  'playlistItems', {
                 'key': youtube_api_key,
@@ -582,12 +602,21 @@ class ClassYoutube(sitesBase):
                 'part': 'snippet',
                 'playlistId': playlist_id,
             }
+    @classmethod
     def build_query_params_for_user_videos(self,youtube_api_key, user_id):
         return  'channels', {
                 'key': youtube_api_key,
                 'maxResults': '50',      # Acceptable values are 0 to 50
                 'part': 'snippet,contentDetails',
                 'forUsername': user_id,
+            }
+    @classmethod
+    def build_query_params_for_playlists_in_channel(self,youtube_api_key, channel_id):
+        return  'playlists', {
+                'key': youtube_api_key,
+                'maxResults': '50',      # Acceptable values are 0 to 50
+                'part': 'snippet,contentDetails',
+                'channelId': channel_id,
             }
 
     def get_id_from_user(self,user_id):
@@ -605,21 +634,41 @@ class ClassYoutube(sitesBase):
         #log('channel_id:'+repr(channel_id) +' uploads:'+ repr(uploads))
         return channel_id,uploads
 
-    def get_video_list(self, request_action, query_params):
+    def get_video_list(self, request_action, query_params, direct_api_request_url=None, prev_page=1 ):
+        from utils import set_query_field
         links=[]
-        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(request_action,urllib.urlencode(query_params))
+        if direct_api_request_url:
+            log('direct api request url provided:'+repr(direct_api_request_url))
+            api_url=direct_api_request_url
+        else:
+            api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(request_action,urllib.urlencode(query_params))
         #log(api_url)
         r = self.requests_get(api_url)
         #log(r.text)
         j=r.json()
+
+        nextPageToken=clean_str(j, ['nextPageToken'])
+        totalResults=clean_str(j, ['pageInfo','totalResults'])
+        #log('nextPageToken={}   totalResults={}'.format(nextPageToken,totalResults))
         items=j.get('items')
+        all_same_channel=all_same([clean_str(i, ['snippet','channelTitle']) for i in items])
+        #log(repr(channels))
         for i in items:
             #snippet has: publishedAt channelId title description thumbnails{}
+            kind=clean_str(i, ['kind'])
+            #log(repr(kind))
+            if kind in ['youtube#searchResult','youtube#playlistItem']: #if request_action in ['search','playlistItems']:
+                if kind=='youtube#searchResult':
+                    videoId=clean_str(i, ['id','videoId'])
+                elif kind=='youtube#playlistItem':    #videoId is located somewhere else in the json if using playlistItems
+                    videoId=clean_str(i, ['snippet','resourceId','videoId'])
+                link_action, playable_url=self.return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(videoId)
 
-            if request_action=='search':
-                videoId=clean_str(i, ['id','videoId'])
-            elif request_action=='playlistItems': #videoId is located somewhere else in the json if using playlistItems
-                videoId=clean_str(i, ['snippet','resourceId','videoId'])
+            elif kind=='youtube#playlist': # if request_action=='playlists':     #these are playlists. we construct playlist url's
+                videoId=''
+                playlist_id=clean_str(i, ['id'])
+                link_action='listRelatedVideo'
+                playable_url="https://www.youtube.com/playlist?list={}".format(playlist_id)
 
             #log('video id:'+repr(videoId))
             publishedAt=clean_str(i, ['snippet','publishedAt'])
@@ -633,19 +682,41 @@ class ClassYoutube(sitesBase):
             thumb640=clean_str(i, ['snippet','thumbnails','standard','url']) #640x480
             thumb480=clean_str(i, ['snippet','thumbnails','high','url'])   #480x360
             thumb320=clean_str(i, ['snippet','thumbnails','medium','url']) #320x180
+            channelTitle=clean_str(i, ['snippet','channelTitle'])
+            items_in_playlist=clean_str(i, ['contentDetails','itemCount'],default=0) #exists only for playlist. does not exist in searchResult or playlistItem
+            if items_in_playlist==1:
+                title="[B]{} video[/B]\n{}".format(items_in_playlist,title)
+            elif items_in_playlist>1:
+                title="[B]{} videos[/B]\n{}".format(items_in_playlist,title)
+            if not all_same_channel:
+                pretty_date="{} [I]@{}[/I]".format(pretty_date,channelTitle)
 
-            link_action, playable_url=self.return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(videoId)
             #log('  link_action:'+link_action +' -->'+ playable_url)
             links.append( {'title': title,
                             'type': self.TYPE_VIDEO,
                             'label2': pretty_date,
                             'description': description,
                             'url': playable_url,
-                            'thumb': next((i for i in [thumb640,thumb480,thumb320] if i ), ''),
+                            'thumb': next((i for i in [thumb320,thumb480,thumb640] if i ), ''), #there are instances where a playlist will have a thumbnail that has three dots. (default no image thumbnail)
                             'isPlayable': 'true' if link_action==self.DI_ACTION_PLAYABLE else 'false',
                             'link_action':link_action,
                             'channel_id':channel_id,
+                            'channel_name':channelTitle,
                             'video_id':videoId,
+                            }  )
+        if nextPageToken:
+            new_url_with_next_page=set_query_field(api_url,'pageToken',nextPageToken,True)
+            links.append( {'title': "Page {}".format(prev_page + 1), #'Show more',
+                            'type': self.TYPE_ALBUM,
+                            'label2': None,
+                            'description': "More items from total:{}".format(totalResults),
+                            'url': new_url_with_next_page,
+                            'thumb': 'DefaultFolderNextSquare.png',
+                            'isPlayable': 'false',
+                            'link_action':'listMoreVideo',
+                            'channel_id':None,
+                            'channel_name':None,
+                            'video_id':None,
                             }  )
         return links
 
@@ -2377,7 +2448,6 @@ class ClassEroshare(sitesBase):
         #    log('      retrieved:'+ str(content) )
 
         match = re.compile('var album\s=\s(.*)\;').findall(content.text)
-        #log('********* ' + match[0])
         if match:
             j = json.loads(match[0])
             items = j.get('items')
@@ -2393,7 +2463,6 @@ class ClassEroshare(sitesBase):
                     self.link_action=sitesBase.DI_ACTION_PLAYABLE
 
                 return playable_url, self.media_type
-
             else:
                 #check if all items are video or image
                 media_types = []
@@ -2416,7 +2485,6 @@ class ClassEroshare(sitesBase):
                         self.media_type=self.TYPE_VIDS
 
                     return link_url, self.media_type
-
                 else: #video and images
                     log('    eroshare link has mixed video and images %d' %len(items) )
                     self.link_action=None #sitesBase.DI_ACTION_YTDL
@@ -2707,7 +2775,7 @@ class ClassReddit(sitesBase):
     @classmethod
     def get_video_id(self, reddit_url):
         #returns subreddit name
-        match = re.findall( '^\/?r\/(.+?)(?:\/|$)|https?://.+?\.reddit\.com\/r\/(.+?)(?:\/|$)' , reddit_url)
+        match = re.findall( '^\/?r\/(.+?)(?:\/|$)|https?://(?:.+?\.)?reddit\.com\/r\/(.+?)(?:\/|$)' , reddit_url)
         #returns an array of tuples
         if match:
             for m in match[0]:

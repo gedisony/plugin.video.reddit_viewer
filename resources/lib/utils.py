@@ -309,20 +309,15 @@ def calculate_zoom_slide(img_w, img_h):
 def parse_filename_and_ext_from_url(url=""):
     filename=""
     ext=""
-
-    path = urlparse.urlparse(url).path
-    #ext = os.path.splitext(path)[1]
+    path = urlparse.urlparse(url).path     #ext = os.path.splitext(path)[1]
     try:
         if '.' in path:
             #log( "        f&e=[%s]" %(url.split('/')[-1]).split('.')[0] )
             #log( "          e=[%s]" %(url.split('/')[-1]).split('.')[-1] )
             filename = path.split('/')[-1].split('.')[0]
             ext      = path.split('/')[-1].split('.')[-1]
-            #log( "        ext=[%s]" %ext )
             if not ext=="":
-
-                #ext=ext.split('?')[0]
-                ext=re.split("\?|#",ext)[0]
+                ext=re.split("\?|#",ext)[0]                 #ext=ext.split('?')[0]
 
             return filename, ext.lower()
     except:
@@ -336,17 +331,13 @@ def link_url_is_playable(url):
         return 'image'
     if ext in ['mp4','webm','mpg','gifv','gif']:
         return 'video'
-            #if ext == 'gif':
-            #    return 'gif'
     return False
 
 def ret_url_ext(url):
     if url:
         url=url.split('?')[0]
-        #log('        split[0]:' + url)
         if url:
             _,ext=parse_filename_and_ext_from_url(url)
-            #log('        [%s][%s]' %(filename,ext) )
             return ext
     return False
 
@@ -551,7 +542,10 @@ def clean_str(dict_obj, keys_list, default=''):
                 return default
             else:
                 continue
-        return unescape(dd.encode('utf-8'))
+        if hasattr(dd, 'encode'):#int does not have encode()
+            return unescape(dd.encode('utf-8'))
+        else:
+            return dd
     except (AttributeError,IndexError) as e:
         log( 'clean_str:' + str(e) )
         return default
@@ -601,7 +595,7 @@ def colored_subreddit(subreddit,color='cadetblue', add_r=True):
 def truncate(string, length, ellipse='...'):
     return (string[:length] + ellipse) if len(string) > length else string
 
-def xbmc_notify(line1, line2, time=2000, icon=''):
+def xbmc_notify(line1, line2, time=3000, icon=''):
     if icon and os.path.sep not in icon:
         icon=os.path.join(addon.getAddonInfo('path'), 'resources','skins','Default','media', icon)
 
@@ -752,6 +746,7 @@ def dictlist_to_listItems(dictlist):
         isPlayable=d.get('isPlayable')
         link_action=d.get('link_action')
         channel_id=d.get('channel_id')
+        channel_name=d.get('channel_name')
         video_id=d.get('video_id')
         infoLabels=d.get('infoLabels')
 
@@ -785,7 +780,7 @@ def dictlist_to_listItems(dictlist):
                 liz.setProperty('is_video','true')
             else:
                 liz.setProperty('item_type','script')
-                liz.setProperty('onClick_action', build_script(link_action, media_url,'','') )
+                liz.setProperty('onClick_action', build_script(link_action, media_url,label,'') )
 
             liz.setArt({"thumb": ti })
 
@@ -793,6 +788,8 @@ def dictlist_to_listItems(dictlist):
         liz.setProperty('channel_id', channel_id )
         liz.setProperty('video_id', video_id )   #youtube only for now
         liz.setProperty('label', label )
+        liz.setProperty('channel_name', channel_name )
+        liz.setProperty('channel_id', channel_id )
 
         liz.setInfo( type='video', infoLabels=infoLabels ) #this tricks the skin to show the plot. where we stored the picture descriptions
         #liz.setArt({"thumb": ti, "poster":poster_url, "banner":d['DirectoryItem_url'], "fanart":poster_url, "landscape":d['DirectoryItem_url']   })
@@ -820,13 +817,16 @@ def setting_entry_is_domain(setting_entry):
         domain=''
     return domain
 
-def get_domain_icon( entry_name, domain ):
+def get_domain_icon( entry_name, domain, check_this_url_instead_of_domain=None ):
     import requests
     from CommonFunctions import parseDOM
     subs_dict={}
     #import pprint
-    #headers = {'User-Agent': reddit_userAgent}
-    req='http://%s' %domain
+    if check_this_url_instead_of_domain:
+        req=check_this_url_instead_of_domain
+    else:
+        req='http://%s' %domain
+
     #log('get_domain_icon request='+req)
     #log('headers:' + repr(headers))
     r = requests.get( req )

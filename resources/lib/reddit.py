@@ -357,6 +357,10 @@ def parse_subreddit_entry(subreddit_entry_from_file):
     #save that view id in our global mailbox (retrieved by listSubReddit)
     #WINDOW.setProperty('viewid-'+subreddit, viewid)
 
+    if subreddit.startswith('https://'):
+        entry_type='link'
+        description=translation(32027)  #"Saved Link"
+
     return entry_type, subreddit, alias, description
 
 def ret_settings_type_default_icon(entry_type):
@@ -595,18 +599,22 @@ def ret_sub_info( subreddit_entry ):
         if not subreddits_dlist:
             if os.path.exists(subredditsPickle):
                 subreddits_dlist=load_dict(subredditsPickle)
-                #log(repr(subreddits_dlist))
 
-        subreddit_search=subreddit_entry.lower()
-        if '/' in subreddit_search:
-            subreddit_search=subreddit_search.split('/')[0]
+        subreddit_search=subreddit_entry.lower()  #<--note everything being lcase'd
 
-        if '+' in subreddit_search:
+        if subreddit_entry.startswith('http'): #differentiate link shortcuts(http://youtube...) from (diy/new)
+            #subreddit_search=subreddit_search
+            pass
+        else:
+            if '/' in subreddit_search: #search only for "diy" in "diy/new"
+                subreddit_search=subreddit_search.split('/')[0]
+
+        if '+' in subreddit_search: #for combined subredits, randomly search for one of them.
             subreddit_search=random.choice(subreddit_search.split('+'))
 
         for sd in subreddits_dlist:
-            #we have an entry in our pickle file about the subreddit entry
-            if sd.get('entry_name')==subreddit_search:
+            #if subreddit_entry.startswith('http'):log('comapring entry: '+repr(sd.get('entry_name') + '     '+ repr(subreddit_search)  ))
+            if sd.get('entry_name','').lower()==subreddit_search:
                 return sd
     except Exception as e:
         #sometimes we get a race condition when the save thread is saving and the index function is listing
@@ -619,7 +627,6 @@ def ret_sub_icon(subreddit):
     if sub_info:
         #return the first item that isn't blank.
         return next((item for item in [sub_info.get('icon_img'),sub_info.get('banner_img'),sub_info.get('header_img')] if item ), '')
-        #return sub_info.get('icon_img')
 
 subredditsFile_entries=[]
 def load_subredditsFile():
@@ -658,7 +665,8 @@ def get_subreddit_entry_info(subreddit):
         t.start()
 
 def convert_settings_entry_into_subreddits_list_or_domain(settings_entry):
-    settings_entry=settings_entry.lower().strip()
+    #settings_entry=settings_entry.lower().strip()
+    settings_entry=settings_entry.strip()
     if settings_entry in ['all','random','randnsfw','popular']:
         return
 
@@ -669,6 +677,10 @@ def convert_settings_entry_into_subreddits_list_or_domain(settings_entry):
         return
 
     s=[]
+
+    if settings_entry.startswith('http'):
+        s.append(settings_entry)
+        return s
 
     if '/' in settings_entry:  #only get "diy" from "diy/top" or "diy/new"
         settings_entry=settings_entry.split('/')[0]
@@ -693,18 +705,25 @@ def get_subreddit_entry_info_thread(sub_list):
             #log( pprint.pformat(subreddits_dlist, indent=1) )
     #log('****------before for -------- ' + repr(sub_list ))
     for subreddit in sub_list:
-        subreddit=subreddit.lower().strip()
-        #remove old instance of subreddit
-        #log('****processing ' + repr( subreddit ))
-        subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name','') != subreddit ]
-        domain=setting_entry_is_domain(subreddit)
-        if domain:
-            log('  getting domain info '+domain)
-            sub_info=get_domain_icon(subreddit,domain)
-            #icon="http://%s/favicon.ico"%domain
+        if subreddit.startswith('https://'):
+            entry_in_file=subreddit
+            without_alias=re.sub(r"[\(\[].*?[\)\]]", "", entry_in_file)
+            log('  getting link info:entry_in_file=%s  without_alias=%s'%(repr(entry_in_file),repr(without_alias))  )
+            sub_info=get_domain_icon(entry_in_file,None,without_alias )
         else:
-            log('  getting sub info '+subreddit)
-            sub_info=get_subreddit_info(subreddit)
+            subreddit=subreddit.lower().strip()
+            #remove old instance of subreddit
+            #log('****processing ' + repr( subreddit ))
+            subreddits_dlist=[x for x in subreddits_dlist if x.get('entry_name','') != subreddit ]
+
+            domain=setting_entry_is_domain(subreddit)
+            if domain:
+                log('  getting domain info '+domain)
+                sub_info=get_domain_icon(subreddit,domain)
+                #icon="http://%s/favicon.ico"%domain
+            else:
+                log('  getting sub info '+subreddit)
+                sub_info=get_subreddit_info(subreddit)
 
         log('    retrieved subreddit info ' + repr( sub_info ))
         if sub_info:
