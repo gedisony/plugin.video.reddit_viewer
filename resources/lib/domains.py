@@ -212,14 +212,11 @@ class sitesBase(object):
             self.poster_url=media_url if self.poster_url else self.poster_url
 
     def assemble_images_dictList(self,images_list):
-        title=''
-        desc=''
-        image_url=''
-        thumbnail=''
-        width=0
-        height=0
-        item_type=None
-        isPlayable=None
+        title=label2=thumbnail=image_url=desc=None
+        width=height=0
+        isPlayable=infoLabels=link_action=channel_id=channel_name=video_id=None
+        item_type=self.TYPE_IMAGE     #all default to type image
+
         for item in images_list:
             #log('      type: %s' %( type(item)  ) )
             if isinstance(item, (basestring,unicode) ):   #type(item) in [str,unicode]:  #if isinstance(item, basestring):
@@ -248,7 +245,7 @@ class sitesBase(object):
                 thumbnail=item.get('thumb')
                 width    =item.get('width') if item.get('width') else 0
                 height   =item.get('height') if item.get('height') else 0
-                item_type=item.get('type')
+                item_type=item.get('type')   #media_type
                 isPlayable=item.get('isPlayable')
                 link_action=item.get('link_action','')
                 channel_id=item.get('channel_id','')
@@ -1702,6 +1699,7 @@ class ClassBlogspot(sitesBase):
             return self.thumb_url
 
     def ret_album_list(self, album_url, thumbnail_size_code=''):
+        import itertools
         content = self.ret_blog_post_request()
         if content:
             j = content.json()    #log( pprint.pformat(j, indent=1) )
@@ -1733,24 +1731,36 @@ class ClassBlogspot(sitesBase):
 
             for name, ret in zip(names, rets):
                 images = parseDOM(html, name = name, ret = ret)
-                #log here if you'd like
+                titles = parseDOM(html, name = 'img', ret = 'title')
                 if images:
                     all_images.extend(images)
 
-            #for i in all_images: log('  all_images:' + i  )
+            l2=map(list,itertools.izip_longest(all_images,titles, fillvalue=None)) #instead of map(list,zip(all_images,titles)) zip will only combine lists only up to the shortest list
+            #for i in l2: log('  images:' + repr(i)  )
 
-            list1=remove_duplicates(all_images)
-            list2 =[]
+            #for i in all_images: log('  images:' + i  )
+
+            def k2(x): return x[0]
+            l3=remove_duplicates(l2, k2 )
+            images =[]
             #for i in list1: log('  checking links in list1:' + i)
-            for i in list1:
+            for i in l3:
                 #if 'blogspot' in i: continue
-                if link_url_is_playable(i) == 'image':
-                    list2.append(i)
-            #for i in list2: log('  checking links in list2:' + i)
+                if link_url_is_playable(i[0]) == 'image':
+                    title=i[1] if i[1] else None
+                    images.append( {'title': title,
+                                    'type': self.TYPE_IMAGE,
+                                    #'description': descrip,
+                                    'url': i[0],
+                                    'thumb': i[0],
+                                    #'width': width,
+                                    #'height': height,
+                                    #'isPlayable':'true',
+                                    }  )
+            #for i in images: log(repr(i)  )
 
-            #if len(all_images) > 1:
-            self.assemble_images_dictList(  list2    )
-
+            self.assemble_images_dictList(  images    )
+            #for i in self.dictList: log(repr(i)  )
             return self.dictList
         else:
             log('    content blank ')

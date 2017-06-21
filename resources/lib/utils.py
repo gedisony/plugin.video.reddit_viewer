@@ -754,13 +754,9 @@ def dictlist_to_listItems(dictlist):
         #log('  dictlist_to_listItems list:'+ media_url + "  " + repr(media_type) )  # ****** don't forget to add "[0]" when using parseDOM    parseDOM(div,"img", ret="src")[0]
 
         #There is only 1 textbox for Title and description in our custom gui.
-        #  I don't know how to achieve this in the xml file so it is done here:
         #  combine title and description without [CR] if label is empty. [B]$INFO[Container(53).ListItem.Label][/B][CR]$INFO[Container(53).ListItem.Plot]
-        #  new note: this is how it is done:
+        #  this is how it is done:
         #     $INFO[Container(53).ListItem.Label,[B],[/B][CR]] $INFO[Container(53).ListItem.Plot]  #if the infolabel is empty, nothing is printed for that block
-        #combined = "[B]{}[/B][CR]".format(label2) if label2 else ""
-        #combined = d['infoLabels'].get('plot') if d['infoLabels'].get('plot') else ""
-        #d['infoLabels']['plot'] = combined
 
         liz=xbmcgui.ListItem(label=label, label2=label2)
 
