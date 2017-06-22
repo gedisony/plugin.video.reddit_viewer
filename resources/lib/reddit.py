@@ -694,6 +694,7 @@ def convert_settings_entry_into_subreddits_list_or_domain(settings_entry):
 
 def get_subreddit_entry_info_thread(sub_list):
     from utils import load_dict, save_dict, get_domain_icon, setting_entry_is_domain
+    from domains import ClassYoutube
 
     global subreddits_dlist #subreddits_dlist=[]
     #log('**** thread running:'+repr(sub_list))
@@ -705,11 +706,18 @@ def get_subreddit_entry_info_thread(sub_list):
             #log( pprint.pformat(subreddits_dlist, indent=1) )
     #log('****------before for -------- ' + repr(sub_list ))
     for subreddit in sub_list:
+        #handle link shortcuts
         if subreddit.startswith('https://'):
             entry_in_file=subreddit
             without_alias=re.sub(r"[\(\[].*?[\)\]]", "", entry_in_file)
-            log('  getting link info:entry_in_file=%s  without_alias=%s'%(repr(entry_in_file),repr(without_alias))  )
-            sub_info=get_domain_icon(entry_in_file,None,without_alias )
+            yt=ClassYoutube(without_alias)
+            url_type,id_=yt.get_video_channel_user_or_playlist_id_from_url(without_alias)
+            if url_type=='channel':
+                sub_info=yt.get_channel_info(id_, entry_name=entry_in_file)
+            else:
+                #this part not used, right now only youtube channels are supported.
+                log('  getting link info:entry_in_file=%s  without_alias=%s'%(repr(entry_in_file),repr(without_alias))  )
+                sub_info=get_domain_icon(entry_in_file,None,without_alias )
         else:
             subreddit=subreddit.lower().strip()
             #remove old instance of subreddit

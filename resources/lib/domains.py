@@ -539,8 +539,12 @@ class ClassYoutube(sitesBase):
         else:  #in this portion, we determine if we will determine what kind of related videos to list by the url provided. usually it is related by videoid, but we can also handle channel, user or playlist url's
             if self.url_type=='video':
                 request_action, query_params = self.build_query_params_for_related_to_videoId(youtube_api_key,id_from_url)
-            elif self.url_type=='channel': #try to see if we were able to parse channel_id from url if no video_id was parsed
+            elif self.url_type=='channel':
+                #this requests videos in channel
                 request_action, query_params = self.build_query_params_for_channel_videos(youtube_api_key,id_from_url)
+                #this requests playlists in channel
+                #request_action, query_params = self.build_query_params_for_playlists_in_channel(youtube_api_key,id_from_url)
+                #self.get_channel_info(id_from_url)
             elif  self.url_type=='playlist':
                 request_action, query_params = self.build_query_params_for_playlist_videos(youtube_api_key,id_from_url)
             elif  self.url_type=='user':
@@ -615,6 +619,13 @@ class ClassYoutube(sitesBase):
                 'part': 'snippet,contentDetails',
                 'channelId': channel_id,
             }
+    @classmethod
+    def build_query_params_for_get_channel_info(self,youtube_api_key, channel_id):
+        return  'channels', {
+                'key': youtube_api_key,
+                'part': 'snippet,brandingSettings',  #https://developers.google.com/youtube/v3/docs/channels#resource
+                'id': channel_id,
+            }
 
     def get_id_from_user(self,user_id):
         query_params = {
@@ -631,6 +642,40 @@ class ClassYoutube(sitesBase):
         #log('channel_id:'+repr(channel_id) +' uploads:'+ repr(uploads))
         return channel_id,uploads
 
+    def get_channel_info(self,channel_id, entry_name=None):
+        #return format similar to get_subreddit_info() in reddit.py
+        #this is used to get the channel info/banner for the index page
+        link_action, query_params=self.build_query_params_for_get_channel_info(self.ret_api_key(),channel_id)
+
+        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(link_action,urllib.urlencode(query_params))
+        #log(api_url)
+        r = self.requests_get(api_url)
+        j=r.json()
+        #log(repr(j))
+
+        j=j.get('items')[0]
+
+        #videoId=clean_str(j, ['snippet','resourceId','videoId'])
+        channel_info={}
+        if 'brandingSettings' in j:
+            title=clean_str(j, ['brandingSettings','channel','title'])
+            channel_info.update( {'entry_name':entry_name,               #used as key when searching
+                               'display_name':title,
+                               'banner_img': clean_str(j, ['brandingSettings','image','bannerImageUrl']),   #this one is rectangular
+                               'icon_img': clean_str(j, ['snippet','thumbnails','default','url']),
+                               'header_img': clean_str(j, ['brandingSettings','image','bannerTvImageUrl']), #bannertv is square
+                               'title':title,
+                               'header_title':title,
+                               'public_description':clean_str(j, ['brandingSettings','channel','description']),
+                               #'subreddit_type':j.get('subreddit_type'),
+                               #'subscribers':j.get('subscribers'),
+                               'created':clean_str(j, ['snippet','publishedAt']),        #public, private
+                               'over18':None,
+                               } )
+            import pprint
+            log( pprint.pformat(channel_info, indent=1) )
+            return channel_info
+
     def get_video_list(self, request_action, query_params, direct_api_request_url=None, prev_page=1 ):
         from utils import set_query_field
         links=[]
@@ -641,8 +686,8 @@ class ClassYoutube(sitesBase):
             api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(request_action,urllib.urlencode(query_params))
         #log(api_url)
         r = self.requests_get(api_url)
-        #log(r.text)
         j=r.json()
+        #log(repr(j))
 
         nextPageToken=clean_str(j, ['nextPageToken'])
         totalResults=clean_str(j, ['pageInfo','totalResults'])
