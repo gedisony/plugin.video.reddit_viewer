@@ -9,7 +9,6 @@ import sys,os #os is used in open_web_browser()
 from urllib import urlencode
 #from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-
 addon         = xbmcaddon.Addon()
 addonID       = addon.getAddonInfo('id')  #plugin.video.reddit_viewer
 
@@ -45,10 +44,15 @@ def xbmc_busy(busy=True):
     else:
         xbmc.executebuiltin( "Dialog.Close(busydialog)" )
 
-def log(message, level=xbmc.LOGNOTICE):
+def log(message):
     import threading
     t=threading.currentThread()
-    xbmc.log("reddit_viewer {0}:{1}".format(t.name, message), level=level)
+    show_debug_messages=addon.getSetting("show_debug_messages") == "true"
+    if show_debug_messages:
+        level=xbmc.LOGNOTICE
+    else:
+        level=xbmc.LOGDEBUG
+    xbmc.log("reddit_reader {0}:{1}".format(t.name, message), level=level)
 
 def translation(id_):
     return addon.getLocalizedString(id_).encode('utf-8')
@@ -64,7 +68,6 @@ def compose_list_item(label,label2,iconImage,property_item_type, onClick_action,
     liz.setArt({"icon":iconImage, "thumb":iconImage,})
     liz.setProperty('item_type', property_item_type)  #item type "script" -> ('RunAddon(%s):' % di_url )
 
-    #liz.setInfo( type='video', infoLabels={"plot": shortcut_description, } )
     liz.setProperty('onClick_action', onClick_action)
 
     if infolabels==None:
@@ -73,7 +76,6 @@ def compose_list_item(label,label2,iconImage,property_item_type, onClick_action,
         liz.setInfo(type="Video", infoLabels=infolabels)
 
     return liz
-
 
 def build_script( mode, url="", name="", type_="", script_to_call=''):
     #builds the parameter for xbmc.executebuiltin   --> 'RunAddon(script.reddit.reader, ... )'
@@ -89,7 +91,7 @@ def build_script( mode, url="", name="", type_="", script_to_call=''):
         script_to_call=addonID
         #log("&url="+repr(url)+"&name="+repr(name)+"&type="+repr(type_))
         #return "RunAddon(%s,%s)" %(script_to_call, "mode="+ mode+"&url="+urllib.quote_plus(url)+"&name="+urllib.quote_plus(name)+"&type="+str(type_) )
-        return "RunAddon({script_to_call},mode={mode}&url={url}&name={name}&type={type})".format( script_to_call=script_to_call,
+        return "RunScript({script_to_call},mode={mode}&url={url}&name={name}&type={type})".format( script_to_call=script_to_call,
                                                                                                   mode=mode,
                                                                                                   url=urllib.quote_plus(url),
                                                                                                   name=urllib.quote_plus(name),
@@ -186,7 +188,6 @@ def post_excluded_from( filter_, str_to_check):
 def add_to_csv_setting(setting_id, string_to_add):
     #adds a string to the end of a setting id in settings.xml
     #this is assuming that it is a comma separated list used in filtering subreddit / domain
-    addon=xbmcaddon.Addon()
     csv_setting=addon.getSetting(setting_id)
     csv_list=csv_setting.split(',')
     csv_list=[x.lower().strip() for x in csv_list]
@@ -783,7 +784,6 @@ def dictlist_to_listItems(dictlist):
         liz.setProperty('link_url', media_url )  #added so we have a way to retrieve the link
         liz.setProperty('channel_id', channel_id )
         liz.setProperty('video_id', video_id )   #youtube only for now
-        liz.setProperty('label', label )
         liz.setProperty('channel_name', channel_name )
         liz.setProperty('channel_id', channel_id )
 

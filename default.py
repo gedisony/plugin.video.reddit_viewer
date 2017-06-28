@@ -171,3 +171,6 @@ if __name__ == '__main__':
                     }
 
     plugin_modes[mode](url,name,type_)
+
+    del addon
+    addon=None

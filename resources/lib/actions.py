@@ -305,14 +305,15 @@ def display_album_from(dictlist, album_name):
             liz.setProperty('onClick_action',  DirectoryItem_url )
             liz.setProperty('is_video','true')
             #if setProperty_IsPlayable=='true':
-            if ld.link_action == sitesBase.DI_ACTION_PLAYABLE:
-                liz.setProperty('item_type','playable')
-            else:
-                #this part is for playing video that needs to be resolved first. (youtube_dl)
-                #I could not get this to work  -->  #Attempt to use invalid handle -1
-                #I think you can't setresolvedUrl a listitem from a custom gui
-                #url_for_DirectoryItem=DirectoryItem_url
-                liz.setProperty('item_type','script')
+            if ld:
+                if ld.link_action == sitesBase.DI_ACTION_PLAYABLE:
+                    liz.setProperty('item_type','playable')
+                else:
+                    #this part is for playing video that needs to be resolved first. (youtube_dl)
+                    #I could not get this to work  -->  #Attempt to use invalid handle -1
+                    #I think you can't setresolvedUrl a listitem from a custom gui
+                    #url_for_DirectoryItem=DirectoryItem_url
+                    liz.setProperty('item_type','script')
         else:
             #sys.argv[0]+"?url="+ urllib.quote_plus(d['DirectoryItem_url']) +"&mode=viewImage"
 

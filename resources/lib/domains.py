@@ -302,12 +302,26 @@ class ClassYoutube(sitesBase):
 
     api_key='AIzaSyBilnA0h2drOvpnqno24xeVqGy00fp07so'
 
+    @classmethod
+    def remove_attribution_link_from_url_if_present(self, youtube_url):
+        o = urlparse.urlparse(youtube_url)
+        query = urlparse.parse_qs(o.query)
+
+        if 'a' in query and 'u' in query:  #if 'attribution_link' in query:
+            u=query['u'][0]
+            #log('   u  '+ repr(u))
+            #replace the attribution link
+            return '{scheme}://{netloc}{path}'.format(scheme=o.scheme, netloc=o.netloc,path=u)
+        return youtube_url
+
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
         if not media_url:
             media_url=self.media_url
 
         o = urlparse.urlparse(media_url)
         query = urlparse.parse_qs(o.query)
+
+        self.media_url=self.remove_attribution_link_from_url_if_present(media_url)
 
         self.url_type, id_from_url=self.get_video_channel_user_or_playlist_id_from_url( self.media_url )
 
@@ -333,8 +347,7 @@ class ClassYoutube(sitesBase):
 
     @classmethod
     def get_video_channel_user_or_playlist_id_from_url(self, youtube_url):
-        o = urlparse.urlparse(youtube_url)
-        query = urlparse.parse_qs(o.query)
+        youtube_url=self.remove_attribution_link_from_url_if_present(youtube_url)
 
         video_id=self.get_video_id( youtube_url )
         if video_id:
@@ -342,24 +355,15 @@ class ClassYoutube(sitesBase):
         else:
             channel_id=self.get_channel_id_from_url( youtube_url )
             user_id=self.get_user_id_from_url( youtube_url )
-            playlist_id=query.get('list','')
+            playlist_id=self.get_playlist_id_from_url( youtube_url )
             #log( '  1:'+repr(channel_id) +'  2:'+ repr(user_id)+'  3:'+repr(playlist_id))
             if channel_id:
                 return 'channel', channel_id
             elif playlist_id:
-                return 'playlist', playlist_id[0]
+                return 'playlist', playlist_id
             elif user_id:
                 return 'user', user_id
         return '',''
-
-    @classmethod
-    def get_playlist_id_from_url(self, youtube_url):
-        o = urlparse.urlparse(youtube_url)
-        query = urlparse.parse_qs(o.query)
-
-        playlist_id=query.get('list',None)
-        if playlist_id:
-            return playlist_id[0]
 
     def return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(self, video_id=None):
         if not video_id:
@@ -413,7 +417,6 @@ class ClassYoutube(sitesBase):
             channel_id=match[0]
         #log('yt channelID='+repr(channel_id))
         return channel_id
-
     @classmethod
     def get_user_id_from_url(self, yt_url):
         channel_id=''
@@ -423,6 +426,15 @@ class ClassYoutube(sitesBase):
             channel_id=match[0]
         #log('yt channelID='+repr(channel_id))
         return channel_id
+    @classmethod
+    def get_playlist_id_from_url(self, youtube_url):
+        o = urlparse.urlparse(youtube_url)
+        query = urlparse.parse_qs(o.query)
+
+        playlist_id=query.get('list',None)
+        if playlist_id:
+            return playlist_id[0]
+
 
     def get_thumb_url(self):
         """
@@ -2465,7 +2477,7 @@ class ClassGfycat(sitesBase):
                     #log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
                     stream_url=gfyItem.get('mp4Url') if gfyItem.get('mp4Url') else gfyItem.get('webmUrl')
 
-                log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
+                #log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
 
                 self.link_action=sitesBase.DI_ACTION_PLAYABLE
                 return stream_url, self.TYPE_GIF #sitesBase.TYPE_VIDEO

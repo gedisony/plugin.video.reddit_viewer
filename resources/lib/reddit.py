@@ -7,7 +7,7 @@ import re
 import os
 
 from default import addon, subredditsFile, urlMain, itemsPerPage,subredditsPickle,REQUEST_TIMEOUT
-from utils import log, translation,xbmc_notify
+from utils import log, translation,xbmc_notify,clean_str
 from default import reddit_clientID, reddit_userAgent, reddit_redirect_uri
 
 
@@ -523,7 +523,6 @@ def collect_thumbs( entry ):
     return
 
 def determine_if_video_media_from_reddit_json( data ):
-    from utils import clean_str
     #reads the reddit json and determines if link is a video
     is_a_video=False
 
@@ -578,7 +577,11 @@ def get_subreddit_info( subreddit ):
                                    'subscribers':j.get('subscribers'),
                                    'created':j.get('created'),        #public, private
                                    'over18':j.get('over18'),
+                                   'icon_size':j.get('icon_size'),
+                                   'banner_size':j.get('banner_size'),
+                                   'header_size':j.get('header_size'),
                                    } )
+                #import pprint
                 #log( pprint.pformat(subs_dict, indent=1) )
                 return subs_dict
         except ValueError:
@@ -738,6 +741,110 @@ def get_subreddit_entry_info_thread(sub_list):
             subreddits_dlist.append(sub_info)
             save_dict(subreddits_dlist, subredditsPickle)
             #log('****saved ')
+def subreddit_icoheader_banner(subreddit):
+    #from reddit import get_subreddit_entry_info, ret_sub_info
+    addtl_subr_info=ret_sub_info(subreddit)
+    #log('addtl_subr_info'+repr(addtl_subr_info))
+    try: #if addtl_subr_info:
+        icon=addtl_subr_info.get('icon_img')
+        banner=addtl_subr_info.get('banner_img')
+        header=addtl_subr_info.get('header_img',None)  #usually the small icon on upper left side on subreddit screen // also sometimes a very wide banner
+
+        #icon_ar=img_ar(addtl_subr_info.get('icon_size'))
+        #banner_ar=img_ar(addtl_subr_info.get('banner_size'))
+        header_ar=img_ar(addtl_subr_info.get('header_size'))
+
+        #some subreddits have a very long header image(r/mealtimevideos)
+        #we'll use that as banner (shows at top of gui)
+        if header_ar > 8 and not banner:
+            #log( 'replacing banner with header')
+            banner=header
+            header=None
+
+        #log('\nicon:'+repr(icon)+'\nheader:'+repr(header)+'\nbanner:'+repr(banner))
+        #icoheader=(icon if icon else header)
+    except AttributeError:
+        icon=banner=header=None
+        #get subreddit info and store it in out subreddits pickle for next time
+        get_subreddit_entry_info(subreddit)
+    return icon,banner,header
+
+def img_ar(img_size_array):
+    #img_size_array is from from reddit's about.json
+    ar=0
+    try:
+        w,h=img_size_array
+        ar=float(w)/h
+        #log("{} = {},{}".format(ar,w,h) )
+    except (TypeError,ZeroDivisionError):  #,ValueError):
+        ar=0
+    return ar
+
+def subreddit_entry_to_listitem(subreddit_entry):
+    from utils import compose_list_item, build_script, xstr, prettify_reddit_query
+    addtl_subr_info={}
+    nsfw=False
+    icon=banner=header=public_description=display_name=override_header_image=None
+    header_ar=0
+    addtl_subr_info=ret_sub_info(subreddit_entry)
+
+    #strip out the alias identifier from the subreddit string retrieved from the file so we can process it.
+    entry_type, subreddit, alias, shortcut_description=parse_subreddit_entry(subreddit_entry)
+    icon=default_icon=ret_settings_type_default_icon(entry_type)
+
+    pretty_label=prettify_reddit_query(alias)
+    pretty_label=pretty_label.replace('+',' + ')
+
+    if addtl_subr_info:
+        icon=addtl_subr_info.get('icon_img')
+        banner=addtl_subr_info.get('banner_img')  #rectangular shape
+        header=addtl_subr_info.get('header_img')  #square shape  from  bannerTvImageUrl
+        header_ar=img_ar(addtl_subr_info.get('header_size'))
+        if (header_ar > 8) and (not icon): #some header_img are very wide. this is to check and override the icon display in the gui
+            override_header_image=header
+            banner=header
+        public_description=xstr( addtl_subr_info.get('public_description',''))
+        display_name=xstr(addtl_subr_info.get('display_name',''))
+
+    #log('{} icon={} header={} banner={}'.format( subreddit, repr(icon), repr(header), repr(banner) ))
+
+    if entry_type=='link':  #<-- added new ability to have youtube channels as a shortcut on the main screen
+        #here, the subreddit variable contains a url. we made sure that it points to a youtube channel(ContextMenus.py). that way, there is no need to specify 'channel' when calling listRelatedVideo
+        liz = compose_list_item( pretty_label, entry_type, "", "script", build_script("listRelatedVideo",subreddit,alias) )
+    else: #domain, subreddit, combined, search, multireddit
+        reddit_url=assemble_reddit_filter_string("",subreddit, "yes")
+
+        if entry_type=='domain':
+            #remove the identifier that this setting is a domain
+            pretty_label=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
+
+        if subreddit.lower() in ["all","popular"]:
+            liz = compose_list_item( pretty_label, entry_type, "", "script", build_script("listSubReddit",reddit_url,alias) )
+        else:
+            if addtl_subr_info: #if we have additional info about this subreddit
+                #log(repr(addtl_subr_info))
+                #title=addtl_subr_info.get('title','')+'\n'
+                #display_name=xstr(addtl_subr_info.get('display_name',''))
+                #if samealphabetic( title, display_name): title=''
+
+                #header_title=xstr(addtl_subr_info.get('header_title',''))
+                #in reddit_viewer,  title, header_title and public_description is shown as plot
+                nsfw=addtl_subr_info.get('over18')
+
+                icon=next((item for item in [icon,banner,header] if item ), '') or default_icon #picks the first item that is not None
+                #icon=icon or default_icon
+                #log( pretty_label + ' icon=' + icon + ' nsfw='+repr(nsfw))
+                liz = compose_list_item( pretty_label, entry_type, "", "script", build_script("listSubReddit",reddit_url,alias) )
+            else:
+                liz = compose_list_item( pretty_label, entry_type, "", "script", build_script("listSubReddit",reddit_url,alias) )
+
+    liz.setArt({ "thumb": icon, "banner":banner, "fanart":override_header_image })
+    liz.setInfo('video', {"Title":display_name, "plot":public_description} )
+
+    if nsfw:
+        liz.setProperty('nsfw', 'true' )
+
+    return liz
 
 if __name__ == '__main__':
     pass

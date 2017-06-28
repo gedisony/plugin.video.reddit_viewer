@@ -26,7 +26,7 @@ def getDbPath():
 
 def getPlayCount(url):
     import sqlite3
-    
+
     dbPath = getDbPath()
     if dbPath:
         conn = sqlite3.connect(dbPath)
@@ -42,7 +42,6 @@ def getPlayCount(url):
         #args=[url]
 
         c.execute(str_sql,args)
-
 
         result = c.fetchone()
         #log('*****************'+repr(result) )
@@ -69,7 +68,6 @@ def getPlayCount(url):
 #    request = {"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", "params": { "filter": {"field": "playcount", "operator": "greaterthan", "value": "0"}, "limits": { "start" : 0 }, "properties": ["playcount"], "sort": { "order": "ascending", "method": "label" } }, "id": url}
 #    results = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
 #    log(repr(results))
-
 
 def autoPlay(url, name, autoPlay_type):
     import random

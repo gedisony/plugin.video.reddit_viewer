@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import xbmc
 import xbmcgui
-import xbmcaddon
 import xbmcplugin
 import urllib, urlparse
 import json
@@ -473,8 +472,14 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
         preview_ar=float(preview_w) / preview_h
         #log("preview ar: "+ repr(preview_ar))
 
-    if previewimage: needs_preview=False
-    else:            needs_preview=True  #reddit has no thumbnail for this link. please get one
+    if previewimage: 
+        needs_preview=False
+    else:
+        if iconimage: #some sites ban us if we send too many requests asking for preview image(meta og image)
+            needs_preview=False
+            previewimage=iconimage
+        else:
+            needs_preview=True  #reddit has no thumbnail for this link. please get one
 
     #DirectoryItem_url=sys.argv[0]+"?url="+ urllib.quote_plus(media_url) +"&mode=play"
 
