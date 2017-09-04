@@ -140,7 +140,10 @@ def listSubReddit(url, name, subreddit_key):
     log("listSubReddit subreddit=%s url=%s" %(subreddit_key,url) )
 
     currentUrl = url
-    xbmcplugin.setContent(pluginhandle, "movies") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
+
+    #use the "episodes" content type rather than "movies" so that the Wall and InfoWall views in the default Estuary skin show titles on each item like the Youtube and RedditTV addons. 
+    #The "movies" type assumes the thumbnails are posters and don't need a title which is definitely not the case for reddit content.  --credit:Kestrel
+    xbmcplugin.setContent(pluginhandle, "episodes") #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
 
     loading_indicator=progressBG('Loading...')
     loading_indicator.update(8,'Retrieving '+subreddit_key)
@@ -521,6 +524,7 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
 
     liz.setProperty('IsPlayable', setProperty_IsPlayable)
     liz.setInfo('video', {"title": liz.getLabel(), } )
+    liz.setContentLookup(False)
 
     liz.setArt({"thumb": iconimage, "poster":previewimage, "banner":iconimage, "fanart":previewimage, "landscape":previewimage, })
     entries = build_context_menu_entries(num_comments, commentsUrl, subreddit, domain, media_url, post_id) #entries for listbox for when you type 'c' or rt-click
@@ -781,7 +785,7 @@ def listLinksInComment(url, name, type_):
     #log('  comments_view id=%s' %comments_viewMode)
 
     #xbmcplugin.setContent(pluginhandle, "mixed")  #in estuary, mixed have limited view id's available. it has widelist which is nice for comments but we'll just stick with 'movies'
-    xbmcplugin.setContent(pluginhandle, "movies")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
+    xbmcplugin.setContent(pluginhandle, "episodes")    #files, songs, artists, albums, movies, tvshows, episodes, musicvideos
     xbmcplugin.setPluginCategory(pluginhandle,'Comments')
 
     xbmcplugin.addDirectoryItems(handle=pluginhandle, items=directory_items )

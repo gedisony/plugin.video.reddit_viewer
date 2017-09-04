@@ -9,9 +9,9 @@ import json
 import urlparse
 #sys.setdefaultencoding("utf-8")
 
-from default import addon, streamable_quality   #,addon_path,pluginhandle,addonID
+from default import addon, streamable_quality,hide_nsfw
 from default import addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
-from utils import log, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast, clean_str,pretty_datediff, nested_lookup
+from utils import log, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast, clean_str,pretty_datediff_wrap, nested_lookup
 
 #use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
 use_addon_for_youtube     = addon.getSetting("use_addon_for_youtube") == "true"
@@ -251,8 +251,10 @@ class sitesBase(object):
                 channel_id=item.get('channel_id','')
                 channel_name=item.get('channel_name','')
                 video_id=item.get('video_id','')
+                duration=item.get('duration','') #kodi prefers infolabels.duration in seconds
+                set_=item.get('set','')           #infolabels.set, name of the collection, i'm using this to show "14 videos" if item is a playlist
 
-            infoLabels={ "Title": title, "plot": desc }
+            infoLabels={ "Title": title, "plot": desc, "duration":duration, "set":set_,}
             #order is important here.
             e=[ title                   #'li_label'           #  the text that will show for the list (we use description because most albumd does not have entry['type']
                ,label2                  #'li_label2'          #
@@ -290,9 +292,13 @@ def all_same(items):
     return all(x == items[0] for x in items)
 
 def url_resolver_support(link_url):
-    import urlresolver
-    if urlresolver.HostedMediaFile(link_url).valid_url():
-        return True
+    try:
+        import urlresolver
+        if urlresolver.HostedMediaFile(link_url).valid_url():
+            return True
+    except ValueError as e:
+        log('error importing urlresolver:'+str(e))
+
     return False
 
 class ClassYoutube(sitesBase):
@@ -328,7 +334,7 @@ class ClassYoutube(sitesBase):
         if self.url_type=='video':
             self.video_id=id_from_url
             self.get_thumb_url() #there is no request penalty for getting yt thumb url so we do it here
-            self.link_action, playable_url=self.return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube()
+            self.link_action, playable_url=self.return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(self.video_id)
 
             #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
             #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
@@ -364,10 +370,8 @@ class ClassYoutube(sitesBase):
             elif user_id:
                 return 'user', user_id
         return '',''
-
-    def return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(self, video_id=None):
-        if not video_id:
-            video_id=self.video_id
+    @classmethod
+    def return_action_and_link_tuple_accdg_to_setting_wether_to_use_addon_for_youtube(self, video_id):
         link_actn=''
         link_=''
 
@@ -380,10 +384,12 @@ class ClassYoutube(sitesBase):
                 #some youtube links take a VERY long time for youtube_dl to parse. we simplify it by getting the video id and using a simpler url
                 #BUT if there is a time skip code in the url, we just pass it right through. youtube-dl can handle this part.
                 #   time skip code comes in the form of ?t=122  OR #t=1m45s OR ?t=2:43
-                link_="http://youtube.com/v/{0}".format(video_id)
-            #log('    returning:{} {}'.format(link_actn, link_))
+                link_=self.build_youtube_url_with_video_id(video_id)
+            #log('    returning:{0} {1}'.format(link_actn, link_))
             return link_actn, link_
-
+    @classmethod
+    def build_youtube_url_with_video_id(self,video_id):
+        return "http://youtube.com/v/{0}".format(video_id)
     @classmethod
     def get_video_id(self, yt_url):
         #video_id_regex=re.compile('(?:youtube(?:-nocookie)?\.com/(?:\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&;]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', re.DOTALL)
@@ -591,19 +597,33 @@ class ClassYoutube(sitesBase):
                 'type': 'video',         #video,channel,playlist.
                 'maxResults': '50',      # Acceptable values are 0 to 50
                 'part': 'snippet',
-                'order': 'date',
-                'relatedToVideoId': video_id,
+                'relatedToVideoId': video_id,  #if the relatedToVideoId parameter is set, the only other supported parameters are part, maxResults, pageToken, regionCode, relevanceLanguage, safeSearch, type (which must be set to video), and fields.
+                'safeSearch':'moderate' if hide_nsfw else 'none',
             }
     @classmethod
     def build_query_params_for_search(self,youtube_api_key,search_string,type_='video'):
+        from utils import ret_bracketed_option
+        #specify different results by adding order_option in square brackets in the search string.
+        stripped_string, order_option=ret_bracketed_option(search_string)  #developer feature: specify the order in search parameter "[date]" etc.
+        if order_option:
+            if order_option.lower() in['date','rating','relevance','title','videocount','viewcount']:
+                log('  youtube search:using special order option [{0}]'.format(order_option))
+            else:
+                log('  youtube search:unsupported order option [{0}]'.format(order_option))
+                order_option='relevance'
+                stripped_string=search_string
+        else:
+            order_option='relevance'
+
         return  'search', {
                 'key': youtube_api_key,
                 'fields':'items(kind,id(videoId),snippet(publishedAt,channelTitle,channelId,title,description,thumbnails(medium)))',
                 'type': type_,         #video,channel,playlist.
                 'maxResults': '50',      # Acceptable values are 0 to 50
                 'part': 'snippet',
-                'order': 'date',
-                'q': search_string,
+                'order': order_option, #date,rating,relevance,title,videoCount,viewCount
+                'q': stripped_string,
+                'safeSearch':'moderate' if hide_nsfw else 'none',
             }
     @classmethod
     def build_query_params_for_playlist_videos(self,youtube_api_key, playlist_id):
@@ -638,7 +658,7 @@ class ClassYoutube(sitesBase):
                 'part': 'snippet,brandingSettings',  #https://developers.google.com/youtube/v3/docs/channels#resource
                 'id': channel_id,
             }
-
+    @classmethod
     def get_id_from_user(self,user_id):
         query_params = {
             'key': self.ret_api_key(),
@@ -688,8 +708,46 @@ class ClassYoutube(sitesBase):
             log( pprint.pformat(channel_info, indent=1) )
             return channel_info
 
+    def ret_videoId_list_from(self,items_from_api_response):
+        video_ids=[]
+        for i in items_from_api_response:
+            kind=clean_str(i, ['kind'])
+            if kind in ['youtube#searchResult','youtube#playlistItem']: #if request_action in ['search','playlistItems']:
+                if kind=='youtube#searchResult':
+                    videoId=clean_str(i, ['id','videoId'])
+                elif kind=='youtube#playlistItem':    #videoId is located somewhere else in the json if using playlistItems
+                    videoId=clean_str(i, ['snippet','resourceId','videoId'])
+                video_ids.append(videoId)
+        return video_ids
+    def get_video_durations(self,youtube_api_key,videoIds):
+        from utils import ytDurationToSeconds
+        durations=[]
+        query_params={'key': youtube_api_key,
+                'part': 'contentDetails',
+                'id': ",".join(videoIds),            #','.join(map(str, myList))#if the list contains numbers
+            }
+        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format("videos",urllib.urlencode(query_params))
+        r = self.requests_get(api_url)
+        j=r.json()
+        #log(repr(j))
+        for i in j.get('items'):
+            d=clean_str(i, ['contentDetails','duration'],'')
+            durations.append(ytDurationToSeconds(d))
+            #import iso8601
+            #iso8601.parse_duration(d)
+        return durations
+    def get_video_durations_dict(self,youtube_api_key,items_from_api_response):
+        video_ids=self.ret_videoId_list_from(items_from_api_response)
+        #log('aaaaaaaaaa'+repr(video_ids))
+        durations=self.get_video_durations(youtube_api_key, video_ids)
+        #log('aaaaaaaaaa'+repr(durations))
+        vnd=dict(zip(video_ids,durations))
+        del video_ids[:]
+        del durations[:]
+        return vnd
+
     def get_video_list(self, request_action, query_params, direct_api_request_url=None, prev_page=1 ):
-        from utils import set_query_field
+        from utils import set_query_field, seconds_to_hms
         links=[]
         if direct_api_request_url:
             log('direct api request url provided:'+repr(direct_api_request_url))
@@ -703,10 +761,13 @@ class ClassYoutube(sitesBase):
 
         nextPageToken=clean_str(j, ['nextPageToken'])
         totalResults=clean_str(j, ['pageInfo','totalResults'])
-        #log('nextPageToken={}   totalResults={}'.format(nextPageToken,totalResults))
+        #log('nextPageToken={0}   totalResults={1}'.format(nextPageToken,totalResults))
         items=j.get('items')
         all_same_channel=all_same([clean_str(i, ['snippet','channelTitle']) for i in items])
         #log(repr(channels))
+        videoId_and_durations=self.get_video_durations_dict(self.api_key,items)
+        #log('videoId_and_durations:'+repr(videoId_and_durations))
+
         for i in items:
             #snippet has: publishedAt channelId title description thumbnails{}
             kind=clean_str(i, ['kind'])
@@ -722,13 +783,13 @@ class ClassYoutube(sitesBase):
                 videoId=''
                 playlist_id=clean_str(i, ['id'])
                 link_action='listRelatedVideo'
-                playable_url="https://www.youtube.com/playlist?list={}".format(playlist_id)
+                playable_url="https://www.youtube.com/playlist?list={0}".format(playlist_id)
 
             #log('video id:'+repr(videoId))
             publishedAt=clean_str(i, ['snippet','publishedAt'])
-            pretty_date=self.pretty_date(publishedAt)
+            pretty_date=pretty_datediff_wrap(publishedAt, format_string="%Y-%m-%dT%H:%M:%S.000Z")
             #log('publishedAt:'+repr(publishedAt) + ' which is ' + pretty_date)
-
+            set_='' #infolabels set(name of the collection)  i'll use this to store "14 videos" for playlist
             channel_id=clean_str(i, ['snippet','channelId'])
             title=clean_str(i, ['snippet','title'])
             description=clean_str(i, ['snippet','description'])
@@ -738,12 +799,16 @@ class ClassYoutube(sitesBase):
             thumb320=clean_str(i, ['snippet','thumbnails','medium','url']) #320x180
             channelTitle=clean_str(i, ['snippet','channelTitle'])
             items_in_playlist=clean_str(i, ['contentDetails','itemCount'],default=0) #exists only for playlist. does not exist in searchResult or playlistItem
+            duration=videoId_and_durations.get(videoId)
+            duration_hms=seconds_to_hms(duration)
+            if items_in_playlist==0: #we're supposed to use listitem.duration for this field. but kodi <18 only formats this field in mmm. kodi 18 formats this to hh:mm:ss
+                set_=duration_hms    # we resort to formatting it ourselves and putting it in a different field(set) that is also displayed in the gui on the same location 
             if items_in_playlist==1:
-                title="[B]{} video[/B]\n{}".format(items_in_playlist,title)
+                set_="{0} video".format(items_in_playlist)
             elif items_in_playlist>1:
-                title="[B]{} videos[/B]\n{}".format(items_in_playlist,title)
-            if not all_same_channel:
-                pretty_date="{} [I]@{}[/I]".format(pretty_date,channelTitle)
+                set_="{0} videos".format(items_in_playlist)
+            if not all_same_channel: #if all videos in the list is not from the same channel, add channel name beside date
+                pretty_date="{0} [I]@{1}[/I]".format(pretty_date,channelTitle)
 
             #log('  link_action:'+link_action +' -->'+ playable_url)
             links.append( {'title': title,
@@ -757,13 +822,15 @@ class ClassYoutube(sitesBase):
                             'channel_id':channel_id,
                             'channel_name':channelTitle,
                             'video_id':videoId,
+                            #'duration':duration,
+                            'set':set_,
                             }  )
         if nextPageToken:
             new_url_with_next_page=set_query_field(api_url,'pageToken',nextPageToken,True)
-            links.append( {'title': "Page {}".format(prev_page + 1), #'Show more',
+            links.append( {'title': "Page {0}".format(prev_page + 1), #'Show more',
                             'type': self.TYPE_ALBUM,
                             'label2': None,
-                            'description': "More items from total:{}".format(totalResults),
+                            'description': "More items from total:{0}".format(totalResults),
                             'url': new_url_with_next_page,
                             'thumb': 'DefaultFolderNextSquare.png',
                             'isPlayable': 'false',
@@ -773,22 +840,6 @@ class ClassYoutube(sitesBase):
                             'video_id':None,
                             }  )
         return links
-
-    def pretty_date(self, yt_date_string):
-        from datetime import datetime
-        import time
-        #http://forum.kodi.tv/showthread.php?tid=112916
-        try:
-            date_object = datetime.strptime(yt_date_string,"%Y-%m-%dT%H:%M:%S.000Z")
-        except TypeError:
-            date_object = datetime(*(time.strptime(yt_date_string,"%Y-%m-%dT%H:%M:%S.000Z")[0:6]))
-
-        #date_object_ts=time.mktime(date_object.timetuple())
-        now_utc = datetime.utcnow()
-        #log('  yt ts : '+repr(date_object) )
-        #log('  yt now: '+repr(now_utc) )
-        #log('  pretty : '+pretty_datediff(now_utc, date_object) )
-        return pretty_datediff(now_utc, date_object)
 
 class ClassImgur(sitesBase):
     regex='(imgur.com)'
@@ -3533,7 +3584,7 @@ class genericAlbum1(sitesBase):
                             images_list.append( i )
 
 class genericImage(sitesBase):
-    regex='(Redd.it/)|(RedditUploads)|(RedditMedia)|(\.(jpg|jpeg|png|gif)(?:\?|$))'
+    regex='(i.redd.it/)|(RedditUploads)|(RedditMedia)|(\.(jpg|jpeg|png|gif)(?:\?|$))'
 
     def get_playable_url(self, link_url, is_probably_a_video=False ):
         media_url=link_url.replace('&amp;','&')  #this replace is only for  RedditUploads but seems harmless for the others...
@@ -3553,7 +3604,7 @@ class genericImage(sitesBase):
         return self.thumb_url
 
 class genericVideo(sitesBase):
-    regex='(\.(mp4|webm|avi|3gp|gif|MPEG|WMV|ASF|FLV|MKV|MKA)(?:\?|$))'
+    regex='(v.redd.it/)|(\.(mp4|webm|avi|3gp|gif|MPEG|WMV|ASF|FLV|MKV|MKA)(?:\?|$))'
     def get_thumb_url(self):
         pass
 

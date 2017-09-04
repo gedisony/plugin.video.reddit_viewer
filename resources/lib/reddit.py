@@ -339,7 +339,7 @@ def parse_subreddit_entry(subreddit_entry_from_file):
         entry_type='domain'
         #log("domain "+ subreddit)
         domain=re.findall(r'(?::|\/domain\/)(.+)',subreddit)[0]
-        description=translation(30008) + domain            #"Show %s links"
+        description="{} {}".format( translation(30008), domain )            #"Posts to"
 
     #describe combined subreddits
     if '+' in subreddit:

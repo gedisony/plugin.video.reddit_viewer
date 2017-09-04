@@ -52,7 +52,10 @@ def log(message):
         level=xbmc.LOGNOTICE
     else:
         level=xbmc.LOGDEBUG
-    xbmc.log("reddit_reader {0}:{1}".format(t.name, message), level=level)
+    try:
+        xbmc.log("reddit_viewer {0}:{1}".format(t.name, message), level=level)
+    except TypeError as e:
+        xbmc.log("reddit_viewer error:{0}".format(e), level=level)
 
 def translation(id_):
     return addon.getLocalizedString(id_).encode('utf-8')
@@ -165,6 +168,25 @@ def pretty_datediff(dt1, dt2):
         return str(day_diff / 365) + translation(30070)    #" years ago"
     except:
         pass
+def pretty_datediff_wrap( date_to_prettify, format_string="%Y-%m-%d %H:%M:%S", use_utc_as_base=True ):
+    from datetime import datetime
+    import time
+
+    try: #try/except is done this way because of a bug  https://forum.kodi.tv/showthread.php?tid=112916
+        date_object=datetime.strptime(date_to_prettify, format_string)
+    except TypeError:
+        try:
+            date_object=datetime(*(time.strptime(date_to_prettify, format_string)[0:6]))
+        except:
+            return
+
+    now = datetime.now()
+    if use_utc_as_base:
+        now = datetime.utcnow()
+    #log('  yt ts : '+repr(date_object) )
+    #log('  yt now: '+repr(now) )
+    #log('  pretty : '+pretty_datediff(now, date_object) )
+    return pretty_datediff(now, date_object)
 
 def is_filtered(filter_csv, str_to_check):
     #import csv; for row in csv.reader(['one,two,three']):
@@ -595,6 +617,16 @@ def colored_subreddit(subreddit,color='cadetblue', add_r=True):
 
 def truncate(string, length, ellipse='...'):
     return (string[:length] + ellipse) if len(string) > length else string
+#https://www.xormedia.com/string-truncate-middle-with-ellipsis/
+def truncate_middle(s, n):
+    if len(s) <= n:
+        # string is already short-enough
+        return s
+    # half of the size, minus the 3 .'s
+    n_2 = int(n) / 2 - 3
+    # whatever's left
+    n_1 = n - n_2 - 3
+    return '{0}...{1}'.format(s[:n_1], s[-n_2:])
 
 def xbmc_notify(line1, line2, time=3000, icon=''):
     if icon and os.path.sep not in icon:
@@ -887,6 +919,65 @@ def set_query_field(url, field, value, replace=False):
         components.fragment
     )
     return urlparse.urlunparse(new_components)
+
+def ytDurationToSeconds(duration): #https://stackoverflow.com/questions/16742381/how-to-convert-youtube-api-duration-to-seconds
+    week = 0
+    day  = 0
+    hour = 0
+    min_ = 0
+    sec  = 0
+
+    duration = duration.lower()
+
+    value = ''
+    for c in duration:
+        if c.isdigit():
+            value += c
+            continue
+
+        elif c == 'p':
+            pass
+        elif c == 't':
+            pass
+        elif c == 'w':
+            week = int(value) * 604800
+        elif c == 'd':
+            day = int(value)  * 86400
+        elif c == 'h':
+            hour = int(value) * 3600
+        elif c == 'm':
+            min_ = int(value)  * 60
+        elif c == 's':
+            sec = int(value)
+
+        value = ''
+
+    return week + day + hour + min_ + sec
+
+def seconds_to_hms(seconds):
+    try:
+        m, s = divmod(seconds, 60)
+        h, m = divmod(m, 60)
+        return "{0}:{1:02d}:{2:02d}".format(h,m,s) if h else "{0:02d}:{1:02d}".format(m,s) #%d:%02d:%02d" % (h, m, s)
+    except TypeError:
+        return ""
+
+def ret_bracketed_option(string_with_bracket_opt):
+    a=re.compile(r"(\[[^\]]*\])") #this regex only catches the []
+    in_bracket=""
+
+    stripped_string = a.sub("",string_with_bracket_opt).strip()
+    #log( "  re:" +  stripped_string )
+
+    #get the []
+    a= a.findall(string_with_bracket_opt)
+    if a:
+        in_bracket=a[0]
+    else:
+        in_bracket = ''
+
+    return stripped_string, in_bracket[1:-1]
+
 
 if __name__ == '__main__':
     pass
