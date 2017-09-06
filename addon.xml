@@ -26,22 +26,8 @@
 		<license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
 		<email>gediso+ny at gmail dot com</email>
 		<news>
-v3.3.3  (2017-3-26)
-    - Multi-threaded parsing of reddit posts
-v3.3.2  (2017-3-22)
-    - Save/Unsave posts to your reddit account
-v3.2.0  (2017-2-25)
-    - Open link in default os web browser
-    - Customize context menu
-v3.1.1  (2017-2-10)
-    - Retrieve subreddit info when adding or editing them on initial screen
-v3.1.0
-    - update fanart
-    - fix nsfw filter
-v3.0.7
-    - add option to repeat gif playback
-v3.0.5
-    - include check if urlresolver can play a posted link 
+v3.5.1
+    - handle v.redd.it link
 		</news>
 		<disclaimer>This add-on is not published nor endorsed by reddit inc.</disclaimer>
 		<assets>
