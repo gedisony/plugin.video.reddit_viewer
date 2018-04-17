@@ -292,13 +292,6 @@ def all_same(items):
     return all(x == items[0] for x in items)
 
 def url_resolver_support(link_url):
-    try:
-        import urlresolver
-        if urlresolver.HostedMediaFile(link_url).valid_url():
-            return True
-    except ValueError as e:
-        log('error importing urlresolver:'+str(e))
-
     return False
 
 class ClassYoutube(sitesBase):
@@ -3582,6 +3575,27 @@ class genericAlbum1(sitesBase):
                     else:
                         if link_url_is_playable( i ) == 'image':
                             images_list.append( i )
+
+class smb(sitesBase):
+    regex='(^smb:\/\/)'
+    def get_thumb_url(self):
+        pass
+    def get_playable(self, link_url='', is_probably_a_video=False ):
+        self.link_action=self.DI_ACTION_PLAYABLE
+        return link_url,self.TYPE_VIDEO
+
+    def get_playable_url(self, link_url, is_probably_a_video):
+        pass
+
+class local(sitesBase):
+    regex=r"^(?:[a-zA-Z]\:|\\\\[\w\.]+\\[\w.$]+)\\"  #^(?:[a-zA-Z]\:|\\\\[\w\.]+\\[\w.$]+)\\(?:[\w]+\\)*\w([\w.])+$'
+    def get_thumb_url(self):
+        pass
+    def get_playable(self, link_url='', is_probably_a_video=False ):
+        self.link_action=self.DI_ACTION_PLAYABLE
+        return link_url,self.TYPE_VIDEO
+    def get_playable_url(self, link_url, is_probably_a_video):
+        pass
 
 class genericImage(sitesBase):
     regex='(i.redd.it/)|(RedditUploads)|(RedditMedia)|(\.(jpg|jpeg|png|gif)(?:\?|$))'

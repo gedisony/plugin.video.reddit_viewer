@@ -351,3 +351,5 @@
    - use the "episodes" content type for listSubReddit() rather than "movies"
    - copy over code from reddit.reader
    - route v.redd.it to youtube_dl
+ 3.5.2 (2018-04-16)
+   - remove url resolver dependency
