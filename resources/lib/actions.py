@@ -540,12 +540,13 @@ def ytdl_video_info_to_listitem(video_infos, video_index, title=None):
         #    we need to use StartPercent.
         li.setProperty('StartPercent', str(StartPercent))
 
-    if use_input_stream_adaptive:
-        li.setProperty('inputstreamaddon', 'inputstream.adaptive')
-        li.setProperty('inputstream.adaptive.manifest_type', input_stream_adaptive_manifest_type)
-        #li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-        #li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-        #li.setProperty('inputstream.adaptive.license_key', 'https://cwip-shaka-proxy.appspot.com/no_auth' + '||R{SSM}|')
+        if use_input_stream_adaptive:
+            log('using inputstream.adaptive')
+            li.setProperty('inputstreamaddon', 'inputstream.adaptive')
+            li.setProperty('inputstream.adaptive.manifest_type', input_stream_adaptive_manifest_type)
+            #li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
+            #li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
+            #li.setProperty('inputstream.adaptive.license_key', 'https://cwip-shaka-proxy.appspot.com/no_auth' + '||R{SSM}|')
 
         return li
 
