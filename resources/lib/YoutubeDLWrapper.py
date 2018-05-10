@@ -374,10 +374,16 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
         #if quality is None:
         #    quality = util.getSetting('video_quality', 1)
         #disable_dash = util.getSetting('disable_dash_video', True)
-
         entries = r.get('entries') or [r]
 
         minHeight, maxHeight = _getQualityLimits(quality)
+
+        #kodi can't play this protocol   from:https://www.zdf.de/familienfieber-100.html
+        banned_protocols=['f4m']
+        #no sound if this codec
+        banned_acodec=['none']
+        #adding a banned vcodec so that we don't play audio only files. v.redd.it
+        banned_vcodec=['none']
 
         #util.LOG('Quality: {0}'.format(quality), debug=True)
         urls = []
@@ -394,22 +400,43 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             formats = entry.get('formats') or [entry]
 
             for i in range(len(formats)):
-                index[formats[i]['format_id']] = i
+                index[formats[i].get('format_id','')] = i
 
             keys = sorted(index.keys())
 
-            fallback = formats[index[keys[0]]]
+            streams_video_only=[]
+            streams_audio_only=[]
+            streams_video_and_audio=[]
+
+            for fmt in keys:
+                fdata = formats[index[fmt]]
+                if fdata.get('vcodec')=='none':
+                    streams_audio_only.append(fdata)
+                    continue
+                if fdata.get('acodec')=='none':
+                    streams_video_only.append(fdata)
+                    continue
+                streams_video_and_audio.append(fdata)
+
+            log('v={0} a={1} both={2} all={3}'.format(len(streams_video_only),len(streams_audio_only), len(streams_video_and_audio), len(formats) ) )
+
+            #for v_stream in streams_video_only:
+            #    log( pprint.pformat(v_stream, indent=1, depth=1) )
+
+            #deciding which will be our fallback format
+            for fmt in keys:
+                fallback = formats[index[fmt]]
+                #weed out unsuitable formats. (exclude audio only streams)
+                if 'height' not in fallback:
+                    continue
+
+            #fallback = formats[index[keys[0]]]
             fallback_format_id=fallback.get('format_id','')
             fallback_protocol=fallback.get('protocol','')
 
             #log( repr(keys) )
             #log( "fallback format:"+repr(fallback_format_id) )
             #log( "fallback_protocol:"+repr(fallback_protocol) )
-
-            #kodi can't play this protocol   from:https://www.zdf.de/familienfieber-100.html
-            banned_protocols=['f4m']
-            #no sound if this codec
-            banned_acodec=['none']
 
             if fallback_protocol in banned_protocols:
                 alternate_formats=difflib.get_close_matches(fallback_format_id, keys)
@@ -423,22 +450,38 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
                         #log('picked alt format:' + a )
                         break
 
+            #sys.exit()
             for fmt in keys:
                 fdata = formats[index[fmt]]
                 #log( 'Available format:\n' + pprint.pformat(fdata, indent=1, depth=1) )
+                log( 'Available format: ' + fdata.get('format', '') )
                 if 'height' not in fdata:
                     continue
-                if disable_dash and 'dash' in fdata.get('format_note', '').lower():
-                    continue
+
+                #usually we need to skip dash video because audio is in a separate stream and kodi cannot play video+audio from separate streams --youtube videos
+                #youtube have non-dash format streams that have video+audio and we want to pick that
+                #but v.redd.it have dash only streams and we end up playing audio only(fallback format)
+                #we skip the dash-ban and audio-ban for v.redd.it streams and play the video-only version
+                if 'v.redd.it' not in fdata.get('url',''):
+                    if disable_dash and 'dash' in fdata.get('format_note', '').lower():
+                        continue
+                    if 'acodec' in fdata and fdata.get('acodec') in banned_acodec:
+                        #log('skipped format:' + pprint.pformat(fdata, indent=1, depth=1))
+                        continue
+
                 if 'protocol' in fdata and fdata.get('protocol') in banned_protocols:
                     #log('skipped format:' + pprint.pformat(fdata, indent=1, depth=1))
                     continue
-                if 'acodec' in fdata and fdata.get('acodec') in banned_acodec:
-                    #log('skipped format:' + pprint.pformat(fdata, indent=1, depth=1))
+
+
+                #skip 'none' vcodec to avoid audio only files.
+                if 'vcodec' in fdata and fdata.get('vcodec') in banned_vcodec:
+                    #log('skipped format:' + fdata.get('vcodec') )
                     continue
 
                 h = fdata['height']
                 p = fdata.get('preference', 1)
+                #log('h={0} min={1} max={2}'.format(h,minHeight,maxHeight) )
                 if h >= minHeight and h <= maxHeight:
                     if (h >= prefMax and p > prefPref) or (h > prefMax and p >= prefPref):
                         prefMax = h
@@ -448,6 +491,7 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
                         defMax = h
                         defFormat = fdata
                         defPref = p
+
             formatID = None
             if prefFormat:
                 info = prefFormat
@@ -462,7 +506,7 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             url = info['url']
             formatID = info['format_id']
             format_desc=info['format']
-            #log(logBase.format(format_desc, info.get('width', '?'), info.get('height', '?'), entry.get('title', '').encode('ascii', 'replace')))
+            log(logBase.format(format_desc, info.get('width', '?'), info.get('height', '?'), entry.get('title', '').encode('ascii', 'replace')))
             #log( 'Selected format:\n' + pprint.pformat(info, indent=1, depth=1) )
             #log('********************************************************************************************')
             if url.find("rtmp") == -1:
@@ -474,7 +518,8 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             urls.append(
                 {
                     'xbmc_url': url,
-                    'url': info['url'],
+                    'url': info.get('url'),
+                    'manifest_url':info.get('manifest_url'),
                     'title': entry.get('title', ''),
                     'thumbnail': entry.get('thumbnail', ''),
                     'formatID': formatID,
@@ -484,6 +529,5 @@ def _selectVideoQuality(r, quality=1, disable_dash=True):
             )
             idx += 1
         return urls
-
 if __name__ == '__main__':
     pass

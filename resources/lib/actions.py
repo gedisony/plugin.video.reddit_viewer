@@ -500,8 +500,23 @@ def ytdl_video_info_to_listitem(video_infos, video_index, title=None):
 #       #   another option would be to make a playlist and play that but this breaks other functionality(play all...)
         video_info=video_infos[0]
 
-    url=video_info.get('xbmc_url')
+    use_input_stream_adaptive=False
+    input_stream_adaptive_manifest_type='mpd'
+    url=video_info.get('xbmc_url')  #there is also  video_info.get('url')  url without the |useragent...
+    manifest_url=video_info.get('manifest_url') #v.redd.it has this but youtube does not.  they both support DASH video
+    #log('***befor:'+pprint.pformat(video_info, indent=1, depth=2))
+    if manifest_url:
+        use_input_stream_adaptive=True
+        url=video_info.get('manifest_url')
+        if manifest_url.endswith('.mpd'):
+            input_stream_adaptive_manifest_type='mpd'
+        elif manifest_url.endswith('.m3u8'):
+            input_stream_adaptive_manifest_type='hls'
+        elif manifest_url.endswith('.ism'):
+            input_stream_adaptive_manifest_type='ism'
+
     title=video_info.get('title') or title
+
 
     ytdl_format=video_info.get('ytdl_format')
     if ytdl_format:
@@ -524,6 +539,13 @@ def ytdl_video_info_to_listitem(video_infos, video_index, title=None):
         #li.setProperty('StartOffset', str(start_time)) does not work when using setResolvedUrl
         #    we need to use StartPercent.
         li.setProperty('StartPercent', str(StartPercent))
+
+    if use_input_stream_adaptive:
+        li.setProperty('inputstreamaddon', 'inputstream.adaptive')
+        li.setProperty('inputstream.adaptive.manifest_type', input_stream_adaptive_manifest_type)
+        #li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
+        #li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
+        #li.setProperty('inputstream.adaptive.license_key', 'https://cwip-shaka-proxy.appspot.com/no_auth' + '||R{SSM}|')
 
         return li
 
