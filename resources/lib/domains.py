@@ -2484,7 +2484,8 @@ class ClassGfycat(sitesBase):
 
         if self.video_id:
             #log('    video id:' + repr(self.video_id) )
-            request_url="https://gfycat.com/cajax/get/" + self.video_id
+            #request_url="https://gfycat.com/cajax/get/" + self.video_id  #this endpoint has been deprecated
+            request_url="https://api.gfycat.com/v1/gfycats/%s" % self.video_id
             #request_url="https://api.gfycat.com/v1test/gfycats/{gfyid}".format(gfyid=self.video_id)  #this method requires auth token etc.
 
             try:

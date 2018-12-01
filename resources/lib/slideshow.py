@@ -574,7 +574,7 @@ class HorizontalSlide2(ScreensaverBase):
     def init_xbmc_window(self):
         #self.xbmc_window = ScreensaverWindow(  exit_callback=self.stop )
         self.xbmc_window = ScreensaverXMLWindow( "slideshow02.xml", addon_path, defaultSkin='Default', exit_callback=self.action_id_handler )
-        self.xbmc_window.setCoordinateResolution(5)
+        #self.xbmc_window.setCoordinateResolution(5)
         self.xbmc_window.show()
 
     def load_settings(self):
@@ -771,7 +771,7 @@ class HorizontalSlideScreensaver(ScreensaverBase):
     def init_xbmc_window(self):
         #self.xbmc_window = ScreensaverWindow(  exit_callback=self.stop )
         self.xbmc_window = ScreensaverXMLWindow( "slideshow01.xml", addon_path, defaultSkin='Default', exit_callback=self.action_id_handler )
-        self.xbmc_window.setCoordinateResolution(5)
+        #self.xbmc_window.setCoordinateResolution(5)
         self.xbmc_window.show()
 
 
