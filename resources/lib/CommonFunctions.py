@@ -14,13 +14,16 @@
 '''
 
 import sys
-import urllib
-import urllib2
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+import urllib.request, urllib.error, urllib.parse
 import re
 import io
 import inspect
 import time
-import HTMLParser
+import html.parser
 #import chardet
 import json
 
@@ -51,7 +54,7 @@ else:
     dbglevel = 3
 
 if hasattr(sys.modules["__main__"], "opener"):
-    urllib2.install_opener(sys.modules["__main__"].opener)
+    urllib.request.install_opener(sys.modules["__main__"].opener)
 
 
 # This function raises a keyboard for user input
@@ -106,7 +109,7 @@ def getParameters(parameterString):
     log("", 5)
     commands = {}
     if getXBMCVersion() >= 12.0:
-        parameterString = urllib.unquote_plus(parameterString)
+        parameterString = urllib.parse.unquote_plus(parameterString)
     splitCommands = parameterString[parameterString.find('?') + 1:].split('&')
 
     for command in splitCommands:
@@ -131,7 +134,7 @@ def replaceHTMLCodes(txt):
     # Fix missing ; in &#<number>;
     txt = re.sub("(&#[0-9]+)([^;^0-9]+)", "\\1;\\2", makeUTF8(txt))
 
-    txt = HTMLParser.HTMLParser().unescape(txt)
+    txt = html.parser.HTMLParser().unescape(txt)
     txt = txt.replace("&amp;", "&")
     log(repr(txt), 5)
     return txt
@@ -153,7 +156,7 @@ def stripTags(html):
 def _getDOMContent(html, name, match, ret):  # Cleanup
     log("match: " + match, 3)
 
-    endstr = u"</" + name  # + ">"
+    endstr = "</" + name  # + ">"
 
     start = html.find(match)
     end = html.find(endstr, start)
@@ -170,7 +173,7 @@ def _getDOMContent(html, name, match, ret):  # Cleanup
 
     log("start: %s, len: %s, end: %s" % (start, len(match), end), 3)
     if start == -1 and end == -1:
-        result = u""
+        result = ""
     elif start > -1 and end > -1:
         result = html[start + len(match):end]
     elif end > -1:
@@ -233,7 +236,7 @@ def _getDOMElements(item, name, attrs):
             lst2 = []
         else:
             log("Setting new list " + repr(lst2), 5)
-            test = range(len(lst))
+            test = list(range(len(lst)))
             test.reverse()
             for i in test:  # Delete anything missing from the next list.
                 if not lst[i] in lst2:
@@ -249,7 +252,7 @@ def _getDOMElements(item, name, attrs):
     log("Done: " + str(type(lst)), 3)
     return lst
 
-def parseDOM(html, name=u"", attrs={}, ret=False):
+def parseDOM(html, name="", attrs={}, ret=False):
     log("Name: " + repr(name) + " - Attrs:" + repr(attrs) + " - Ret: " + repr(ret) + " - HTML: " + str(type(html)), 3)
 
     if isinstance(name, str): # Should be handled
@@ -264,15 +267,15 @@ def parseDOM(html, name=u"", attrs={}, ret=False):
         except:
             log("Couldn't decode html binary string. Data length: " + repr(len(html)))
             html = [html]
-    elif isinstance(html, unicode):
+    elif isinstance(html, str):
         html = [html]
     elif not isinstance(html, list):
         log("Input isn't list or string/unicode.")
-        return u""
+        return ""
 
     if not name.strip():
         log("Missing tag name")
-        return u""
+        return ""
 
     ret_lst = []
     for item in html:
@@ -326,7 +329,7 @@ def extractJS(data, function=False, variable=False, match=False, evaluate=False,
         else:
             log("Found nothing on: " + script, 4)
 
-    test = range(0, len(lst))
+    test = list(range(0, len(lst)))
     test.reverse()
     for i in test:
         if match and lst[i].find(match) == -1:
@@ -336,9 +339,9 @@ def extractJS(data, function=False, variable=False, match=False, evaluate=False,
             log("Cleaning item: " + repr(lst[i]), 4)
             #codacity does not like these lines
             #if lst[i][0] == u"\n":
-            #    lst[i] == lst[i][1:]
-            #if lst[i][len(lst) -1] == u"\n":
-            #    lst[i] == lst[i][:len(lst)- 2]
+            #    lst[i] == lst[i][1:]   codacity: Statement seems to have no effect
+            if lst[i][len(lst) -1] == "\n":
+                lst[i] == lst[i][:len(lst)- 2]
             lst[i] = lst[i].strip()
 
     if values or evaluate:
@@ -407,13 +410,13 @@ def fetchPage(params={}):
         if get("hide_post_data"):
             log("Posting data", 2)
         else:
-            log("Posting data: " + urllib.urlencode(get("post_data")), 2)
+            log("Posting data: " + urllib.parse.urlencode(get("post_data")), 2)
 
-        request = urllib2.Request(link, urllib.urlencode(get("post_data")))
+        request = urllib.request.Request(link, urllib.parse.urlencode(get("post_data")))
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
     else:
         log("Got request", 2)
-        request = urllib2.Request(link)
+        request = urllib.request.Request(link)
 
     if get("headers"):
         for head in get("headers"):
@@ -431,10 +434,10 @@ def fetchPage(params={}):
     try:
         log("connecting to server...", 1)
 
-        con = urllib2.urlopen(request)
+        con = urllib.request.urlopen(request)
         ret_obj["header"] = con.info().headers
         ret_obj["new_url"] = con.geturl()
-        if get("no-content", "false") == u"false" or get("no-content", "false") == "false":
+        if get("no-content", "false") == "false" or get("no-content", "false") == "false":
             inputdata = con.read()
             #data_type = chardet.detect(inputdata)
             #inputdata = inputdata.decode(data_type["encoding"])
@@ -452,7 +455,7 @@ def fetchPage(params={}):
         ret_obj["status"] = 200
         return ret_obj
 
-    except urllib2.HTTPError, e:
+    except urllib.error.HTTPError as e:
         err = str(e)
         log("HTTPError : " + err)
         log("HTTPError - Headers: " + str(e.headers) + " - Content: " + e.fp.read())
@@ -467,7 +470,7 @@ def fetchPage(params={}):
         ret_obj["status"] = 500
         return ret_obj
 
-    except urllib2.URLError, e:
+    except urllib.error.URLError as e:
         err = str(e)
         log("URLError : " + err)
 
@@ -505,7 +508,7 @@ def makeAscii(data):
         return data.encode('ascii', "ignore")
     except:
         log("Hit except on : " + repr(data))
-        s = u""
+        s = ""
         for i in data:
             try:
                 i.encode("ascii", "ignore")
@@ -540,12 +543,12 @@ def makeUTF8(data):
 #        return s
 
 
-def openFile(filepath, options=u"r"):
+def openFile(filepath, options="r"):
     log(repr(filepath) + " - " + repr(options))
     if options.find("b") == -1:  # Toggle binary mode on failure
-        alternate = options + u"b"
+        alternate = options + "b"
     else:
-        alternate = options.replace(u"b", u"")
+        alternate = options.replace("b", "")
 
     try:
         log("Trying normal: %s" % options)
@@ -558,6 +561,6 @@ def openFile(filepath, options=u"r"):
 def log(description, level=0):
     if dbg and dbglevel > level:
         try:
-            xbmc.log((u"[%s] %s : '%s'" % (plugin, inspect.stack()[1][3], description)).decode("utf-8"), xbmc.LOGDEBUG)
+            xbmc.log(("[%s] %s : '%s'" % (plugin, inspect.stack()[1][3], description)).decode("utf-8"), xbmc.LOGDEBUG)
         except:
-            xbmc.log(u"FALLBACK [%s] %s : '%s'" % (plugin, inspect.stack()[1][3], repr(description)), xbmc.LOGDEBUG)
+            xbmc.log("FALLBACK [%s] %s : '%s'" % (plugin, inspect.stack()[1][3], repr(description)), xbmc.LOGDEBUG)

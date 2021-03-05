@@ -4,12 +4,15 @@ import xbmcgui
 import xbmcplugin
 #import xbmcvfs
 import sys
-import shutil
-import re, pprint, os
+import shutil, os
+import re, urllib.request, urllib.parse, urllib.error
+import pprint
+import json
+import urllib.parse
 
 from default import subredditsFile, addon, addon_path, profile_path, ytdl_core_path, pluginhandle, subredditsPickle
-from utils import xbmc_busy, log, translation, xbmc_notify
-from reddit import get_subreddit_entry_info
+from .utils import xbmc_busy, log, translation, xbmc_notify
+from .reddit import get_subreddit_entry_info
 
 ytdl_quality=addon.getSetting("ytdl_quality")
 try: ytdl_quality=[0, 1, 2, 3][ int(ytdl_quality) ]
@@ -17,8 +20,8 @@ except ValueError: ytdl_quality=1
 ytdl_DASH=addon.getSetting("ytdl_DASH")=='true'
 
 def addSubreddit(subreddit, name, type_):
-    from utils import colored_subreddit
-    from reddit import this_is_a_multireddit, format_multihub
+    from .utils import colored_subreddit
+    from .reddit import this_is_a_multireddit, format_multihub
     alreadyIn = False
     with open(subredditsFile, 'r') as fh:
         content = fh.readlines()
@@ -75,7 +78,7 @@ def removeSubreddit(subreddit, name, type_):
     xbmc.executebuiltin("Container.Refresh")
 
 def editSubreddit(subreddit, name, type_):
-    from reddit import this_is_a_multireddit, format_multihub
+    from .reddit import this_is_a_multireddit, format_multihub
     log( 'editSubreddit ' + subreddit)
 
     with open(subredditsFile, 'r') as fh:
@@ -107,7 +110,7 @@ def editSubreddit(subreddit, name, type_):
 
 def searchReddits(url, name, type_):
     from default import urlMain
-    from main_listing import listSubReddit
+    from .main_listing import listSubReddit
     keyboard = xbmc.Keyboard('sort=new&t=week&q=', translation(30005))
     keyboard.doModal()
     if keyboard.isConfirmed() and keyboard.getText():
@@ -127,7 +130,7 @@ def setting_gif_repeat_count():
     return [0, 1, 3, 10, 100][repeat_gif_video]
 
 def viewImage(image_url, name, preview_url):
-    from guis import cGUI
+    from .guis import cGUI
 
     log('  viewImage %s, %s, %s' %( image_url, name, preview_url))
 
@@ -268,8 +271,8 @@ def viewTallImage(image_url, width, height):
         log("  EXCEPTION viewTallImage:="+ str( sys.exc_info()[0]) + "  " + str(e) )
 
 def display_album_from(dictlist, album_name):
-    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type, sitesBase
-    from utils import build_script
+    from .domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type, sitesBase
+    from .utils import build_script
     directory_items=[]
 
     album_viewMode=addon.getSetting("album_viewMode")
@@ -328,7 +331,7 @@ def display_album_from(dictlist, album_name):
         directory_items.append( (url_for_DirectoryItem, liz, isFolder) )
 
     if using_custom_gui:
-        from guis import cGUI
+        from .guis import cGUI
         li=[]
         for di in directory_items:
             li.append( di[1] )
@@ -346,8 +349,8 @@ def display_album_from(dictlist, album_name):
         xbmcplugin.endOfDirectory(pluginhandle)
 
 def listAlbum(album_url, name, type_):
-    from slideshow import slideshowAlbum
-    from domains import sitesManager
+    from .slideshow import slideshowAlbum
+    from .domains import sitesManager
     log("    listAlbum:"+album_url)
 
     hoster = sitesManager( album_url )
@@ -374,14 +377,13 @@ def playURLRVideo(url, name, type_):
     dialog_progress_YTDL.create(dialog_progress_title )
     dialog_progress_YTDL.update(10,dialog_progress_title,translation(30024)  )
 
-    import urlresolver
-    #from urlparse import urlparse
-    #parsed_uri = urlparse( url )
-    #domain = '{uri.netloc}'.format(uri=parsed_uri)
-    #hmf = urlresolver.HostedMediaFile(url)
-    dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
+    parsed_uri = urllib.parse.urlparse( url )
+    domain = '{uri.netloc}'.format(uri=parsed_uri)
 
     try:
+        import urlresolver
+        #hmf = urlresolver.HostedMediaFile(url)
+        dialog_progress_YTDL.update(20,dialog_progress_title,translation(30022)  )
         media_url = urlresolver.resolve(url)
         dialog_progress_YTDL.update(80,dialog_progress_title,translation(30023)  )
         if media_url:
@@ -434,12 +436,10 @@ def playYTDLVideo(url, name, type_):
     dialog_progress_YTDL.create(dialog_progress_title )
     dialog_progress_YTDL.update(10,dialog_progress_title,translation(30024)  )
 
-    from YoutubeDLWrapper import YoutubeDLWrapper, _selectVideoQuality
-    from urlparse import urlparse, parse_qs
-    import pprint
+    from .YoutubeDLWrapper import YoutubeDLWrapper, _selectVideoQuality
 
-    o = urlparse(url)
-    query = parse_qs(o.query)
+    o = urllib.parse.urlparse(url)
+    query = urllib.parse.parse_qs(o.query)
     video_index=0
     #note that in domains.py youtube class will send a simplified url to avoid sending
     #   https://www.youtube.com/watch?v=R6_dZhE-4bk&index=22&list=PLGJ6ezwqAB2a4RP8hWEWAGB9eT2bmaBsy  (ytdl will parse around 90+ videos, takes a very long time)
@@ -457,6 +457,8 @@ def playYTDLVideo(url, name, type_):
     #use YoutubeDLWrapper by ruuk to avoid  bad file error
     ytdl=YoutubeDLWrapper()
     try:
+        ytdl.params['youtube_include_dash_manifest'] = True
+        ytdl.params['verbose'] = True
         ydl_info=ytdl.extract_info(url, download=False)
         #in youtube_dl utils.py def unified_timestamp(date_str, day_first=True):
         # there was an error playing https://vimeo.com/14652586
@@ -507,7 +509,22 @@ def ytdl_video_info_to_listitem(video_infos, video_index, title=None):
     #log('***befor:'+pprint.pformat(video_info, indent=1, depth=2))
     if manifest_url:
         use_input_stream_adaptive=True
-        url=video_info.get('manifest_url')
+		#special  thanks to Chaotnix for figuring this part out. 							  
+        hls_url=manifest_url.rsplit('/', 1)[0]+'/HLSPlaylist.m3u8'
+        log(hls_url)
+        from urllib.request import Request, urlopen
+        from urllib.error import URLError, HTTPError
+        req = Request(hls_url)
+        try:
+            response = urlopen(req)
+        except HTTPError as e:
+            log('No HLSPlaylist '+'Error code: '+str(e.code))
+        except URLError as e:
+            log('We failed to reach a server.')
+            log('Reason: ', e.reason)
+        else:
+            url=hls_url
+            log('hls_url: '+hls_url)
         if manifest_url.endswith('.mpd'):
             input_stream_adaptive_manifest_type='mpd'
         elif manifest_url.endswith('.m3u8'):
@@ -515,6 +532,11 @@ def ytdl_video_info_to_listitem(video_infos, video_index, title=None):
         elif manifest_url.endswith('.ism'):
             input_stream_adaptive_manifest_type='ism'
 
+        #url=video_info.get('manifest_url')
+
+    #log('***befor:'+repr(url))
+    url=urllib.parse.quote_plus(url.encode('utf-8'), safe="&$+,/:;=?@#<>[]{}|\^%")
+    #log('***after :'+repr(url))
     title=video_info.get('title') or title
 
 
@@ -622,8 +644,7 @@ def playYTDLVideoOLD(url, name, type_):
 
 #     extractors.sort()
 #     for n in extractors: log("'%s'," %n)
-    from urlparse import urlparse
-    parsed_uri = urlparse( url )
+    parsed_uri = urllib.parse.urlparse( url )
     domain = '{uri.netloc}'.format(uri=parsed_uri)
 
     dialog_progress_YTDL = xbmcgui.DialogProgressBG()
@@ -661,7 +682,7 @@ def playYTDLVideoOLD(url, name, type_):
 #This handles the links sent via jsonrpc (i.e.: links sent by kore to kodi by calling)
 # videoUrl = "plugin://script.reddit.reader/?mode=play&url=" + URLEncoder.encode(videoUri.toString(), "UTF-8");
 def parse_url_and_play(url, name, type_):
-    from domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
+    from .domains import parse_reddit_link, sitesBase, ydtl_get_playable_url, build_DirectoryItem_url_based_on_media_type
     #from actions import viewImage
 
     log('parse_url_and_play url='+url)
@@ -754,17 +775,17 @@ YTDL_VERSION_URL = 'https://yt-dl.org/latest/version'
 YTDL_LATEST_URL_TEMPLATE = 'https://yt-dl.org/latest/youtube-dl-{}.tar.gz'
 
 def ytdl_get_version_info(which_one='latest'):
-    import urllib2
     if which_one=='latest':
         try:
-            newVersion = urllib2.urlopen(YTDL_VERSION_URL).read().strip()
-            return newVersion
-        except:
+            newVersion = urllib.request.urlopen(YTDL_VERSION_URL).read().strip()
+            return newVersion.decode('utf-8')
+        except Exception as e:
+            log('error getting latest ytdl version:'+str(e))
             return "0.0"
     else:
         try:
             #*** it seems like the script.module.youtube_dl version gets imported if the one from resources.lib is missing
-            from youtube_dl.version import __version__
+            from .youtube_dl.version import __version__
             return __version__
         except Exception as e:
             log('error getting ytdl local version:'+str(e))
@@ -772,18 +793,17 @@ def ytdl_get_version_info(which_one='latest'):
 
 def update_youtube_dl_core(url,name,action_type):
 #credit to ruuk for most of the download code
-    import urllib
     import tarfile
 
     if action_type=='download':
         newVersion=note_ytdl_versions()
         LATEST_URL=YTDL_LATEST_URL_TEMPLATE.format(newVersion)
 
-        profile = xbmc.translatePath(profile_path)  #xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
+        profile = xbmcvfs.translatePath(profile_path)  #xbmc.translatePath(addon.getAddonInfo('profile')).decode('utf-8')
         archivePath = os.path.join(profile,'youtube_dl.tar.gz')
         extractedPath = os.path.join(profile,'youtube-dl')
         extracted_core_path=os.path.join(extractedPath,'youtube_dl')
-        #ytdl_core_path  xbmc.translatePath(  addon_path+"/resources/lib/youtube_dl/" )
+        #ytdl_core_path  xbmcvfs.translatePath(  addon_path+"/resources/lib/youtube_dl/" )
 
         try:
             if os.path.exists(extractedPath):
@@ -793,7 +813,7 @@ def update_youtube_dl_core(url,name,action_type):
             update_dl_status('Downloading {0} ...'.format(newVersion))
             log('  From: {0}'.format(LATEST_URL))
             log('    to: {0}'.format(archivePath))
-            urllib.urlretrieve(LATEST_URL,filename=archivePath)
+            urllib.request.urlretrieve(LATEST_URL,filename=archivePath)
 
             if os.path.exists(archivePath):
                 update_dl_status('Extracting ...')
@@ -805,6 +825,7 @@ def update_youtube_dl_core(url,name,action_type):
                 update_dl_status('Download failed')
         except Exception as e:
             update_dl_status('Error:' + str(e))
+            return
 
         update_dl_status('Updating...')
 
@@ -871,8 +892,8 @@ def listRelatedVideo(url,name,type_):
     #type_: 'channel' -other videos in the channel
     #       'related' -related videos
     #only youtube is supported for now
-    from domains import ClassYoutube
-    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
+    from .domains import ClassYoutube
+    from .domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
     match=re.compile( ClassYoutube.regex, re.I).findall( url )
     if match:

@@ -5,5 +5,4 @@
 resources/lib/youtube_dl/**
 thumbs.db
 Thumbs.db
-resources/lib/__pycache__/**
-__pycache__/**
+*.pyc

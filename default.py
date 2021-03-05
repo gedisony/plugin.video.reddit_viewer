@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # encoding: utf-8
 import urllib
-import urllib2
 import sys
 import os
 import json
@@ -9,6 +8,8 @@ import xbmc
 import xbmcplugin
 import xbmcgui
 import xbmcaddon
+import xbmcvfs
+from resources.lib.utils import log
 
 #this import for the youtube_dl AND urlresolver addons causes our addon to start slower. we'll import it when we need to playYTDLVideo
 #modes_that_use_ytdl=['mode=playYTDLVideo','mode=play']
@@ -20,13 +21,9 @@ import xbmcaddon
 #    pass
 
 #YDStreamExtractor.disableDASHVideo(True) #Kodi (XBMC) only plays the video for DASH streams, so you don't want these normally. Of course these are the only 1080p streams on YouTube
-from urllib import urlencode
-from decimal import DivisionByZero
 
-from resources.lib.utils import log
-
-reload(sys)
-sys.setdefaultencoding("utf-8")
+#reload(sys)
+#sys.setdefaultencoding("utf-8")
 
 addon         = xbmcaddon.Addon()
 addon_path    = addon.getAddonInfo('path')      #where the addon resides
@@ -82,12 +79,12 @@ try:istreamable_quality=int(addon.getSetting("streamable_quality"))  #values 0 o
 except:istreamable_quality=0
 streamable_quality  =["full", "mobile"][istreamable_quality]       #https://streamable.com/documentation
 
-addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
-subredditsFile      = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
-subredditsPickle    = xbmc.translatePath("special://profile/addon_data/"+addonID+"/subreddits.pickle")  #new type of saving the settings
+addonUserDataFolder = xbmcvfs.translatePath("special://profile/addon_data/"+addonID)
+subredditsFile      = xbmcvfs.translatePath("special://profile/addon_data/"+addonID+"/subreddits")
+subredditsPickle    = xbmcvfs.translatePath("special://profile/addon_data/"+addonID+"/subreddits.pickle")  #new type of saving the settings
 
 #last slash at the end is important
-ytdl_core_path=xbmc.translatePath(  addon_path+"/resources/lib/youtube_dl/" )
+ytdl_core_path=xbmcvfs.translatePath(  addon_path+"/resources/lib/youtube_dl/" )
 
 REQUEST_TIMEOUT=5 #requests.get timeout in seconds
 
@@ -107,14 +104,14 @@ def parameters_string_to_dict(parameters):
 if __name__ == '__main__':
 
     params = parameters_string_to_dict(sys.argv[2])
-    mode   = urllib.unquote_plus(params.get('mode', ''))
-    url    = urllib.unquote_plus(params.get('url', ''))
-    type_  = urllib.unquote_plus(params.get('type', '')) #type is a python function, try not to use a variable name same as function
-    name   = urllib.unquote_plus(params.get('name', ''))
+    mode   = urllib.parse.unquote_plus(params.get('mode', ''))
+    url    = urllib.parse.unquote_plus(params.get('url', ''))
+    type_  = urllib.parse.unquote_plus(params.get('type', '')) #type is a python function, try not to use a variable name same as function
+    name   = urllib.parse.unquote_plus(params.get('name', ''))
     #xbmc supplies this additional parameter if our <provides> in addon.xml has more than one entry e.g.: <provides>video image</provides>
     #xbmc only does when the add-on is started. we have to pass it along on subsequent calls
     # if our plugin is called as a pictures add-on, value is 'image'. 'video' for video
-    #content_type=urllib.unquote_plus(params.get('content_type', ''))
+    #content_type=urllib.parse.unquote_plus(params.get('content_type', ''))
     #ctp = "&content_type="+content_type   #for the lazy
     #log("content_type:"+content_type)
 

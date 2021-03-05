@@ -9,15 +9,15 @@ from xbmcgui import ControlImage, WindowDialog, WindowXMLDialog, Window, Control
 #autoSlideshow
 
 from default import addon, addon_path, addonID
-from utils import log, translation
-from reddit import reddit_request
-from domains import sitesBase, parse_reddit_link
-from actions import listAlbum
+from .utils import log, translation
+from .reddit import reddit_request
+from .domains import sitesBase, parse_reddit_link
+from .actions import listAlbum
 
-from utils import unescape, post_excluded_from, remove_duplicates, remove_dict_duplicates
+from .utils import unescape, post_excluded_from, remove_duplicates, remove_dict_duplicates
 
 import threading
-from Queue import Queue
+from queue import Queue
 
 ADDON_NAME = addonID      #addon.getAddonInfo('name')  <--changed to id
 ADDON_PATH = addon_path   #addon.getAddonInfo('path')
@@ -119,6 +119,7 @@ def autoSlideshow(url, name, type_):
     for j_entry in data_children:
         try:
             title = unescape(j_entry['data']['title'].encode('utf-8'))
+            title = clean_str(j_entry['data'],['title']) 
             log("  TITLE:%s [r/%s]"  %( title, j_entry.get('data').get('subreddit') )  )
 
             try:    description = unescape(j_entry['data']['media']['oembed']['description'].encode('utf-8'))
@@ -168,13 +169,9 @@ def autoSlideshow(url, name, type_):
                     if addon.getSetting('use_reddit_preview')=='true':
                         if preview: image=preview
                         elif ld.poster: image=ld.poster
-                        #if preview: entries.append([title,preview,preview_w, preview_h,len(entries)]) #log('      (N)added preview:%s %s' %( title,preview) )
-                        #elif ld.poster: entries.append([title,ld.poster,preview_w, preview_h,len(entries)])    #log('      (N)added poster:%s %s' % ( title,ld.poster) )
                     else:
                         if ld.poster:  image=ld.poster #entries.append([title,ld.poster,preview_w, preview_h,len(entries)])
                         elif preview: image=preview  #entries.append([title,preview,preview_w, preview_h,len(entries)])
-                        #if ld.poster: entries.append([title,ld.poster,preview_w, preview_h,len(entries)])
-                        #elif preview: entries.append([title,preview,preview_w, preview_h,len(entries)])
 
                     append_entry( entries, title,image,preview_w, preview_h, description )
             else:

@@ -142,7 +142,7 @@ class cGUI(xbmcgui.WindowXML):
             pass
 
     def load_subreddits_file_into_a_listitem(self):
-        from utils import parse_subreddit_entry, build_script, compose_list_item, assemble_reddit_filter_string, prettify_reddit_query
+        from .utils import parse_subreddit_entry, build_script, compose_list_item, assemble_reddit_filter_string, prettify_reddit_query
         entries=[]
         listing=[]
 
@@ -321,7 +321,7 @@ class listSubRedditGUI(cGUI):
                 #self.close()
 
     def onClick(self, controlID):
-        from utils import build_script, assemble_reddit_filter_string
+        from .utils import build_script, assemble_reddit_filter_string
         #log( ' clicked on control id %d'  %controlID )
 
         listbox_selected_item=self.gui_listbox.getSelectedItem()
@@ -537,11 +537,6 @@ class commentsGUI(cGUI):
         self.gui_listbox.addItems( self.listing  )
         self.gui_listbox.selectItem( self.listbox_selected_position )
         self.links_on_top=False
-
-
-def log(message, level=xbmc.LOGNOTICE):
-    xbmc.log("reddit_viewer GUI:"+message, level=level)
-
 
 class progressBG( xbmcgui.DialogProgressBG ):
     progress=0.00

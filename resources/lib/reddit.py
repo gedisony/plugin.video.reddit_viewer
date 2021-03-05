@@ -2,12 +2,12 @@
 import xbmc
 import xbmcgui
 import sys
-import urllib2, urllib
+import urllib.request, urllib.error, urllib.parse, urllib.request, urllib.parse, urllib.error
 import re
 import os
 
 from default import addon, subredditsFile, urlMain, itemsPerPage,subredditsPickle,REQUEST_TIMEOUT
-from utils import log, translation,xbmc_notify,clean_str
+from .utils import log, translation,xbmc_notify,clean_str
 from default import reddit_clientID, reddit_userAgent, reddit_redirect_uri
 
 
@@ -21,7 +21,7 @@ def reddit_request( url, data=None ):
         url=url.replace( 'np.reddit.com','oauth.reddit.com' )
         url=url.replace(       'http://',        'https://' )
         #log( "  replaced reqst." + url + " + access token=" + reddit_access_token)
-    req = urllib2.Request(url)
+    req = urllib.request.Request(url)
 
     #req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.8.1.14) Gecko/20080404 Firefox/2.0.0.14')
     req.add_header('User-Agent', reddit_userAgent)   #userAgent = "XBMC:"+addonID+":v"+addon.getAddonInfo('version')+" (by /u/gsonide)"
@@ -31,11 +31,12 @@ def reddit_request( url, data=None ):
         req.add_header('Authorization','bearer '+ reddit_access_token )
 
     try:
-        page = urllib2.urlopen(req,data=data, timeout=20)
+        #log("    requesting from %s" %(url)  )
+        page = urllib.request.urlopen(req,data=data, timeout=20)
         response=page.read();page.close()
         return response
 
-    except urllib2.HTTPError, err:
+    except urllib.error.HTTPError as err:
         if err.code in [403,401]:  #401 Unauthorized, 403 forbidden. access tokens expire in 1 hour. maybe we just need to refresh it
             log("    attempting to get new access token")
             if reddit_get_access_token():
@@ -43,20 +44,20 @@ def reddit_request( url, data=None ):
                 req.add_header('Authorization','bearer '+ reddit_access_token )
                 try:
                     log("      2nd attempt:"+ url)
-                    page = urllib2.urlopen(req)   #it has to be https:// not http://
+                    page = urllib.request.urlopen(req)   #it has to be https:// not http://
                     response=page.read();page.close()
                     return response
 
-                except urllib2.HTTPError, err:
+                except urllib.error.HTTPError as err:
                     xbmc.executebuiltin('XBMC.Notification("%s %s", "%s" )' %( err.code, err.msg, url)  )
                     log( err.reason )
-                except urllib2.URLError, err:
+                except urllib.error.URLError as err:
                     log( err.reason )
             else:
                 log( "*** failed to get new access token - don't know what to do " )
 
         xbmc_notify("%s %s" %( err.code, err.msg), url)
-    except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
+    except urllib.error.URLError as err: # Not an HTTP-specific error (e.g. connection refused)
         xbmc_notify(err.reason, url)
     except :
         pass
@@ -84,10 +85,10 @@ def reddit_get_refresh_token(url, name, type_):
     try:
         log( "Requesting a reddit permanent token with code=" + code )
 
-        req = urllib2.Request('https://www.reddit.com/api/v1/access_token')
+        req = urllib.request.Request('https://www.reddit.com/api/v1/access_token')
 
         #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
-        data = urllib.urlencode({'grant_type'  : 'authorization_code'
+        data = urllib.parse.urlencode({'grant_type'  : 'authorization_code'
                                 ,'code'        : code                     #'woX9CDSuw7XBg1MiDUnTXXQd0e4'
                                 ,'redirect_uri': reddit_redirect_uri})    #http://localhost:8090/
 
@@ -97,7 +98,7 @@ def reddit_get_refresh_token(url, name, type_):
         req.add_header('Authorization',"Basic %s" % base64string)
         req.add_header('User-Agent', reddit_userAgent)
 
-        page = urllib2.urlopen(req, data=data)
+        page = urllib.request.urlopen(req, data=data)
         response=page.read();page.close()
         log( response )
 
@@ -128,27 +129,42 @@ def reddit_get_refresh_token(url, name, type_):
 #         page = read,identity.urlopen(req)
 #         response=page.read();page.close()
 
-    except urllib2.HTTPError, err:
+    except urllib.error.HTTPError as err:
         xbmc_notify(err.code, err.msg)
-    except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
+    except urllib.error.URLError as err: # Not an HTTP-specific error (e.g. connection refused)
         xbmc_notify('get_refresh_token',err.reason)
 
 def reddit_get_access_token(url="", name="", type_=""):
     try:
-        log( "Requesting a reddit 1-hour token" )
-        req = urllib2.Request('https://www.reddit.com/api/v1/access_token')
+        log( "  Requesting a reddit 1-hour token" )
+        req = urllib.request.Request('https://www.reddit.com/api/v1/access_token')
 
         #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
-        data = urllib.urlencode({'grant_type'    : 'refresh_token'
-                                ,'refresh_token' : reddit_refresh_token })
+        data = urllib.parse.urlencode({'grant_type'    : 'refresh_token'
+                                ,'refresh_token' : reddit_refresh_token }).encode("utf-8")
 
         #http://stackoverflow.com/questions/2407126/python-urllib2-basic-auth-problem
-        import base64
-        base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')
+        #import base64
+        bytes_like_object = bytes('%s:%s' % (reddit_clientID, ''), "utf-8")
+        #base64string = base64.b64encode(bytes('%s:%s' % (reddit_clientID, ''), "utf-8")).replace('\n', '')
+
+        #alternate method. couldn't get the above to work.
+        import codecs
+        base64string=codecs.encode(bytes_like_object, 'base64') #base64string is now a bytes-like object
+        #base64string=base64string.encode('ascii')
+
+        #log( base64string )
+        #all strings in python3 are utf-8. 
+        #convert the bytes object to utf-8 so that we can use the replace function and then put it back. 
+        base64string=str(base64string,'utf-8').replace('\n', '')
+        #log( base64string )
         req.add_header('Authorization',"Basic %s" % base64string)
         req.add_header('User-Agent', reddit_userAgent)
 
-        page = urllib2.urlopen(req, data=data)
+        #log( req.headers )
+
+
+        page = urllib.request.urlopen(req, data=data)
         response=page.read();page.close()
 
         status=reddit_set_addon_setting_from_response(response)
@@ -159,20 +175,25 @@ def reddit_get_access_token(url="", name="", type_=""):
             r2="Requesting 1-hour token"
             xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( status, r2)  )
 
-    except urllib2.HTTPError, err:
-        xbmc_notify(err.code, err.msg)
-    except urllib2.URLError, err: # Not an HTTP-specific error (e.g. connection refused)
+    except urllib.error.HTTPError as err:
+        xbmc_notify(err.code, err.msg, 5000)
+    except urllib.error.URLError as err: # Not an HTTP-specific error (e.g. connection refused)
         xbmc_notify('get_access_token',err.reason)
 
     return False
 
 def reddit_set_addon_setting_from_response(response):
     import time, json
-    from utils import convert_date
+    from . utils import convert_date
     global reddit_access_token    #specify "global" if you want to change the value of a global variable
     global reddit_refresh_token
     try:
-        response = json.loads(response.replace('\\"', '\''))
+        #log( response )
+        #response is a bytes-like object. Convert it to string so that we can use the replace() 
+        response=str(response,'utf-8').replace('\\"', '\'')
+
+        #python3 Object of type bytes is not JSON serializable
+        response = json.loads(response)
         log( json.dumps(response, indent=4) )
 
         if 'error' in response:
@@ -209,9 +230,9 @@ def reddit_revoke_refresh_token(url, name, type_):
     try:
         log( "Revoking refresh token " )
 
-        req = urllib2.Request('https://www.reddit.com/api/v1/revoke_token')
+        req = urllib.request.Request('https://www.reddit.com/api/v1/revoke_token')
 
-        data = urllib.urlencode({'token'          : reddit_refresh_token
+        data = urllib.parse.urlencode({'token'          : reddit_refresh_token
                                 ,'token_type_hint': 'refresh_token'       })
 
         import base64
@@ -219,7 +240,7 @@ def reddit_revoke_refresh_token(url, name, type_):
         req.add_header('Authorization',"Basic %s" % base64string)
         req.add_header('User-Agent', reddit_userAgent)
 
-        page = urllib2.urlopen(req, data=data)
+        page = urllib.request.urlopen(req, data=data)
         response=page.read();page.close()
 
         #no response for success.
@@ -238,7 +259,7 @@ def reddit_revoke_refresh_token(url, name, type_):
         r2="Revoking refresh token"
         xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( 'Token revoked', r2)  )
 
-    except urllib2.HTTPError, err:
+    except urllib.error.HTTPError as err:
         xbmc_notify(err.code, err.msg)
     except Exception as e:
         xbmc_notify('Revoking refresh token', str(e))
@@ -246,7 +267,7 @@ def reddit_revoke_refresh_token(url, name, type_):
 def reddit_save(api_method, post_id, type_):
     #api_method either /api/save/  or /api/unsave/
     url=urlMain+api_method
-    data = urllib.urlencode({'id'  : post_id })
+    data = urllib.parse.urlencode({'id'  : post_id })
 
     response=reddit_request( url,data )
     log(repr(response))
@@ -279,7 +300,7 @@ def create_default_subreddits():
         fh.write('woahdude+interestingasfuck+shittyrobots\n')
 
 def populate_subreddits_pickle():
-    from guis import progressBG
+    from .guis import progressBG
     loading_indicator=progressBG(translation(30026))   #Gathering icons..
 
     with open(subredditsFile, 'r') as fh:
@@ -451,10 +472,10 @@ def assemble_reddit_filter_string(search_string, subreddit, skip_site_filters=""
 
         if search_string:
             if 'http' in search_string:
-                url+="/submit.json?url="+ urllib.quote_plus(search_string)
+                url+="/submit.json?url="+ urllib.parse.quote_plus(search_string)
             else:
                 #search_string = urllib.unquote_plus(search_string)
-                url+= "/search.json?q=" + urllib.quote_plus(search_string)
+                url+= "/search.json?q=" + urllib.parse.quote_plus(search_string)
 
         elif skip_site_filters:
             url+= "/.json?"
@@ -596,7 +617,7 @@ def ret_sub_info( subreddit_entry ):
     #search subreddits_dlist for subreddit_entry and return info about it
     #randomly pick one if there are multiple subreddits e.g.: gifs+funny
     import random
-    from utils import load_dict
+    from . utils import load_dict
     global subreddits_dlist #we make sure we only load the subredditsPickle file once for this instance
     try:
         if not subreddits_dlist:
@@ -696,8 +717,8 @@ def convert_settings_entry_into_subreddits_list_or_domain(settings_entry):
     return s
 
 def get_subreddit_entry_info_thread(sub_list):
-    from utils import load_dict, save_dict, get_domain_icon, setting_entry_is_domain
-    from domains import ClassYoutube
+    from . utils import load_dict, save_dict, get_domain_icon, setting_entry_is_domain
+    from . domains import ClassYoutube
 
     global subreddits_dlist #subreddits_dlist=[]
     #log('**** thread running:'+repr(sub_list))
@@ -781,7 +802,7 @@ def img_ar(img_size_array):
     return ar
 
 def subreddit_entry_to_listitem(subreddit_entry):
-    from utils import compose_list_item, build_script, xstr, prettify_reddit_query
+    from . utils import compose_list_item, build_script, xstr, prettify_reddit_query
     addtl_subr_info={}
     nsfw=False
     icon=banner=header=public_description=display_name=override_header_image=None

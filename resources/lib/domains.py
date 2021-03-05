@@ -6,19 +6,19 @@ import sys
 import re
 import requests
 import json
-import urlparse
+from urllib.parse import urlparse
 #sys.setdefaultencoding("utf-8")
 
 from default import addon, streamable_quality,hide_nsfw
 from default import addon_path, pluginhandle, reddit_userAgent, REQUEST_TIMEOUT
-from utils import log, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast, clean_str,pretty_datediff_wrap, nested_lookup
+from .utils import log, parse_filename_and_ext_from_url, image_exts, link_url_is_playable, ret_url_ext, remove_duplicates, safe_cast, clean_str,pretty_datediff_wrap, nested_lookup
 
 #use_ytdl_for_yt      = addon.getSetting("use_ytdl_for_yt") == "true"    #let youtube_dl addon handle youtube videos. this bypasses the age restriction prompt
 use_addon_for_youtube     = addon.getSetting("use_addon_for_youtube") == "true"
 use_addon_for_Liveleak    = addon.getSetting("use_addon_for_Liveleak") == "true"
 #resolve_undetermined = addon.getSetting("resolve_undetermined") == "true" #let youtube_dl addon get playable links if unknown url(slow)
 
-from CommonFunctions import parseDOM
+from . CommonFunctions import parseDOM
 
 keys=[ 'li_label'           #  the text that will show for the list
       ,'li_label2'          #
@@ -84,6 +84,11 @@ class sitesBase(object):
     @classmethod
     def requests_get(self, link_url, headers=None, timeout=REQUEST_TIMEOUT, allow_redirects=True):
         content = requests.get( link_url, headers=headers, timeout=timeout, allow_redirects=allow_redirects )
+        #there is an error here: get_thumb_url error:No module named 'requests.packages.urllib3.packages.ordered_dict'
+        #don't know what to do with this error. just leaving it alone if it just comes up when getting thumbnail for subreddits
+
+
+
         #if hasattr(content, "from_cache"): log( '  #cached:{0} {1}'.format( repr(content.from_cache),link_url) )
         #else:log( '  #cache disabled: {0}'.format( link_url) )  #if requests_cache is not installed, page will not have from_cache attribute
         if content.status_code==requests.codes.ok:
@@ -154,7 +159,7 @@ class sitesBase(object):
                             #log( "if parseDOM:" + link_url)
                             if i:
                                 try:
-                                    return urlparse.urljoin(link_url, i[0]) #handle relative or absolute
+                                    return urllib.parse.urljoin(link_url, i[0]) #handle relative or absolute
                                 except IndexError: pass
                                 else:
                                     log('      %s: cant find <meta property="og:image" '  %(self.__class__.__name__ ) )
@@ -219,8 +224,7 @@ class sitesBase(object):
 
         for item in images_list:
             #log('      type: %s' %( type(item)  ) )
-            if isinstance(item, (basestring,unicode) ):   #type(item) in [str,unicode]:  #if isinstance(item, basestring):
-                #log( 'assemble_images_dictList STRING')
+            if isinstance(item, str ):   #for python3 isinstance(item, (basestring,unicode) ):   #type(item) in [str,unicode]:  #if isinstance(item, basestring):                #log( 'assemble_images_dictList STRING')
                 image_url=item
                 thumbnail=image_url
             elif  isinstance(item, list):    #type(item) is list:
@@ -303,8 +307,8 @@ class ClassYoutube(sitesBase):
 
     @classmethod
     def remove_attribution_link_from_url_if_present(self, youtube_url):
-        o = urlparse.urlparse(youtube_url)
-        query = urlparse.parse_qs(o.query)
+        o = urlparse(youtube_url)
+        query = urllib.parse.parse_qs(o.query)
 
         if 'a' in query and 'u' in query:  #if 'attribution_link' in query:
             u=query['u'][0]
@@ -317,8 +321,8 @@ class ClassYoutube(sitesBase):
         if not media_url:
             media_url=self.media_url
 
-        o = urlparse.urlparse(media_url)
-        query = urlparse.parse_qs(o.query)
+        o = urlparse(media_url)
+        query = urllib.parse.parse_qs(o.query)
 
         self.media_url=self.remove_attribution_link_from_url_if_present(media_url)
 
@@ -395,8 +399,8 @@ class ClassYoutube(sitesBase):
         else:
             #log('    second parsing for video id:'+yt_url)
             #for parsing this: https://www.youtube.com/attribution_link?a=y08k0cdNBKw&u=%2Fwatch%3Fv%3DQOVrrL5KtsM%26feature%3Dshare%26list%3DPLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW%26index%3D4
-            o = urlparse.urlparse(yt_url)
-            query = urlparse.parse_qs(o.query)
+            o = urlparse(yt_url)
+            query = urllib.parse.parse_qs(o.query)
             if 'a' in query and 'u' in query:   #if all (k in query for k in ("a","u")):
                 u=query['u'][0]
                 #log('   u  '+ repr(u)) #  <--  /watch?v=QOVrrL5KtsM&feature=share&list=PLVonsjaXkSpfuIv02l6IM1pN1Z3IfXWUW&index=4
@@ -427,8 +431,8 @@ class ClassYoutube(sitesBase):
         return channel_id
     @classmethod
     def get_playlist_id_from_url(self, youtube_url):
-        o = urlparse.urlparse(youtube_url)
-        query = urlparse.parse_qs(o.query)
+        o = urlparse(youtube_url)
+        query = urllib.parse.parse_qs(o.query)
 
         playlist_id=query.get('list',None)
         if playlist_id:
@@ -478,7 +482,7 @@ class ClassYoutube(sitesBase):
                 'part': 'id,snippet',
             }
 
-            api_url='https://www.googleapis.com/youtube/v3/videos?'+urllib.urlencode(query_params)
+            api_url='https://www.googleapis.com/youtube/v3/videos?'+urllib.parse.urlencode(query_params)
             r = self.requests_get(api_url)
             #log(r.text)
             j=r.json()   #.loads(r.text)  #j=json.loads(r.text.replace('\\"', '\''))
@@ -595,7 +599,7 @@ class ClassYoutube(sitesBase):
             }
     @classmethod
     def build_query_params_for_search(self,youtube_api_key,search_string,type_='video'):
-        from utils import ret_bracketed_option
+        from .utils import ret_bracketed_option
         #specify different results by adding order_option in square brackets in the search string.
         stripped_string, order_option=ret_bracketed_option(search_string)  #developer feature: specify the order in search parameter "[date]" etc.
         if order_option:
@@ -658,7 +662,7 @@ class ClassYoutube(sitesBase):
             'part': 'snippet,contentDetails',
             'forUsername': user_id,
         }
-        api_url='https://www.googleapis.com/youtube/v3/channels?'+urllib.urlencode(query_params)
+        api_url='https://www.googleapis.com/youtube/v3/channels?'+urllib.parse.urlencode(query_params)
         r = self.requests_get(api_url)
         #log(r.text)
         j=r.json()   #.loads(r.text)  #j=json.loads(r.text.replace('\\"', '\''))
@@ -672,7 +676,7 @@ class ClassYoutube(sitesBase):
         #this is used to get the channel info/banner for the index page
         link_action, query_params=self.build_query_params_for_get_channel_info(self.ret_api_key(),channel_id)
 
-        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(link_action,urllib.urlencode(query_params))
+        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(link_action,urllib.parse.urlencode(query_params))
         #log(api_url)
         r = self.requests_get(api_url)
         j=r.json()
@@ -713,13 +717,13 @@ class ClassYoutube(sitesBase):
                 video_ids.append(videoId)
         return video_ids
     def get_video_durations(self,youtube_api_key,videoIds):
-        from utils import ytDurationToSeconds
+        from .utils import ytDurationToSeconds
         durations=[]
         query_params={'key': youtube_api_key,
                 'part': 'contentDetails',
                 'id': ",".join(videoIds),            #','.join(map(str, myList))#if the list contains numbers
             }
-        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format("videos",urllib.urlencode(query_params))
+        api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format("videos",urllib.parse.urlencode(query_params))
         r = self.requests_get(api_url)
         j=r.json()
         #log(repr(j))
@@ -740,14 +744,13 @@ class ClassYoutube(sitesBase):
         return vnd
 
     def get_video_list(self, request_action, query_params, direct_api_request_url=None, prev_page=1 ):
-        from utils import set_query_field, seconds_to_hms
+        from .utils import set_query_field, seconds_to_hms
         links=[]
         if direct_api_request_url:
             log('direct api request url provided:'+repr(direct_api_request_url))
             api_url=direct_api_request_url
         else:
-            api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(request_action,urllib.urlencode(query_params))
-        #log(api_url)
+            api_url='https://www.googleapis.com/youtube/v3/{0}?{1}'.format(request_action,urllib.parse.urlencode(query_params))
         r = self.requests_get(api_url)
         j=r.json()
         #log(repr(j))
@@ -1017,7 +1020,7 @@ class ClassImgur(sitesBase):
             self.thumb_url, self.poster_url= self.get_album_thumb(link_url)
             return self.thumb_url
 
-        o=urlparse.urlparse(link_url)
+        o=urlparse(link_url)
         filename,ext=parse_filename_and_ext_from_url(link_url)
         #log("file&ext------"+filename+"--"+ext+"--"+o.netloc )
 
@@ -1121,7 +1124,6 @@ class ClassImgur(sitesBase):
     def get_playable_url(self, media_url, is_probably_a_video): #is_probably_a_video means put video extension on it if media_url has no ext
         webm_or_mp4='.mp4'  #6/18/2016  using ".webm" has stopped working
         media_url=media_url.split('?')[0] #get rid of the query string?
-
         is_album=self.is_an_album(media_url)
         if is_album:
             return media_url, sitesBase.TYPE_ALBUM
@@ -1179,7 +1181,7 @@ class ClassVidme(sitesBase):
     def get_playable_url(self,media_url, is_probably_a_video=True):
         #https://docs.vid.me/#api-Video-DetailByURL
         #request_url="https://api.vid.me/videoByUrl/"+videoID
-        request_url="https://api.vid.me/videoByUrl?url="+ urllib.quote_plus( media_url )
+        request_url="https://api.vid.me/videoByUrl?url="+ urllib.parse.quote_plus( media_url )
         #log("vidme request_url---"+request_url )
         r = requests.get(request_url, headers=ClassVidme.request_header, timeout=REQUEST_TIMEOUT)
         #log(r.text)
@@ -1461,7 +1463,7 @@ class ClassLiveleak(sitesBase):
     def get_playable_url(self, media_url='', is_probably_a_video=False ):
         if use_addon_for_Liveleak:
             self.link_action=self.DI_ACTION_PLAYABLE
-            return "plugin://plugin.video.liveleak/?mode=view&url={0}".format(urllib.quote_plus( media_url )), self.TYPE_VIDEO
+            return "plugin://plugin.video.liveleak/?mode=view&url={0}".format(urllib.parse.quote_plus( media_url )), self.TYPE_VIDEO
         else:
             self.link_action=sitesBase.DI_ACTION_YTDL
             return self.media_url, self.TYPE_VIDEO
@@ -1775,7 +1777,7 @@ class ClassBlogspot(sitesBase):
         return '',''
 
     def ret_blog_post_request(self):
-        o=urlparse.urlparse(self.media_url)   #scheme, netloc, path, params, query, fragment
+        o=urlparse(self.media_url)   #scheme, netloc, path, params, query, fragment
         #log( '  blogpath=' + o.path )
         blog_path= o.path
 
@@ -2402,6 +2404,121 @@ class ClassFlickr(sitesBase):
         else:
             log('    NOT AN ALBUM: unexpected flickr media type ' + self.fmedia_type )
 
+class ClassRedgifs(sitesBase):
+    regex='(redgifs.com)'
+
+    def get_playable_url(self, media_url, is_probably_a_video=True ):
+        #the video id i get do not have capital letters
+        #ytdl seems to be able to get the correct video id
+        self.link_action=sitesBase.DI_ACTION_YTDL
+        self.media_type=sitesBase.TYPE_VIDEO
+        return media_url, self.media_type
+
+        #end here
+        self.get_video_id()
+        if self.video_id:
+            #redgifs use the same api as gfycat but they have not released an official api
+            #request_url="https://redgifs.com/cajax/get/" + self.video_id  #this endpoint has been deprecated
+            #request_url="https://api.redgifs.com/v1/redgifs/%s" % self.video_id
+
+            self.link_action=sitesBase.DI_ACTION_PLAYABLE
+            stream_url='https://thumbs1.redgifs.com/'+self.video_id+'.webm'
+
+            #https://redgifs.com/watch/darlingmagnificentconey
+            #return 'https://thumbs1.redgifs.com/DarlingMagnificentConey.webm', self.TYPE_VIDEO
+            return stream_url, self.TYPE_VIDEO
+        else:
+            log("cannot get redgif id")
+        return '', ''
+
+    def get_video_id(self):
+        self.video_id=''
+        match = re.findall("redgifs.com/watch/(.+?)(?:-|$|')", self.media_url)
+        if match:
+            log('  found video id['+match[0]+']')
+            self.video_id=match[0]
+
+
+    def get_thumb_url(self):
+        #call this after calling get_playable_url
+        return self.thumb_url
+
+class ClassGfycat(sitesBase):
+    regex='(gfycat.com)'
+
+    def get_playable_url(self, media_url, is_probably_a_video=True ):
+        self.get_video_id()
+
+        if self.video_id:
+            #log('    video id:' + repr(self.video_id) )
+            #request_url="https://gfycat.com/cajax/get/" + self.video_id  #this endpoint has been deprecated
+            request_url="https://api.gfycat.com/v1/gfycats/%s" % self.video_id
+            #request_url="https://api.gfycat.com/v1test/gfycats/{gfyid}".format(gfyid=self.video_id)  #this method requires auth token etc.
+
+            try:
+                content = self.requests_get(request_url)
+                #log('gfycat response:'+ content.text)
+                content = content.json()
+            except requests.exceptions.HTTPError:
+                log('    Error requesting info via api endpoint. Trying actual link: '+media_url)
+                #encountered a link that returns 404 with the api request but exists using browser. https://gfycat.com/gifs/detail/DeliciousBowedAlpinegoat
+                # we will parse it manually
+                r = self.requests_get(media_url)
+                jo=re.compile('___INITIAL_STATE__=({.*});').findall(r.text)
+                if jo:
+                    #import pprint
+                    #log( pprint.pformat(jo[0], indent=1) )
+                    j=json.loads(jo[0])
+                    content=j.get('detail')
+
+            gfyItem=content.get('gfyItem')
+            if gfyItem:
+                self.media_w=safe_cast(gfyItem.get('width'),int,0)
+                self.media_h=safe_cast(gfyItem.get('height'),int,0)
+                webmSize=safe_cast(gfyItem.get('webmSize'),int,0)
+                mp4Size =safe_cast(gfyItem.get('mp4Size'),int,0)
+
+                self.thumb_url =gfyItem.get('posterUrl')  #thumb100PosterUrl
+                self.poster_url=gfyItem.get('posterUrl')
+
+                #pick the smaller of the streams
+                if mp4Size > webmSize:
+                    #log('      using webm  wm(%d) m4(%d)' %(webmSize,mp4Size) )
+                    stream_url=gfyItem.get('webmUrl') if gfyItem.get('webmUrl') else gfyItem.get('mp4Url')
+                else:
+                    #log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
+                    stream_url=gfyItem.get('mp4Url') if gfyItem.get('mp4Url') else gfyItem.get('webmUrl')
+
+                #log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
+
+                self.link_action=sitesBase.DI_ACTION_PLAYABLE
+                return stream_url, self.TYPE_GIF #sitesBase.TYPE_VIDEO
+            else:
+                error=content.get('error')
+                if error:
+                    self.link_action=self.DI_ACTION_ERROR
+                    return error, ""
+        else:
+            log("cannot get gfycat id")
+
+        return '', ''
+
+    def get_video_id(self):
+        self.video_id=''
+        #https://thumbs.gfycat.com/DefenselessVillainousHapuku-size_restricted.gif
+        #https://thumbs.gfycat.com/DefenselessVillainousHapuku
+        #python3 notes: for some reason the last  '   from   b'https://gfycat.com/weeklycelebratedfirebelliedtoad'    is included in match[0] i had to modify the regex to ignore the last  '
+        #atch = re.findall("gfycat.com/(.+?)(?:-|$)"  , self.media_url)
+        match = re.findall("gfycat.com/(.+?)(?:-|$|')", self.media_url)
+        if match:
+            #log('  found video id['+match[0]+']')
+            self.video_id=match[0]
+
+
+    def get_thumb_url(self):
+        #call this after calling get_playable_url
+        return self.thumb_url
+
 class ClassGifsCom(sitesBase):
     regex='(gifs\.com)'
     #also vidmero.com
@@ -2468,86 +2585,12 @@ class ClassGifsCom(sitesBase):
 #                   </video>
 #               </div>
 
-
         self.get_video_id()
         log('    gifs.com videoID:' + self.video_id )
 
         self.link_action=sitesBase.DI_ACTION_PLAYABLE
         return 'http://j.gifs.com/%s.mp4' %self.video_id , sitesBase.TYPE_VIDEO
 
-class ClassGfycat(sitesBase):
-    regex='(gfycat.com)'
-
-    def get_playable_url(self, media_url, is_probably_a_video=True ):
-
-        self.get_video_id()
-
-        if self.video_id:
-            #log('    video id:' + repr(self.video_id) )
-            #request_url="https://gfycat.com/cajax/get/" + self.video_id  #this endpoint has been deprecated
-            request_url="https://api.gfycat.com/v1/gfycats/%s" % self.video_id
-            #request_url="https://api.gfycat.com/v1test/gfycats/{gfyid}".format(gfyid=self.video_id)  #this method requires auth token etc.
-
-            try:
-                content = self.requests_get(request_url)
-                #log('gfycat response:'+ content.text)
-                content = content.json()
-            except requests.exceptions.HTTPError:
-                log('    Error requesting info via api endpoint. Trying actual link: '+media_url)
-                #encountered a link that returns 404 with the api request but exists using browser. https://gfycat.com/gifs/detail/DeliciousBowedAlpinegoat
-                # we will parse it manually
-                r = self.requests_get(media_url)
-                jo=re.compile('___INITIAL_STATE__=({.*});').findall(r.text)
-                if jo:
-                    #import pprint
-                    #log( pprint.pformat(jo[0], indent=1) )
-                    j=json.loads(jo[0])
-                    content=j.get('detail')
-
-            gfyItem=content.get('gfyItem')
-            if gfyItem:
-                self.media_w=safe_cast(gfyItem.get('width'),int,0)
-                self.media_h=safe_cast(gfyItem.get('height'),int,0)
-                webmSize=safe_cast(gfyItem.get('webmSize'),int,0)
-                mp4Size =safe_cast(gfyItem.get('mp4Size'),int,0)
-
-                self.thumb_url =gfyItem.get('posterUrl')  #thumb100PosterUrl
-                self.poster_url=gfyItem.get('posterUrl')
-
-                #pick the smaller of the streams
-                if mp4Size > webmSize:
-                    #log('      using webm  wm(%d) m4(%d)' %(webmSize,mp4Size) )
-                    stream_url=gfyItem.get('webmUrl') if gfyItem.get('webmUrl') else gfyItem.get('mp4Url')
-                else:
-                    #log('      using mp4   wm(%d) m4(%d)' %(webmSize,mp4Size) )
-                    stream_url=gfyItem.get('mp4Url') if gfyItem.get('mp4Url') else gfyItem.get('webmUrl')
-
-                #log('      %dx%d %s' %(self.media_w,self.media_h,stream_url)  )
-
-                self.link_action=sitesBase.DI_ACTION_PLAYABLE
-                return stream_url, self.TYPE_GIF #sitesBase.TYPE_VIDEO
-            else:
-                error=content.get('error')
-                if error:
-                    self.link_action=self.DI_ACTION_ERROR
-                    return error, ""
-        else:
-            log("cannot get gfycat id")
-
-        return '', ''
-
-    def get_video_id(self):
-        self.video_id=''
-        #https://thumbs.gfycat.com/DefenselessVillainousHapuku-size_restricted.gif
-        #https://thumbs.gfycat.com/DefenselessVillainousHapuku
-        match = re.findall('gfycat.com/(.+?)(?:-|$)', self.media_url)
-        if match:
-            self.video_id=match[0]
-
-
-    def get_thumb_url(self):
-        #call this after calling get_playable_url
-        return self.thumb_url
 
 class ClassEroshare(sitesBase):
     SITE='eroshare'
@@ -2706,76 +2749,6 @@ class ClassEroshare(sitesBase):
     def get_thumb_url(self):
         return self.thumb_url
 
-class ClassVidble(sitesBase):
-    regex='(vidble.com)'
-
-    def is_album(self, media_url):
-        if '/album/' in media_url:
-            self.media_type = self.TYPE_ALBUM
-            return True
-        else:
-            return False
-
-    def get_playable_url(self, link_url, is_probably_a_video=False ):
-
-        if self.is_album(link_url):
-            self.media_type = sitesBase.TYPE_ALBUM
-            return link_url, self.media_type
-
-        #note: image can be got by just adding .jpg at end of url
-
-        content = self.requests_get( link_url)
-        #if 'pnnh' in media_url:
-        #    log('      retrieved:'+ str(content) )
-
-        #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
-        thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
-        #log('    thumb='+repr(thumb))
-        if thumb:
-            self.thumb_url=thumb[0]
-
-        div_item_list = parseDOM(content.text, "div", attrs = { "id": "ContentPlaceHolder1_divContent" })
-        #log('    div_item_list=' + repr(div_item_list))
-        if div_item_list:
-            images = parseDOM(div_item_list, "img", ret = "src")
-            #for idx, item in enumerate(images):
-            #    log('    %d %s' %(idx, item))
-            if images[0]:
-                self.poster_url = 'http://www.vidble.com' + images[0]
-
-                return self.poster_url, self.TYPE_IMAGE
-
-    def ret_album_list(self, album_url, thumbnail_size_code=''):
-        #returns an object (list of dicts) that contain info for the calling function to create the listitem/addDirectoryItem
-        content = self.requests_get(album_url)
-
-        #<meta id="metaTag" property="og:image" content="http://www.vidble.com/a9CvdmX9gu_sqr.jpeg"></meta>
-        #thumb= parseDOM(content.text, "meta", attrs = { "id": "metaTag" }, ret = "content")
-        #log('    thumb='+repr(thumb))
-
-        div_item_list = parseDOM(content.text, "div", attrs = { "id": "ContentPlaceHolder1_divContent" })
-        #log('      div_item_list=' + repr(div_item_list))
-
-        if div_item_list:
-            images = parseDOM(div_item_list, "img", ret = "src")
-            prefix = 'http://www.vidble.com'
-
-            self.assemble_images_dictList(   (prefix + s for s in images)    )
-
-        else:
-            log('      vidble: no div_item_list:  ')
-
-        #log( pprint.pformat(self.dictList, indent=1) )
-        return self.dictList
-
-    def get_thumb_url(self):
-        if not self.thumb_url:
-            img=self.request_meta_ogimage_content()
-            self.thumb_url=img
-            self.poster_url=self.thumb_url
-
-        return self.thumb_url
-
 class ClassImgbox(sitesBase):
     SITE='imgbox'
     regex='(imgbox.com)'
@@ -2860,7 +2833,7 @@ class ClassReddit(sitesBase):
     regex='^\/r\/(.+)(?:\/|$)|(^\/u\/)(.+)(?:\/|$)|(reddit\.com)'
 
     def get_playable_url(self, link_url, is_probably_a_video):
-        from reddit import assemble_reddit_filter_string
+        from . reddit import assemble_reddit_filter_string
         subreddit=self.get_video_id(link_url)
         self.video_id=subreddit
         #log('    **get_playable_url subreddit=' + self.video_id )
@@ -2897,7 +2870,7 @@ class ClassReddit(sitesBase):
     def get_thumb_url(self):
         headers = {'User-Agent': reddit_userAgent}
         body_text=None
-        from utils import clean_str
+        from .utils import clean_str
 
         #log('get thumb url from '+self.original_url)
         if '/comments/' in self.original_url:
@@ -3797,8 +3770,8 @@ def parse_reddit_link(link_url, assume_is_video=True, needs_preview=False, get_p
 
 
 def ydtl_get_playable_url( url_to_check ):
-    from resources.lib.utils import link_url_is_playable
-    from default import YDStreamExtractor
+    from .utils import link_url_is_playable
+    from .default import YDStreamExtractor
     #log('ydtl_get_playable_url:' +url_to_check )
     if link_url_is_playable(url_to_check)=='video':
         return url_to_check
@@ -3831,13 +3804,15 @@ def ydtl_get_playable_url( url_to_check ):
 
 if __name__ == '__main__':
     pass
+        #name='' if name==None else name.         decode('unicode_escape').encode('ascii','ignore')
+        #name='' if name==None else name.encode().decode("unicode-escape").encode('ascii','ignore')
 
 def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='', script_to_call="", on_autoplay=False, img_w=0, img_h=0):
     setProperty_IsPlayable='false'  #recorded in vieoxxx.db if set to 'true'
     isFolder=True
     DirectoryItem_url=''
     title_prefix=''
-    url='' if url==None else url.decode('unicode_escape').encode('ascii','ignore')
+    url='' if url==None else url.encode().decode('unicode_escape').encode('ascii','ignore')
     arg_name=arg_name.encode('utf-8')             #sometimes we pass the title of the post on &name=. need to encode('utf-8') here otherwise we get a keyError
     if ld:
         if ld.media_type==sitesBase.TYPE_IMAGE:
@@ -3898,10 +3873,10 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
             DirectoryItem_url=ld.playable_url
         else:
             DirectoryItem_url=sys.argv[0]\
-            +"?url="+ urllib.quote_plus(ld.playable_url) \
-            +"&mode="+urllib.quote_plus(ld.link_action) \
-            +"&name="+urllib.quote_plus(arg_name) \
-            +"&type="+urllib.quote_plus(arg_type)
+            +"?url="+ urllib.parse.quote_plus(ld.playable_url) \
+            +"&mode="+urllib.parse.quote_plus(ld.link_action) \
+            +"&name="+urllib.parse.quote_plus(arg_name) \
+            +"&type="+urllib.parse.quote_plus(arg_type)
     else:
         if addon.getSetting("hide_undetermined") == "true": return
         title_prefix='[?]'
@@ -3913,8 +3888,8 @@ def build_DirectoryItem_url_based_on_media_type(ld, url, arg_name='', arg_type='
         setProperty_IsPlayable='true'  #pluginhandle=-1 if set to 'false' and isFolder set to False
         isFolder=False                 #isFolder=True avoids the WARNING: XFILE::CFileFactory::CreateLoader /  ERROR: InputStream: Error opening, ...
         DirectoryItem_url=sys.argv[0]\
-        +"?url="+ urllib.quote_plus(url) \
-        +"&name="+urllib.quote_plus(arg_name) \
+        +"?url="+ urllib.parse.quote_plus(url) \
+        +"&name="+urllib.parse.quote_plus(arg_name) \
         +"&mode=playYTDLVideo"
 
     return DirectoryItem_url, setProperty_IsPlayable, isFolder, title_prefix

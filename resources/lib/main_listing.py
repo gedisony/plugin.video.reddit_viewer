@@ -2,18 +2,18 @@
 import xbmc
 import xbmcgui
 import xbmcplugin
-import urllib, urlparse
+import urllib.request, urllib.parse, urllib.error, urllib.parse
 import json
 import threading
 import re
-from Queue import Queue
+from queue import Queue
 
 import os,sys
 
 from default import addon, addon_path, itemsPerPage, urlMain, subredditsFile, int_CommentTreshold
 from default import pluginhandle, WINDOW, forceViewMode, viewMode, comments_viewMode, album_viewMode, autoplayAll, autoplayUnwatched, TitleAddtlInfo, DoNotResolveLinks
-from utils import xbmc_busy, log, translation, addDir, addDirR
-from reddit import reddit_request
+from .utils import xbmc_busy, log, translation, addDir, addDirR
+from .reddit import reddit_request
 
 default_frontpage    = addon.getSetting("default_frontpage")
 no_index_page        = addon.getSetting("no_index_page") == "true"
@@ -31,8 +31,8 @@ cxm_show_reddit_save      = addon.getSetting("cxm_show_reddit_save") == "true"
 cxm_show_youtube_items    = addon.getSetting("cxm_show_youtube_items") == "true"
 
 def index(url,name,type_):
-    from utils import xstr, samealphabetic, hassamealphabetic
-    from reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info, ret_settings_type_default_icon
+    from .utils import xstr, samealphabetic, hassamealphabetic
+    from .reddit import load_subredditsFile, parse_subreddit_entry, create_default_subreddits, assemble_reddit_filter_string, ret_sub_info, ret_settings_type_default_icon
 
     ## this is where the main screen is created
 
@@ -133,9 +133,9 @@ GCXM_hasmultipleauthor=False
 GCXM_subreddit_key=''
 
 def listSubReddit(url, name, subreddit_key):
-    from guis import progressBG
-    from utils import post_is_filtered_out, set_query_field
-    from reddit import has_multiple
+    from .guis import progressBG
+    from .utils import post_is_filtered_out, set_query_field
+    from .reddit import has_multiple
     global GCXM_hasmultiplesubreddit,GCXM_hasmultipledomain,GCXM_hasmultipleauthor,GCXM_subreddit_key
     log("listSubReddit subreddit=%s url=%s" %(subreddit_key,url) )
 
@@ -244,8 +244,8 @@ def listSubReddit(url, name, subreddit_key):
         #this part makes sure that you load the next page instead of just the first
         after=content['data']['after']
 
-        o = urlparse.urlparse(currentUrl)
-        current_url_query = urlparse.parse_qs(o.query)
+        o = urllib.parse.urlparse(currentUrl)
+        current_url_query = urllib.parse.parse_qs(o.query)
 
         nextUrl=set_query_field(currentUrl, field='after', value=after, replace=True)  #(url, field, value, replace=False):
         #log('$$$currenturl: ' +currentUrl)
@@ -289,8 +289,8 @@ def listSubReddit(url, name, subreddit_key):
 
 def reddit_post_worker(idx, entry, q_out):
     import datetime
-    from utils import strip_emoji, pretty_datediff, clean_str
-    from reddit import determine_if_video_media_from_reddit_json, ret_sub_icon
+    from .utils import strip_emoji, pretty_datediff, clean_str
+    from .reddit import determine_if_video_media_from_reddit_json, ret_sub_icon
 
     show_listVideos_debug=True
     credate = ""
@@ -433,7 +433,7 @@ def reddit_post_worker(idx, entry, q_out):
         log( '  #reddit_post_worker EXCEPTION:' + repr(sys.exc_info()) +'--'+ str(e) )
 
 def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,domain,description, credate, reddit_says_is_video, commentsUrl, subreddit, media_url, over_18, posted_by="", num_comments=0,post_index=1,post_id=''):
-    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
+    from .domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
 
     post_title=title
     il_description=""
@@ -489,8 +489,8 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     if DoNotResolveLinks:
         ld=None
         DirectoryItem_url=sys.argv[0]\
-            +"?url="+ urllib.quote_plus(media_url) \
-            +"&name="+urllib.quote_plus(title) \
+            +"?url="+ urllib.parse.quote_plus(media_url) \
+            +"&name="+urllib.parse.quote_plus(title) \
             +"&mode=play"
         setProperty_IsPlayable='true'
         isFolder=False
@@ -539,8 +539,8 @@ def addLink(title, title_line2, iconimage, previewimage,preview_w,preview_h,doma
     return (DirectoryItem_url,liz,isFolder)  #tuple for addDirectoryItems
 
 def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link_url, post_id):
-    from reddit import assemble_reddit_filter_string, subreddit_in_favorites, this_is_a_user_saved_list
-    from utils import colored_subreddit
+    from .reddit import assemble_reddit_filter_string, subreddit_in_favorites, this_is_a_user_saved_list
+    from .utils import colored_subreddit
 
     s=(subreddit[:12] + '..') if len(subreddit) > 12 else subreddit     #crop long subreddit names in context menu
     colored_subreddit_short=colored_subreddit( s )
@@ -553,7 +553,7 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
 
     if cxm_show_open_browser:
             entries.append( ( translation(30509),  #Open in browser
-                              "XBMC.RunPlugin(%s?mode=openBrowser&url=%s)" % ( sys.argv[0],  urllib.quote_plus( link_url ) ) ) )
+                              "XBMC.RunPlugin(%s?mode=openBrowser&url=%s)" % ( sys.argv[0],  urllib.parse.quote_plus( link_url ) ) ) )
 
     if cxm_show_comment_link or cxm_show_comments:
         if num_comments > 0:
@@ -565,10 +565,10 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
             #              "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
             if cxm_show_comment_link:
                 entries.append( ( translation(30052) , #Show comment links
-                                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
+                                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s&type=linksOnly)" % ( sys.argv[0], sys.argv[0], urllib.parse.quote_plus(commentsUrl) ) ) )
             if cxm_show_comments:
                 entries.append( ( translation(30050) ,  #Show comments
-                                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(commentsUrl) ) ) )
+                                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listLinksInComment&url=%s)" % ( sys.argv[0], sys.argv[0], urllib.parse.quote_plus(commentsUrl) ) ) )
             #entries.append( ( translation(30050) + " (ActivateWindow)",  #Show comments
             #              "XBMC.ActivateWindow(Video, %s?mode=listLinksInComment&url=%s)" % (  sys.argv[0], urllib.quote_plus(site) ) ) )      #***  ActivateWindow is for the standard xbmc window
         else:
@@ -577,12 +577,12 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
 
     if GCXM_hasmultiplesubreddit and cxm_show_go_to:
         entries.append( ( translation(30051)+" %s" %colored_subreddit_full ,
-                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
+                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.parse.quote_plus(assemble_reddit_filter_string("",subreddit,True)  ) ) ) )
 
     if cxm_show_new_from:
         #show check /new from this subreddit if it is all the same subreddit
         entries.append( ( translation(30055)+" %s" %colored_subreddit_short ,
-                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
+                          "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listSubReddit&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.parse.quote_plus(assemble_reddit_filter_string("",subreddit+'/new',True)  ) ) ) )
 
     if cxm_show_add_shortcuts:
         if not subreddit_in_favorites(subreddit):
@@ -599,7 +599,7 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
 
     #only available if user gave reddit_viewer permission to interact with their account
     #reddit_refresh_token=addon.getSetting("reddit_refresh_token")
-    from reddit import reddit_refresh_token
+    from .reddit import reddit_refresh_token
     if reddit_refresh_token and cxm_show_reddit_save:
         if this_is_a_user_saved_list(GCXM_subreddit_key):
             #only show the unsave option if viewing /user/xxxx/saved
@@ -611,15 +611,15 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
 
     if cxm_show_youtube_items:
         #check if link_url is youtube
-        from domains import ClassYoutube
+        from .domains import ClassYoutube
         match=re.compile( ClassYoutube.regex, re.I).findall( link_url )  #regex='(youtube.com/)|(youtu.be/)|(youtube-nocookie.com/)|(plugin.video.youtube/play)'
         if match:
             #video_id=ClassYoutube.get_video_id(link_url )
             #log('video id:'+repr(video_id))
             entries.append( ( translation(30048) ,
-                                "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listRelatedVideo&url=%s&type=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(link_url), 'channel' ) ) )
+                                "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listRelatedVideo&url=%s&type=%s)" % ( sys.argv[0], sys.argv[0], urllib.parse.quote_plus(link_url), 'channel' ) ) )
             entries.append( ( translation(30049) ,
-                                "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listRelatedVideo&url=%s&type=%s)" % ( sys.argv[0], sys.argv[0], urllib.quote_plus(link_url), 'related' ) ) )
+                                "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=listRelatedVideo&url=%s&type=%s)" % ( sys.argv[0], sys.argv[0], urllib.parse.quote_plus(link_url), 'related' ) ) )
     #not working...
     #entries.append( ( translation(30054) ,
     #                  "XBMC.Container.Update(%s?path=%s?prl=zaza&mode=playURLResolver&url=%s)" % ( sys.argv[0], sys.argv[0],urllib.quote_plus(media_url) ) ) )
@@ -632,9 +632,9 @@ def build_context_menu_entries(num_comments,commentsUrl, subreddit, domain, link
     return entries
 
 def listLinksInComment(url, name, type_):
-    from domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
-    from utils import markdown_to_bbcode, unescape
-    from guis import progressBG
+    from .domains import parse_reddit_link, build_DirectoryItem_url_based_on_media_type
+    from .utils import markdown_to_bbcode, unescape
+    from .guis import progressBG
     #from resources.domains import make_addon_url_from
     #called from context menu
     log('listLinksInComment:%s:%s' %(type_,url) )
@@ -659,7 +659,7 @@ def listLinksInComment(url, name, type_):
     #url=re.findall(r'(.*/comments/[A-Za-z0-9]+)',url)[0]
 
     #use safe='' argument in quoteplus to encode only the weird chars part
-    url=urllib.quote_plus(url,safe=':/?&')
+    url=urllib.parse.quote_plus(url,safe=':/?&')
     if '?' in url:
         url=url.split('?', 1)[0]+'.json?'+url.split('?', 1)[1]
     else:
@@ -709,8 +709,7 @@ def listLinksInComment(url, name, type_):
 
             tab=" "*d if d>0 else "-"
 
-            from urlparse import urlparse
-            domain = '{uri.netloc}'.format( uri=urlparse( link_url ) )
+            domain = '{uri.netloc}'.format( uri=urllib.parse.urlparse( link_url ) )
 
             author=h[7]
             DirectoryItem_url=''
@@ -797,7 +796,7 @@ def listLinksInComment(url, name, type_):
 
 harvest=[]
 def r_linkHunter(json_node,d=0):
-    from utils import clean_str
+    from .utils import clean_str
     #recursive function to harvest stuff from the reddit comments json reply
     prog = re.compile('<a href=[\'"]?([^\'" >]+)[\'"]>(.*?)</a>')
     for e in json_node:
