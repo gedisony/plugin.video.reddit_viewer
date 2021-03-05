@@ -8,7 +8,6 @@
 		<import addon="xbmc.python"                     version="3.0.0"                />
 		<import addon="script.module.requests"          version="1.1.0"/>
 		<import addon="script.module.youtube.dl"        />
-		<import addon="script.module.urlresolver"       />
 	</requires>
 
 	<extension point="xbmc.python.pluginsource" library="default.py">
