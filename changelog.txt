@@ -363,5 +363,7 @@
    - minor bugfix on showing error notification
  4.0.0
    - convert to Kodi 19 Matrix
-   - test1
+4.01
+   - fix missed kodi 19 coversion in Play all functionality
+   
  

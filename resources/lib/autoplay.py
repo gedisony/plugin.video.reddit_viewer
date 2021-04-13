@@ -71,10 +71,10 @@ def getPlayCount(url):
 
 def autoPlay(url, name, autoPlay_type):
     import random
-    from domains import sitesBase, parse_reddit_link, build_DirectoryItem_url_based_on_media_type
-    from utils import unescape, post_is_filtered_out, log, clean_str
-    from actions import setting_gif_repeat_count
-    from reddit import reddit_request, determine_if_video_media_from_reddit_json
+    from .domains import sitesBase, parse_reddit_link, build_DirectoryItem_url_based_on_media_type
+    from .utils import unescape, post_is_filtered_out, log, clean_str
+    from .actions import setting_gif_repeat_count
+    from .reddit import reddit_request, determine_if_video_media_from_reddit_json
     #collect a list of title and urls as entries[] from the j_entries obtained from reddit
     #then create a playlist from those entries
     #then play the playlist
@@ -85,11 +85,27 @@ def autoPlay(url, name, autoPlay_type):
     playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     playlist.clear()
     log("**********autoPlay %s*************" %autoPlay_type)
+
+    # get active window
+#    win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
+#    control = win.getFocus()
+#    #control = win.getControl()
+#    #log( control )  #xbmcgui.ControlList object
+#
+#    #li = control.getSelectedItem()
+#    li= control.getListItem(2 )
+#    log( li )
+#
+#    log( control.size() )
+#    lis=[control.getListItem(item) for item in range(0, control.size())]
+#    for x in lis:
+#        log( x )
+#    li= xbmcgui.Window(xbmcgui.getCurrentWindowId()).getFocus().getSelectedItem()
+
     content = reddit_request(url)
     if not content: return
 
-    content = json.loads(content.replace('\\"', '\''))
-
+    content = json.loads(content)
     log("Autoplay %s - Parsing %d items" %( autoPlay_type, len(content['data']['children']) )    )
 
     for j_entry in content['data']['children']:
@@ -133,10 +149,10 @@ def autoPlay(url, name, autoPlay_type):
     #for title, url in entries:
     #    log("  added to playlist:"+ title + "  " + urllib.unquote_plus(url) )
     for title, url in entries:
-        listitem = xbmcgui.ListItem(title)
+        listitem = xbmcgui.ListItem(title, path=url)
         playlist.add(url, listitem)
         log('add to playlist: %s %s' %(title.ljust(25)[:25],url ))
-    xbmc.Player().play(playlist)
+    xbmc.Player().play(playlist)  #kodi on windows freezes here. i do not know if it is the same for others. there must be something i'm doing wrong.  
 
 def autoPlay_type_entries_append( entries, autoPlay_type, title, playable_url):
     #log(' ****playcount %d:[%s] %s' %( getPlayCount(playable_url), playable_url, title) )
