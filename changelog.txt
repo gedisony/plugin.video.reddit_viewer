@@ -363,7 +363,9 @@
    - minor bugfix on showing error notification
  4.0.0
    - convert to Kodi 19 Matrix
-4.01
+ 4.0.1
    - fix missed kodi 19 coversion in Play all functionality
-   
+ 4.0.2
+   - fix missed kodi 19 coversion in reddit oauth setting
+
  

@@ -74,15 +74,17 @@ def reddit_get_refresh_token(url, name, type_):
     #log("  user refresh token:"+reddit_refresh_token)
     #log("  user          code:"+code)
 
-    if reddit_refresh_token and code:
+    if reddit_refresh_token:
         #log("  user already have refresh token:"+reddit_refresh_token)
         dialog = xbmcgui.Dialog()
-        if dialog.yesno(translation(30411), translation(30412), translation(30413), translation(30414) ):
+        #if dialog.yesno(translation(30411) +  + translation(30414) ):
+        if dialog.yesno(translation(30411),translation(30412) + translation(30413),'Ok','oo'  ):
             pass
         else:
             return
 
     try:
+        log( "reddit client ID=" + reddit_clientID )
         log( "Requesting a reddit permanent token with code=" + code )
 
         req = urllib.request.Request('https://www.reddit.com/api/v1/access_token')
@@ -90,14 +92,18 @@ def reddit_get_refresh_token(url, name, type_):
         #http://stackoverflow.com/questions/6348499/making-a-post-call-instead-of-get-using-urllib2
         data = urllib.parse.urlencode({'grant_type'  : 'authorization_code'
                                 ,'code'        : code                     #'woX9CDSuw7XBg1MiDUnTXXQd0e4'
-                                ,'redirect_uri': reddit_redirect_uri})    #http://localhost:8090/
+                                ,'redirect_uri': reddit_redirect_uri}).encode("utf-8")     #http://localhost:8090/
 
         #http://stackoverflow.com/questions/2407126/python-urllib2-basic-auth-problem
-        import base64
-        base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')
+        bytes_like_object = bytes('%s:%s' % (reddit_clientID, ''), "utf-8")
+        import codecs
+        base64string=codecs.encode(bytes_like_object, 'base64') #base64string is now a bytes-like object
+        base64string=str(base64string,'utf-8').replace('\n', '')
+
         req.add_header('Authorization',"Basic %s" % base64string)
         req.add_header('User-Agent', reddit_userAgent)
 
+        log( req.headers )
         page = urllib.request.urlopen(req, data=data)
         response=page.read();page.close()
         log( response )
@@ -105,12 +111,9 @@ def reddit_get_refresh_token(url, name, type_):
         status=reddit_set_addon_setting_from_response(response)
 
         if status=='ok':
-            r1="Click 'OK' when done"
-            r2="Settings will not be saved"
-            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( r1, r2)  )
+            xbmc_notify( 'Success', "Click 'OK' when done" )
         else:
-            r2="Requesting a reddit permanent token"
-            xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( status, r2)  )
+            xbmc_notify( "Error", status )
 
 
 #    This is a 2nd option reddit oauth. user needs to request access token every hour
@@ -233,10 +236,13 @@ def reddit_revoke_refresh_token(url, name, type_):
         req = urllib.request.Request('https://www.reddit.com/api/v1/revoke_token')
 
         data = urllib.parse.urlencode({'token'          : reddit_refresh_token
-                                ,'token_type_hint': 'refresh_token'       })
+                                ,'token_type_hint': 'refresh_token'       }).encode("utf-8")
 
-        import base64
-        base64string = base64.encodestring('%s:%s' % (reddit_clientID, '')).replace('\n', '')
+        bytes_like_object = bytes('%s:%s' % (reddit_clientID, ''), "utf-8")
+        import codecs
+        base64string=codecs.encode(bytes_like_object, 'base64') #base64string is now a bytes-like object
+        base64string=str(base64string,'utf-8').replace('\n', '')
+
         req.add_header('Authorization',"Basic %s" % base64string)
         req.add_header('User-Agent', reddit_userAgent)
 
@@ -244,11 +250,12 @@ def reddit_revoke_refresh_token(url, name, type_):
         response=page.read();page.close()
 
         #no response for success.
-        log( "response:" + response )
+        log( response )
 
         #response = json.loads(response.replace('\\"', '\''))
         #log( json.dumps(response, indent=4) )
 
+        addon.setSetting('reddit_code', "")
         addon.setSetting('reddit_refresh_token', "")
         addon.setSetting('reddit_access_token', "")
         addon.setSetting('reddit_access_token_scope', "")
@@ -256,9 +263,7 @@ def reddit_revoke_refresh_token(url, name, type_):
         reddit_refresh_token=""
         reddit_access_token=""
 
-        r2="Revoking refresh token"
-        xbmc.executebuiltin("XBMC.Notification(%s, %s)"  %( 'Token revoked', r2)  )
-
+        xbmc_notify( 'Token revoked', '')
     except urllib.error.HTTPError as err:
         xbmc_notify(err.code, err.msg)
     except Exception as e:
