@@ -367,5 +367,7 @@
    - fix missed kodi 19 coversion in Play all functionality
  4.0.2
    - fix missed kodi 19 coversion in reddit oauth setting
+ 4.0.3
+   - TrellixVulnTeam - Adding tarfile member sanitization to extractall()
 
  

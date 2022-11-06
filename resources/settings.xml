@@ -40,7 +40,7 @@
         <setting id="ytdl_quality"           type="enum" label="30355" lvalues="30356|30357|30358|30359" default="1"/>
         <setting id="ytdl_DASH"              type="bool" label="30360" default="false"/>
         <setting                             type="lsep" label="30351" enable="true" />
-        <setting id="use_addon_for_youtube"  type="bool" label="30352" default="false"/>
+        <setting id="use_addon_for_youtube"  type="bool" label="30352" default="true"/>
         <setting id="use_addon_for_Liveleak" type="bool" label="30353" default="true"/>
     </category>
 
